@@ -28,6 +28,7 @@ export const CandidateProfileClient: React.FC<CandidateProfileClientProps> = ({
   const formRef = useRef<HTMLFormElement>(null)
 
   const formattedDate = new Date(profile.created_at).toLocaleDateString('en-US', {
+    timeZone: 'Asia/Kolkata',
     month: 'short',
     day: 'numeric',
     year: 'numeric',

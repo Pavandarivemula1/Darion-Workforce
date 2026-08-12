@@ -265,8 +265,8 @@ export default async function AdminDashboardPage() {
                     <div key={session.id} className="py-3 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold">{profileObj?.full_name || 'Candidate'}</p>
-                        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                          Login: {new Date(session.login_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]" suppressHydrationWarning>
+                          Login: {new Date(session.login_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}
                         </p>
                       </div>
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">

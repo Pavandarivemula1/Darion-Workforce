@@ -48,6 +48,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
   const formatTime = (isoString?: string | null) => {
     if (!isoString) return '--:--'
     return new Date(isoString).toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
@@ -56,6 +57,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
 
   const formatDate = (isoString: string) => {
     return new Date(isoString).toLocaleDateString('en-US', {
+      timeZone: 'Asia/Kolkata',
       weekday: 'short',
       month: 'short',
       day: 'numeric',

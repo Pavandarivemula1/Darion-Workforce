@@ -181,6 +181,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   const formatTime = (isoString?: string | null) => {
     if (!isoString) return '--:--'
     return new Date(isoString).toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
@@ -197,8 +198,9 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
           <div className="flex items-center justify-between gap-4 flex-wrap pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium" suppressHydrationWarning>
                 {new Date().toLocaleDateString('en-US', {
+                  timeZone: 'Asia/Kolkata',
                   weekday: 'long',
                   month: 'short',
                   day: 'numeric',
