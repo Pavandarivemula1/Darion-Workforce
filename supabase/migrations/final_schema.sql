@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS public.attendance (
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   login_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   logout_time TIMESTAMPTZ NULL,
+  break_start_time TIMESTAMPTZ NULL,
+  break_duration_seconds INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

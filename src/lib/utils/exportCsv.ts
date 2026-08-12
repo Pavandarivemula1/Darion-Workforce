@@ -10,7 +10,15 @@ export function exportAttendanceToCsv(
   const candidateMap = new Map<string, string>()
   candidates.forEach((c) => candidateMap.set(c.id, c.full_name))
 
-  const headers = ['Candidate', 'Date', 'Login Time', 'Logout Time', 'Total Hours', 'Status']
+  const headers = [
+    'Candidate',
+    'Date',
+    'Login Time',
+    'Logout Time',
+    'Break Duration',
+    'Net Working Hours',
+    'Status',
+  ]
 
   const rows = records.map((r) => {
     const candidateName = candidateMap.get(r.user_id) || 'Unknown Candidate'
@@ -34,6 +42,10 @@ export function exportAttendanceToCsv(
     let totalHoursStr = '--'
     let status = 'Incomplete'
 
+    const breakSecs = r.break_duration_seconds || 0
+    const bMins = Math.floor(breakSecs / 60)
+    const breakDurationStr = `${bMins}m`
+
     if (r.logout_time) {
       const logoutDate = new Date(r.logout_time)
       formattedLogout = logoutDate.toLocaleTimeString('en-IN', {
@@ -42,19 +54,19 @@ export function exportAttendanceToCsv(
         minute: '2-digit',
         hour12: true,
       })
-      const diffMs = Math.max(0, logoutDate.getTime() - loginDate.getTime())
-      totalHoursStr = formatDurationMs(diffMs)
+      const grossMs = Math.max(0, logoutDate.getTime() - loginDate.getTime())
+      const netMs = Math.max(0, grossMs - breakSecs * 1000)
+      totalHoursStr = formatDurationMs(netMs)
       status = 'Completed'
     } else {
       const isToday =
         new Date().toLocaleDateString('en-IN', { timeZone: TIMEZONE }) ===
         loginDate.toLocaleDateString('en-IN', { timeZone: TIMEZONE })
       if (isToday) {
-        status = 'Working'
+        status = r.break_start_time ? 'On Break' : 'Working'
       }
     }
 
-    // Escape CSV cell values to prevent injection
     const escapeCsv = (val: string) => `"${val.replace(/"/g, '""')}"`
 
     return [
@@ -62,6 +74,7 @@ export function exportAttendanceToCsv(
       escapeCsv(formattedDate),
       escapeCsv(formattedLogin),
       escapeCsv(formattedLogout),
+      escapeCsv(breakDurationStr),
       escapeCsv(totalHoursStr),
       escapeCsv(status),
     ].join(',')

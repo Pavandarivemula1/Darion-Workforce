@@ -15,6 +15,8 @@ export interface SystemAttendanceItem {
   user_id: string
   login_time: string
   logout_time: string | null
+  break_start_time?: string | null
+  break_duration_seconds?: number
   created_at: string
   candidateName: string
 }
@@ -96,13 +98,14 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     })
   }
 
-  const calculateTotal = (loginIso: string, logoutIso: string | null) => {
+  const calculateNetTotal = (loginIso: string, logoutIso: string | null, breakSecs = 0) => {
     if (!logoutIso) return '--'
     const start = new Date(loginIso).getTime()
     const end = new Date(logoutIso).getTime()
-    const diffMs = Math.max(0, end - start)
-    const hours = Math.floor(diffMs / (1000 * 60 * 60))
-    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+    const grossMs = Math.max(0, end - start)
+    const netMs = Math.max(0, grossMs - breakSecs * 1000)
+    const hours = Math.floor(netMs / (1000 * 60 * 60))
+    const mins = Math.floor((netMs % (1000 * 60 * 60)) / (1000 * 60))
     return `${hours}h ${mins.toString().padStart(2, '0')}m`
   }
 
@@ -192,7 +195,8 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 <th className="py-3.5 px-4">Date</th>
                 <th className="py-3.5 px-4">Login</th>
                 <th className="py-3.5 px-4">Logout</th>
-                <th className="py-3.5 px-4">Total</th>
+                <th className="py-3.5 px-4">Break</th>
+                <th className="py-3.5 px-4">Net Work Time</th>
                 <th className="py-3.5 px-4 sm:px-6">Status</th>
               </tr>
             </thead>
@@ -202,6 +206,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                   const hasLogout = !!item.logout_time
                   const today = isToday(item.login_time)
                   const isWorking = !hasLogout && today
+                  const isOnBreak = isWorking && !!item.break_start_time
+                  const breakSecs = item.break_duration_seconds || 0
+                  const bMins = Math.floor(breakSecs / 60)
 
                   return (
                     <tr
@@ -220,13 +227,20 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs">
                         {formatTime(item.logout_time)}
                       </td>
+                      <td className="py-4 px-4 whitespace-nowrap font-mono text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                        {bMins > 0 ? `${bMins}m` : '0m'}
+                      </td>
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs font-semibold">
-                        {isWorking ? (
+                        {isOnBreak ? (
+                          <span className="text-amber-600 dark:text-amber-400 animate-pulse">
+                            Paused (On Break)
+                          </span>
+                        ) : isWorking ? (
                           <span className="text-[var(--md-sys-color-primary)] animate-pulse">
                             In Progress
                           </span>
                         ) : (
-                          calculateTotal(item.login_time, item.logout_time)
+                          calculateNetTotal(item.login_time, item.logout_time, breakSecs)
                         )}
                       </td>
                       <td className="py-4 px-4 sm:px-6 whitespace-nowrap">
@@ -234,6 +248,11 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             Completed
+                          </span>
+                        ) : isOnBreak ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                            <Clock className="w-3.5 h-3.5" />
+                            On Break
                           </span>
                         ) : isWorking ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">

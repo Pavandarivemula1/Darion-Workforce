@@ -3,6 +3,8 @@ export interface AttendanceRecord {
   user_id: string
   login_time: string
   logout_time: string | null
+  break_start_time?: string | null
+  break_duration_seconds?: number
   created_at: string
 }
 
@@ -168,8 +170,10 @@ export function processWeeklyTimesheet(
         if (r.logout_time) {
           const start = new Date(r.login_time).getTime()
           const end = new Date(r.logout_time).getTime()
-          const duration = Math.max(0, end - start)
-          dayTotalMs += duration
+          const grossMs = Math.max(0, end - start)
+          const breakMs = (r.break_duration_seconds || 0) * 1000
+          const netMs = Math.max(0, grossMs - breakMs)
+          dayTotalMs += netMs
           dayCompletedCount += 1
           completedSessionsCount += 1
         } else {
