@@ -24,10 +24,8 @@ function parseJwtFromCookies(request: NextRequest): { userId: string; role: stri
 
     if (!rawVal) return null
 
-    if (rawVal.startsWith('[')) {
-      const parsed = JSON.parse(rawVal)
-      rawVal = Array.isArray(parsed) ? parsed[0] : ''
-    }
+    // Strip base64- prefix or JSON array wrapper from @supabase/ssr
+    rawVal = rawVal.trim().replace(/^\[?"?(?:base64-)?/, '').replace(/"?\]?$/, '')
 
     if (!rawVal || typeof rawVal !== 'string' || !rawVal.includes('.')) return null
 
