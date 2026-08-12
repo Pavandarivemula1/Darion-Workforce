@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState, useEffect, useActionState } from 'react'
+import React, { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Snackbar } from '@/components/ui/Snackbar'
-import { approveShiftAction, rejectShiftAction, type AdminActionState } from '@/app/actions/admin'
+import { approveShiftAction, rejectShiftAction } from '@/app/actions/admin'
 import {
   Filter,
   Calendar,
@@ -48,8 +48,6 @@ export interface AdminAttendanceClientProps {
   records: SystemAttendanceItem[]
 }
 
-const initialState: AdminActionState = { error: '', success: false }
-
 export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   candidates,
   records: initialRecords,
@@ -62,6 +60,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   const startDate = searchParams.get('startDate') || ''
   const endDate = searchParams.get('endDate') || ''
 
+  const [isApproving, startApproveTransition] = useTransition()
+  const [isRejecting, startRejectTransition] = useTransition()
+
   const [optimisticOverrides, setOptimisticOverrides] = useState<
     Record<string, { approval_status: 'approved' | 'rejected'; payout_amount?: number; rejection_reason?: string }>
   >({})
@@ -72,8 +73,8 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   const [rejectItem, setRejectItem] = useState<SystemAttendanceItem | null>(null)
   const [rejectionReasonText, setRejectionReasonText] = useState('')
 
-  // Toast dismissal tracking
-  const [dismissedToastKey, setDismissedToastKey] = useState<string | null>(null)
+  // Toast notification state
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
 
   const records = initialRecords.map((r) => {
     const override = optimisticOverrides[r.id]
@@ -82,42 +83,6 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     }
     return r
   })
-
-  const [approveState, approveFormAction, isApproving] = useActionState(
-    approveShiftAction,
-    initialState
-  )
-  const [rejectState, rejectFormAction, isRejecting] = useActionState(
-    rejectShiftAction,
-    initialState
-  )
-
-  useEffect(() => {
-    if (approveState?.success || rejectState?.success) {
-      router.refresh()
-    }
-  }, [approveState, rejectState, router])
-
-  // Derive Toast Notification without synchronous setState in effect
-  let toast: { message: string; variant: 'success' | 'error' } | null = null
-
-  if (approveState?.success && dismissedToastKey !== 'approve-success') {
-    toast = { message: 'Shift approved and payout recorded successfully.', variant: 'success' }
-  } else if (approveState?.error && dismissedToastKey !== `approve-error-${approveState.error}`) {
-    toast = { message: approveState.error, variant: 'error' }
-  } else if (rejectState?.success && dismissedToastKey !== 'reject-success') {
-    toast = { message: 'Shift rejected with feedback recorded.', variant: 'success' }
-  } else if (rejectState?.error && dismissedToastKey !== `reject-error-${rejectState.error}`) {
-    toast = { message: rejectState.error, variant: 'error' }
-  }
-
-  const handleDismissToast = () => {
-    if (approveState?.success) setDismissedToastKey('approve-success')
-    else if (approveState?.error) setDismissedToastKey(`approve-error-${approveState.error}`)
-    else if (rejectState?.success) setDismissedToastKey('reject-success')
-    else if (rejectState?.error) setDismissedToastKey(`reject-error-${rejectState.error}`)
-    else setDismissedToastKey('dismissed')
-  }
 
   const updateQueryParams = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams)
@@ -197,17 +162,60 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       : calculateAutoPayout(item)
     setCustomPayoutText(autoAmount.toFixed(2))
     setApproveItem(item)
-    setDismissedToastKey(null)
+    setToast(null)
   }
 
   const openRejectModal = (item: SystemAttendanceItem) => {
     setRejectionReasonText(item.rejection_reason || '')
     setRejectItem(item)
-    setDismissedToastKey(null)
+    setToast(null)
   }
 
-  const showApproveModal = approveItem && !approveState?.success
-  const showRejectModal = rejectItem && !rejectState?.success
+  const handleApproveSubmit = (formData: FormData) => {
+    if (!approveItem) return
+    const amount = parseFloat(customPayoutText) || 0
+    setOptimisticOverrides((prev) => ({
+      ...prev,
+      [approveItem.id]: {
+        approval_status: 'approved',
+        payout_amount: amount,
+      },
+    }))
+
+    startApproveTransition(async () => {
+      const res = await approveShiftAction({ error: '', success: false }, formData)
+      if (res.success) {
+        setApproveItem(null)
+        setToast({ message: 'Shift approved and payout recorded successfully.', variant: 'success' })
+        router.refresh()
+      } else if (res.error) {
+        setToast({ message: res.error, variant: 'error' })
+      }
+    })
+  }
+
+  const handleRejectSubmit = (formData: FormData) => {
+    if (!rejectItem) return
+    setOptimisticOverrides((prev) => ({
+      ...prev,
+      [rejectItem.id]: {
+        approval_status: 'rejected',
+        rejection_reason: rejectionReasonText.trim(),
+        payout_amount: 0,
+      },
+    }))
+
+    startRejectTransition(async () => {
+      const res = await rejectShiftAction({ error: '', success: false }, formData)
+      if (res.success) {
+        setRejectItem(null)
+        setToast({ message: 'Shift rejected with feedback recorded.', variant: 'success' })
+        router.refresh()
+      } else if (res.error) {
+        setToast({ message: res.error, variant: 'error' })
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -421,7 +429,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       </Card>
 
       {/* Approve Shift Payment Modal */}
-      {showApproveModal && (
+      {approveItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
@@ -456,17 +464,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
             </div>
 
             <form
-              action={approveFormAction}
-              onSubmit={() => {
-                const amount = parseFloat(customPayoutText) || 0
-                setOptimisticOverrides((prev) => ({
-                  ...prev,
-                  [approveItem.id]: {
-                    approval_status: 'approved',
-                    payout_amount: amount,
-                  },
-                }))
-              }}
+              action={handleApproveSubmit}
               className="flex flex-col gap-4"
             >
               <input type="hidden" name="attendanceId" value={approveItem.id} />
@@ -504,7 +502,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       )}
 
       {/* Reject Shift Reason Modal */}
-      {showRejectModal && (
+      {rejectItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
@@ -529,17 +527,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
             </div>
 
             <form
-              action={rejectFormAction}
-              onSubmit={() => {
-                setOptimisticOverrides((prev) => ({
-                  ...prev,
-                  [rejectItem.id]: {
-                    approval_status: 'rejected',
-                    rejection_reason: rejectionReasonText.trim(),
-                    payout_amount: 0,
-                  },
-                }))
-              }}
+              action={handleRejectSubmit}
               className="flex flex-col gap-4"
             >
               <input type="hidden" name="attendanceId" value={rejectItem.id} />
@@ -581,7 +569,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       <Snackbar
         message={toast?.message || null}
         variant={toast?.variant || 'info'}
-        onClose={handleDismissToast}
+        onClose={() => setToast(null)}
       />
     </div>
   )

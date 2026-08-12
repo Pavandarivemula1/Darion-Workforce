@@ -162,6 +162,7 @@ export async function approveShiftAction(
   const attendanceId = formData.get('attendanceId') as string
 
   if (!attendanceId) {
+    console.error('[approveShiftAction] Error: Attendance ID is missing from formData')
     return { error: 'Attendance ID is required.' }
   }
 
@@ -173,10 +174,12 @@ export async function approveShiftAction(
     .single()
 
   if (shiftError || !shift) {
+    console.error('[approveShiftAction] Error fetching shift:', shiftError)
     return { error: 'Attendance shift not found.' }
   }
 
   if (!shift.logout_time) {
+    console.error('[approveShiftAction] Error: Shift logout_time is null for shift:', shift.id)
     return { error: 'Cannot approve an active shift before candidate logs out.' }
   }
 
@@ -212,9 +215,11 @@ export async function approveShiftAction(
     .eq('id', attendanceId)
 
   if (updateError) {
+    console.error('[approveShiftAction] Update Error:', updateError)
     return { error: updateError.message || 'Failed to approve shift.' }
   }
 
+  console.log('[approveShiftAction] SUCCESS for shift:', attendanceId, 'payout:', finalPayoutAmount)
   revalidatePath('/admin/attendance')
   revalidatePath('/admin/timesheet')
   revalidatePath('/admin')
