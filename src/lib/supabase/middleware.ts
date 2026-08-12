@@ -1,4 +1,3 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 interface JwtPayload {
@@ -8,38 +7,61 @@ interface JwtPayload {
   app_metadata?: { role?: string }
 }
 
-function parseJwtFromCookies(request: NextRequest): { userId: string; role: string } | null {
+/**
+ * Parse the Supabase session cookie locally (0ms, zero network calls).
+ * 
+ * Cookie format from @supabase/ssr:
+ *   Cookie name: sb-<ref>-auth-token (may be chunked: .0, .1, .2 etc.)
+ *   Cookie value: base64-<base64 encoded JSON>
+ *   Decoded JSON: {"access_token":"<JWT>","refresh_token":"...","expires_at":...,...}
+ *   
+ * We extract the access_token JWT and parse its payload for sub + user_metadata.role.
+ */
+function parseSessionFromCookies(request: NextRequest): { userId: string; role: string } | null {
   try {
     const allCookies = request.cookies.getAll()
 
-    // 1. Find matching auth cookies (including chunked cookies like .0, .1)
+    // Find auth token cookies (including chunked cookies like .0, .1)
     const authChunks = allCookies
-      .filter((c) => c.name.includes('-auth-token') || c.name.includes('sb-access-token'))
+      .filter((c) => {
+        const name = c.name
+        return (
+          (name.startsWith('sb-') && (name.endsWith('-auth-token') || /-auth-token\.\d+$/.test(name))) ||
+          name === 'sb-access-token'
+        )
+      })
       .sort((a, b) => a.name.localeCompare(b.name))
 
     if (authChunks.length === 0) return null
 
     // Join chunked cookie values
     let rawVal = authChunks.map((c) => c.value).join('')
-
     if (!rawVal) return null
 
-    // Strip base64- prefix or JSON array wrapper from @supabase/ssr
-    rawVal = rawVal.trim().replace(/^\[?"?(?:base64-)?/, '').replace(/"?\]?$/, '')
+    // Strip "base64-" prefix
+    if (rawVal.startsWith('base64-')) {
+      rawVal = rawVal.slice(7) // Remove "base64-"
+    }
 
-    if (!rawVal || typeof rawVal !== 'string' || !rawVal.includes('.')) return null
+    // Decode the base64 to get the session JSON
+    const sessionJson = Buffer.from(rawVal, 'base64').toString('utf8')
+    const session = JSON.parse(sessionJson)
 
-    const parts = rawVal.split('.')
-    if (parts.length < 2) return null
+    // Extract the access_token JWT from the session
+    const accessToken: string | undefined = session?.access_token
+    if (!accessToken || !accessToken.includes('.')) return null
 
-    const payloadBase64 = parts[1]
-    const jsonStr = Buffer.from(payloadBase64, 'base64url').toString('utf8')
-    const payload: JwtPayload = JSON.parse(jsonStr)
+    // Parse the JWT payload (header.payload.signature)
+    const jwtParts = accessToken.split('.')
+    if (jwtParts.length < 2) return null
 
-    if (!payload || !payload.sub) return null
+    const payloadJson = Buffer.from(jwtParts[1], 'base64url').toString('utf8')
+    const payload: JwtPayload = JSON.parse(payloadJson)
 
-    // Check expiration (with 10-second buffer)
-    if (payload.exp && Date.now() / 1000 > payload.exp - 10) {
+    if (!payload?.sub) return null
+
+    // Check expiration (with 30-second buffer)
+    if (payload.exp && Date.now() / 1000 > payload.exp - 30) {
       return null
     }
 
@@ -52,50 +74,22 @@ function parseJwtFromCookies(request: NextRequest): { userId: string; role: stri
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  let session = parseJwtFromCookies(request)
+  const session = parseSessionFromCookies(request)
 
-  let supabaseResponse = NextResponse.next({ request })
+  const requestHeaders = new Headers(request.headers)
 
-  // Fallback to Supabase SSR client if local cookie parse didn't find session
-  if (!session) {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-            supabaseResponse = NextResponse.next({ request })
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (user) {
-      let role = user.user_metadata?.role || user.app_metadata?.role
-      if (!role) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle()
-        role = profile?.role || 'candidate'
-      }
-      session = { userId: user.id, role }
-    }
+  if (session) {
+    requestHeaders.set('x-user-id', session.userId)
+    requestHeaders.set('x-user-role', session.role)
   }
 
-  // 1. Protected routes check for unauthenticated users
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
+
+  // 1. Protected routes — redirect unauthenticated users to login
   if (!session && (pathname.startsWith('/admin') || pathname.startsWith('/candidate'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -103,22 +97,25 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // 2. Authenticated user redirects & protection
+  // 2. Authenticated user redirects & role-based access control
   if (session) {
     const { role } = session
 
+    // Redirect logged-in users away from /login or /
     if (pathname === '/login' || pathname === '/') {
       const url = request.nextUrl.clone()
       url.pathname = role === 'admin' ? '/admin' : '/candidate'
       return NextResponse.redirect(url)
     }
 
+    // Admin-only routes
     if (pathname.startsWith('/admin') && role !== 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/candidate'
       return NextResponse.redirect(url)
     }
 
+    // Candidate-only routes
     if (pathname.startsWith('/candidate') && role === 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'
@@ -126,5 +123,5 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  return supabaseResponse
+  return response
 }

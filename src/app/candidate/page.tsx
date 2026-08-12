@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CandidateNav } from '@/components/candidate/CandidateNav'
 import { WorkStatusCard } from '@/components/candidate/WorkStatusCard'
@@ -9,15 +9,17 @@ import Link from 'next/link'
 import { ArrowRight, History } from 'lucide-react'
 
 export default async function CandidateDashboardPage() {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUserFast()
 
   if (!user) {
     redirect('/login')
   }
+
+  if (user.role === 'admin') {
+    redirect('/admin')
+  }
+
+  const supabase = await createClient()
 
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
@@ -72,10 +74,6 @@ export default async function CandidateDashboardPage() {
       .limit(5),
   ])
 
-  if (profile?.role === 'admin') {
-    redirect('/admin')
-  }
-
   let weeklyTotalMs = 0
   let completedShiftsCount = 0
 
@@ -122,7 +120,7 @@ export default async function CandidateDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col">
-      <CandidateNav userName={profile?.full_name || user.email} />
+      <CandidateNav userName={profile?.full_name || 'Candidate'} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-8">
         {/* Welcome Section */}

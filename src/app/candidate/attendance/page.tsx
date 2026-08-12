@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CandidateNav } from '@/components/candidate/CandidateNav'
 import { CandidateAttendanceClient } from './CandidateAttendanceClient'
@@ -13,41 +13,35 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
   const params = await searchParams
   const initialFilter = params.filter || 'this_week'
 
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUserFast()
 
   if (!user) {
     redirect('/login')
   }
 
-  // Fetch Profile & All User Attendance Records Concurrently (Promise.all)
-  const profilePromise = supabase
-    .from('profiles')
-    .select('id, full_name, role')
-    .eq('id', user.id)
-    .single()
-
-  const recordsPromise = supabase
-    .from('attendance')
-    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at')
-    .eq('user_id', user.id)
-    .order('login_time', { ascending: false })
-
-  const [{ data: profile }, { data: records }] = await Promise.all([
-    profilePromise,
-    recordsPromise,
-  ])
-
-  if (profile?.role === 'admin') {
+  if (user.role === 'admin') {
     redirect('/admin')
   }
 
+  const supabase = await createClient()
+
+  // Fetch Profile & All User Attendance Records Concurrently (Promise.all)
+  const [{ data: profile }, { data: records }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at')
+      .eq('user_id', user.id)
+      .order('login_time', { ascending: false }),
+  ])
+
   return (
     <div className="min-h-screen bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col">
-      <CandidateNav userName={profile?.full_name || user.email} />
+      <CandidateNav userName={profile?.full_name || 'Candidate'} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
         <div>

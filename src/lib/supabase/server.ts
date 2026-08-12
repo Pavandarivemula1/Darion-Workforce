@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
+import { cache } from 'react'
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -33,9 +34,33 @@ export function createAdminClient() {
     serviceKey,
     {
       cookies: {
-        getAll() { return [] },
+        getAll() {
+          return []
+        },
         setAll() {},
       },
     }
   )
 }
+
+export const getCurrentUserFast = cache(async () => {
+  try {
+    const reqHeaders = await headers()
+    const userId = reqHeaders.get('x-user-id')
+    const role = reqHeaders.get('x-user-role')
+
+    if (userId && role) {
+      return { id: userId, role }
+    }
+  } catch {
+    // Header reading fallback
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return null
+  return { id: user.id, role: user.user_metadata?.role || 'candidate' }
+})

@@ -1,42 +1,38 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { CandidateManagementClient } from './CandidateManagementClient'
 
 export default async function AdminCandidatesPage() {
-  const supabase = await createClient()
-
-  // Verify Admin Authorization
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUserFast()
 
   if (!user) {
     redirect('/login')
   }
 
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!adminProfile || adminProfile.role !== 'admin') {
+  if (user.role !== 'admin') {
     redirect('/candidate')
   }
 
-  // Fetch candidate profiles
-  const { data: candidateProfiles } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'candidate')
-    .order('created_at', { ascending: true })
+  const supabase = await createClient()
 
-  // Fetch active sessions to determine working status
-  const { data: activeSessions } = await supabase
-    .from('attendance')
-    .select('user_id')
-    .is('logout_time', null)
+  // Execute all queries concurrently (Promise.all)
+  const [{ data: adminProfile }, { data: candidateProfiles }, { data: activeSessions }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('profiles')
+      .select('id, full_name, role, created_at, hourly_rate')
+      .eq('role', 'candidate')
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('attendance')
+      .select('user_id')
+      .is('logout_time', null),
+  ])
 
   const activeUserIds = new Set(activeSessions?.map((s) => s.user_id) || [])
 
@@ -50,7 +46,7 @@ export default async function AdminCandidatesPage() {
   }))
 
   return (
-    <AdminLayout adminName={adminProfile.full_name}>
+    <AdminLayout adminName={adminProfile?.full_name || 'Admin'}>
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6">
         <CandidateManagementClient candidates={candidateUsers} />
       </main>

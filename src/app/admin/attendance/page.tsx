@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { AdminAttendanceClient } from './AdminAttendanceClient'
@@ -19,16 +19,13 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
   const customStart = params.startDate
   const customEnd = params.endDate
 
-  const supabase = await createClient()
-
-  // Verify Admin Authorization
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUserFast()
 
   if (!user) {
     redirect('/login')
   }
+
+  const supabase = await createClient()
 
   // Calculate Date Filters
   const now = new Date()

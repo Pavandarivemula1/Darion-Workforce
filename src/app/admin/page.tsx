@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { Card } from '@/components/ui/Card'
@@ -16,16 +16,13 @@ import { getWeekBoundaries, getKolkataDateKey, formatDurationMs } from '@/lib/ut
 import { DashboardAnalyticsCharts } from '@/components/admin/dashboard/DashboardAnalyticsCharts'
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient()
-
-  // Verify Admin Authorization
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUserFast()
 
   if (!user) {
     redirect('/login')
   }
+
+  const supabase = await createClient()
 
   // Calculate Current Week Boundaries
   const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
