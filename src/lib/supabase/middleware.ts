@@ -29,10 +29,6 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -47,32 +43,34 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If user is authenticated, retrieve role from profiles table
+  // 2. Fast role check from JWT metadata, fallback to DB if missing
   if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    let role = user.user_metadata?.role || user.app_metadata?.role
 
-    const role = profile?.role || 'candidate'
+    if (!role) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
 
-    // 2. Redirect logged-in users away from /login page
+      role = profile?.role || 'candidate'
+    }
+
+    // Redirect logged-in users away from /login or /
     if (pathname === '/login' || pathname === '/') {
       const url = request.nextUrl.clone()
       url.pathname = role === 'admin' ? '/admin' : '/candidate'
       return NextResponse.redirect(url)
     }
 
-    // 3. Strict Role-based access control
-    // Candidate cannot access /admin
+    // Strict Role-based access control
     if (pathname.startsWith('/admin') && role !== 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/candidate'
       return NextResponse.redirect(url)
     }
 
-    // Admin should be directed to /admin when accessing /candidate (or allowed according to system design)
     if (pathname.startsWith('/candidate') && role === 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'

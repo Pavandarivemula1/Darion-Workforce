@@ -29,22 +29,18 @@ export async function loginAction(
     return { error: 'Authentication failed. Please try again.' }
   }
 
-  // Fetch user profile to determine role
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', data.user.id)
-    .maybeSingle()
+  // Fast role check from user_metadata first, fallback to DB if needed
+  let role = data.user.user_metadata?.role || data.user.app_metadata?.role
 
-  if (profileError) {
-    return {
-      error:
-        'Database setup required. Please run the SQL migration scripts in your Supabase SQL Editor.',
-    }
+  if (!role) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .maybeSingle()
+
+    role = profile?.role || 'candidate'
   }
-
-  // Fallback to user metadata if profile row isn't found yet
-  const role = profile?.role || data.user.user_metadata?.role || 'candidate'
 
   if (role === 'admin') {
     redirect('/admin')
