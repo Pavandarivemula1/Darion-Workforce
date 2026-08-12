@@ -30,22 +30,6 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
     redirect('/login')
   }
 
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    redirect('/candidate')
-  }
-
-  // Fetch candidate list for dropdown
-  const { data: candidates } = await supabase
-    .from('profiles')
-    .select('id, full_name')
-    .eq('role', 'candidate')
-
   // Calculate Date Filters
   const now = new Date()
   let rangeStart: Date | null = null
@@ -77,41 +61,66 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
     }
   }
 
-  // Query Attendance Records
-  let query = supabase
+  // Prepare Concurrent Queries
+  const adminProfilePromise = supabase
+    .from('profiles')
+    .select('id, full_name, role')
+    .eq('id', user.id)
+    .single()
+
+  const candidatesPromise = supabase
+    .from('profiles')
+    .select('id, full_name')
+    .eq('role', 'candidate')
+
+  let attendanceQuery = supabase
     .from('attendance')
-    .select('*, profiles(full_name)')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at, profiles(full_name)')
     .order('login_time', { ascending: false })
 
   if (candidateId !== 'all') {
-    query = query.eq('user_id', candidateId)
+    attendanceQuery = attendanceQuery.eq('user_id', candidateId)
   }
   if (rangeStart) {
-    query = query.gte('login_time', rangeStart.toISOString())
+    attendanceQuery = attendanceQuery.gte('login_time', rangeStart.toISOString())
   }
   if (rangeEnd) {
-    query = query.lte('login_time', rangeEnd.toISOString())
+    attendanceQuery = attendanceQuery.lte('login_time', rangeEnd.toISOString())
   }
 
-  const { data: attendanceData } = await query
+  // Execute All Queries Concurrently (Promise.all)
+  const [{ data: adminProfile }, { data: candidates }, { data: attendanceData }] = await Promise.all([
+    adminProfilePromise,
+    candidatesPromise,
+    attendanceQuery,
+  ])
 
-  const systemRecords = (attendanceData || []).map(
-    (r: {
-      id: string
-      user_id: string
-      login_time: string
-      logout_time: string | null
-      created_at: string
-      profiles: { full_name: string } | null
-    }) => ({
+  if (!adminProfile || adminProfile.role !== 'admin') {
+    redirect('/candidate')
+  }
+
+  const systemRecords = (attendanceData || []).map((r: {
+    id: string
+    user_id: string
+    login_time: string
+    logout_time: string | null
+    break_start_time?: string | null
+    break_duration_seconds?: number
+    created_at: string
+    profiles?: { full_name: string } | { full_name: string }[] | null
+  }) => {
+    const profileObj = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+    return {
       id: r.id,
       user_id: r.user_id,
       login_time: r.login_time,
       logout_time: r.logout_time,
+      break_start_time: r.break_start_time,
+      break_duration_seconds: r.break_duration_seconds,
       created_at: r.created_at,
-      candidateName: r.profiles?.full_name || 'Unknown Candidate',
-    })
-  )
+      candidateName: profileObj?.full_name || 'Unknown Candidate',
+    }
+  })
 
   return (
     <AdminLayout adminName={adminProfile.full_name}>

@@ -37,42 +37,42 @@ export default async function AdminDashboardPage() {
     redirect('/candidate')
   }
 
-  // 1. Query candidate list
-  const { data: candidates } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'candidate')
-    .order('created_at', { ascending: true })
+  // Calculate Current Week Boundaries
+  const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
 
-  const totalCandidates = candidates?.length || 0
-
-  // 2. Query active sessions ("Working Now")
-  const { data: activeSessions } = await supabase
-    .from('attendance')
-    .select('*, profiles(full_name)')
-    .is('logout_time', null)
-
-  const workingNowCount = activeSessions?.length || 0
-
-  // 3. Query Today's records count
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
 
-  const { data: todayRecords } = await supabase
-    .from('attendance')
-    .select('*')
-    .gte('login_time', startOfToday.toISOString())
+  // Execute all 4 queries concurrently in Parallel (Promise.all)
+  const [
+    { data: candidates },
+    { data: activeSessions },
+    { data: todayRecords },
+    { data: weekRecords },
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, role, created_at')
+      .eq('role', 'candidate')
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, break_start_time, profiles(full_name)')
+      .is('logout_time', null),
+    supabase
+      .from('attendance')
+      .select('id')
+      .gte('login_time', startOfToday.toISOString()),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds')
+      .gte('login_time', startOfWeek.toISOString())
+      .lte('login_time', endOfWeek.toISOString()),
+  ])
 
+  const totalCandidates = candidates?.length || 0
+  const workingNowCount = activeSessions?.length || 0
   const todayRecordsCount = todayRecords?.length || 0
-
-  // 4. Query Current Week records & Boundaries
-  const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
-
-  const { data: weekRecords } = await supabase
-    .from('attendance')
-    .select('*')
-    .gte('login_time', startOfWeek.toISOString())
-    .lte('login_time', endOfWeek.toISOString())
 
   // Calculate Total Week Duration
   let totalWeekMs = 0
@@ -259,20 +259,23 @@ export default async function AdminDashboardPage() {
 
             {activeSessions && activeSessions.length > 0 ? (
               <div className="flex flex-col divide-y divide-[var(--md-sys-color-outline-variant)]">
-                {activeSessions.map((session: { id: string; login_time: string; profiles: { full_name: string } | null }) => (
-                  <div key={session.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">{session.profiles?.full_name || 'Candidate'}</p>
-                      <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                        Login: {new Date(session.login_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                      </p>
+                {activeSessions.map((session) => {
+                  const profileObj = Array.isArray(session.profiles) ? session.profiles[0] : session.profiles
+                  return (
+                    <div key={session.id} className="py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{profileObj?.full_name || 'Candidate'}</p>
+                        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                          Login: {new Date(session.login_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                        In Progress
+                      </span>
                     </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      In Progress
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] flex flex-col items-center gap-2">

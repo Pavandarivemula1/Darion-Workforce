@@ -25,34 +25,40 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
     redirect('/login')
   }
 
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    redirect('/candidate')
-  }
-
   // Calculate week boundaries in Asia/Kolkata
   const referenceDate = weekParam ? new Date(weekParam) : new Date()
   const { startOfWeek, endOfWeek } = getWeekBoundaries(referenceDate)
 
-  // Fetch Candidates
-  const { data: candidates } = await supabase
+  // Prepare Concurrent Queries
+  const adminProfilePromise = supabase
     .from('profiles')
-    .select('*')
+    .select('id, full_name, role')
+    .eq('id', user.id)
+    .single()
+
+  const candidatesPromise = supabase
+    .from('profiles')
+    .select('id, full_name, role, created_at')
     .eq('role', 'candidate')
     .order('created_at', { ascending: true })
 
-  // Fetch Attendance Records for the week
-  const { data: records } = await supabase
+  const recordsPromise = supabase
     .from('attendance')
-    .select('*')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
     .gte('login_time', startOfWeek.toISOString())
     .lte('login_time', endOfWeek.toISOString())
     .order('login_time', { ascending: true })
+
+  // Execute All Queries Concurrently (Promise.all)
+  const [{ data: adminProfile }, { data: candidates }, { data: records }] = await Promise.all([
+    adminProfilePromise,
+    candidatesPromise,
+    recordsPromise,
+  ])
+
+  if (!adminProfile || adminProfile.role !== 'admin') {
+    redirect('/candidate')
+  }
 
   const referenceDateIso = getKolkataDateKey(referenceDate.toISOString())
 

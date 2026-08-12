@@ -19,46 +19,62 @@ export default async function CandidateDashboardPage() {
     redirect('/login')
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+
+  const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+
+  // Execute all queries concurrently in Parallel (Promise.all)
+  const [
+    { data: profile },
+    { data: activeSession },
+    { data: todaySession },
+    { data: weekRecords },
+    { data: monthRecords },
+    { data: recentRecords },
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .eq('user_id', user.id)
+      .is('logout_time', null)
+      .maybeSingle(),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .eq('user_id', user.id)
+      .gte('login_time', startOfToday.toISOString())
+      .order('login_time', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .eq('user_id', user.id)
+      .gte('login_time', startOfWeek.toISOString())
+      .lte('login_time', endOfWeek.toISOString()),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .eq('user_id', user.id)
+      .gte('login_time', startOfMonth.toISOString()),
+    supabase
+      .from('attendance')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .eq('user_id', user.id)
+      .order('login_time', { ascending: false })
+      .limit(5),
+  ])
 
   if (profile?.role === 'admin') {
     redirect('/admin')
   }
-
-  // 1. Fetch active session for user
-  const { data: activeSession } = await supabase
-    .from('attendance')
-    .select('*')
-    .eq('user_id', user.id)
-    .is('logout_time', null)
-    .maybeSingle()
-
-  // 2. Fetch today's most recent session
-  const startOfToday = new Date()
-  startOfToday.setHours(0, 0, 0, 0)
-
-  const { data: todaySession } = await supabase
-    .from('attendance')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('login_time', startOfToday.toISOString())
-    .order('login_time', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  // 3. Calculate Current Week Hours & Daily Bar Graph Data
-  const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
-
-  const { data: weekRecords } = await supabase
-    .from('attendance')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('login_time', startOfWeek.toISOString())
-    .lte('login_time', endOfWeek.toISOString())
 
   let weeklyTotalMs = 0
   let completedShiftsCount = 0
@@ -94,28 +110,15 @@ export default async function CandidateDashboardPage() {
     }
   })
 
-  // 4. Calculate Current Month Total Hours
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  const { data: monthRecords } = await supabase
-    .from('attendance')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('login_time', startOfMonth.toISOString())
-
+  // Calculate Current Month Total Hours
   let monthTotalMs = 0
   monthRecords?.forEach((r) => {
     if (r.logout_time) {
-      monthTotalMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+      const grossMs = Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+      const breakMs = (r.break_duration_seconds || 0) * 1000
+      monthTotalMs += Math.max(0, grossMs - breakMs)
     }
   })
-
-  // 5. Fetch recent 5 attendance records for table
-  const { data: recentRecords } = await supabase
-    .from('attendance')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('login_time', { ascending: false })
-    .limit(5)
 
   return (
     <div className="min-h-screen bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col">
