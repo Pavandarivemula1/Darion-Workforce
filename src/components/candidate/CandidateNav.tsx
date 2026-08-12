@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
-import { Clock, History, LogOut, LayoutDashboard } from 'lucide-react'
+import { Clock, History, LogOut, LayoutDashboard, User } from 'lucide-react'
 
 export interface CandidateNavProps {
   userName?: string
@@ -17,6 +17,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
   const navItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
     { label: 'Attendance History', href: '/candidate/attendance', icon: History },
+    { label: 'Profile', href: '/candidate/profile', icon: User },
   ]
 
   return (

@@ -53,6 +53,57 @@ export async function loginAction(
   }
 }
 
+export async function updateCandidatePasswordAction(
+  prevState: { error?: string; success?: boolean } | null,
+  formData: FormData
+) {
+  const currentPassword = formData.get('currentPassword') as string
+  const newPassword = formData.get('newPassword') as string
+  const confirmPassword = formData.get('confirmPassword') as string
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return { error: 'All password fields are required.' }
+  }
+
+  if (newPassword.length < 6) {
+    return { error: 'New password must be at least 6 characters.' }
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { error: 'New password and confirm password do not match.' }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user || !user.email) {
+    return { error: 'Unauthorized. Please sign in.' }
+  }
+
+  // Verify current password by attempting signInWithPassword
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  })
+
+  if (verifyError) {
+    return { error: 'Current password is incorrect. Please verify your current password.' }
+  }
+
+  // Update password
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  })
+
+  if (updateError) {
+    return { error: updateError.message || 'Failed to update password.' }
+  }
+
+  return { success: true }
+}
+
 export async function logoutAction() {
   const supabase = await createClient()
   await supabase.auth.signOut()
