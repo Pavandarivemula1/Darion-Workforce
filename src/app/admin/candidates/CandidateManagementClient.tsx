@@ -15,7 +15,6 @@ import {
   UserPlus,
   KeyRound,
   History,
-  AlertTriangle,
   UserCheck,
   X,
   Mail,
@@ -55,8 +54,6 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
     initialResetState
   )
 
-  const candidateLimitReached = candidates.length >= 2
-
   // Derive notifications directly without synchronous effect calls
   let snackbarMessage: string | null = null
   let snackbarVariant: 'success' | 'error' = 'success'
@@ -85,7 +82,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header & Limit Banner */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Candidate Roster</h2>
@@ -96,29 +93,19 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
 
         <div className="flex items-center gap-3">
           <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
-            {candidates.length} / 2 Candidates
+            {candidates.length} Candidate{candidates.length === 1 ? '' : 's'} Registered
           </span>
 
           <Button
             variant="filled"
             size="md"
             icon={<UserPlus className="w-4 h-4" />}
-            disabled={candidateLimitReached}
             onClick={() => setIsCreateOpen(true)}
           >
             Create Candidate
           </Button>
         </div>
       </div>
-
-      {candidateLimitReached && (
-        <div className="p-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] text-xs flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)]">
-          <AlertTriangle className="w-5 h-5 shrink-0 text-[var(--md-sys-color-primary)]" />
-          <span>
-            <strong>Maximum candidate limit reached (2 Candidates).</strong> Per system project requirements, only 2 candidates can be registered.
-          </span>
-        </div>
-      )}
 
       {/* Candidate Table */}
       <Card variant="outlined" className="p-0 border border-[var(--md-sys-color-outline-variant)] overflow-hidden">

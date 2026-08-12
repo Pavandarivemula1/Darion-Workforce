@@ -33,17 +33,7 @@ export async function createCandidateAction(
     return { error: 'Access denied. Admin privileges required.' }
   }
 
-  // 2. Check candidate count limit (Max 2 candidates)
-  const { count } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .eq('role', 'candidate')
 
-  if (count !== null && count >= 2) {
-    return {
-      error: 'Candidate limit reached. This project supports a maximum of 2 candidates.',
-    }
-  }
 
   const email = formData.get('email') as string
   const fullName = formData.get('fullName') as string

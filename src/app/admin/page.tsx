@@ -182,7 +182,7 @@ export default async function AdminDashboardPage() {
             </div>
             <div className="mt-3">
               <span className="text-3xl font-bold">{totalCandidates}</span>
-              <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] ml-2">/ 2 Max</span>
+              <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] ml-2">Total Registered</span>
             </div>
           </Card>
 
