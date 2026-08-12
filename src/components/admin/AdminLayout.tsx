@@ -35,10 +35,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
   ]
 
   return (
-    <div className="min-h-screen bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row">
       {/* Desktop Sidebar Navigation Drawer */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shrink-0 shadow-[var(--md-sys-elevation-1)]">
-        {/* Brand */}
+      <aside className="hidden md:flex flex-col w-64 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shrink-0 shadow-[var(--md-sys-elevation-1)] min-h-screen sticky top-0 h-screen">
+        {/* Brand Header */}
         <div className="flex items-center gap-3 px-3 py-4 mb-4 border-b border-[var(--md-sys-color-outline-variant)]">
           <div className="w-10 h-10 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
             <ShieldCheck className="w-6 h-6" />
@@ -74,7 +74,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
           })}
         </nav>
 
-        {/* Footer Logout */}
+        {/* Footer Sign Out */}
         <div className="pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
           <form action={logoutAction}>
             <Button
@@ -89,13 +89,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
         </div>
       </aside>
 
-      {/* Mobile Top Header */}
+      {/* Mobile Top Header (< 768px) */}
       <header className="md:hidden border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-3 flex items-center justify-between shadow-[var(--md-sys-elevation-1)] sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
             <ShieldCheck className="w-5 h-5" />
           </div>
-          <h1 className="text-sm font-bold">Admin Portal</h1>
+          <div>
+            <h1 className="text-sm font-bold leading-tight">Admin Portal</h1>
+            <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{adminName || 'System Admin'}</p>
+          </div>
         </div>
 
         <button
@@ -110,10 +113,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
       {/* Mobile Drawer Overlay */}
       {isMobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex flex-col justify-end animate-fade-in">
-          <div className="bg-[var(--md-sys-color-surface-container-low)] rounded-t-[var(--md-sys-shape-corner-extra-large)] p-6 flex flex-col gap-4 border-t border-[var(--md-sys-color-outline-variant)] shadow-[var(--md-sys-elevation-3)]">
+          <div className="bg-[var(--md-sys-color-surface-container-low)] rounded-t-[var(--md-sys-shape-corner-extra-large)] p-6 flex flex-col gap-4 border-t border-[var(--md-sys-color-outline-variant)] shadow-[var(--md-sys-elevation-3)] max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-sm font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-                Admin Navigation
+              <span className="text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+                System Navigation
               </span>
               <button
                 onClick={() => setIsMobileOpen(false)}
@@ -160,9 +163,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {children}
+      {/* Main Content Container (Centered Max Width on Ultrawide Displays) */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
+          {children}
+        </div>
       </div>
     </div>
   )

@@ -8,22 +8,19 @@ import { TextField } from '@/components/ui/TextField'
 import { Snackbar } from '@/components/ui/Snackbar'
 import { approveShiftAction, rejectShiftAction } from '@/app/actions/admin'
 import {
+  CheckCircle2,
+  XCircle,
+  Clock,
   Filter,
+  DollarSign,
+  AlertTriangle,
   Calendar,
   Users,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  FileSpreadsheet,
-  Check,
   X,
-  DollarSign,
-  Edit2,
-  HelpCircle,
 } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 
-export interface CandidateOption {
+export interface CandidateItem {
   id: string
   full_name: string
   hourly_rate?: number
@@ -44,7 +41,7 @@ export interface SystemAttendanceItem {
 }
 
 export interface AdminAttendanceClientProps {
-  candidates: CandidateOption[]
+  candidates: CandidateItem[]
   records: SystemAttendanceItem[]
 }
 
@@ -250,7 +247,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
       {/* Header */}
       <div>
         <h2 className="text-xl sm:text-2xl font-bold">Attendance & Shift Payment Approvals</h2>
@@ -260,9 +257,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       </div>
 
       {/* Filter Control Card */}
-      <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         {/* Candidate Dropdown Filter */}
-        <div className="flex items-center gap-2 min-w-[220px]">
+        <div className="flex items-center gap-2 w-full lg:w-auto min-w-[200px]">
           <Users className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
           <select
             value={selectedCandidate}
@@ -280,7 +277,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
 
         {/* Quick Date Presets */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Filter className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1" />
+          <Filter className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1 hidden sm:inline" />
           {[
             { id: 'today', label: 'Today' },
             { id: 'this_week', label: 'This Week' },
@@ -291,7 +288,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
             <button
               key={f.id}
               onClick={() => updateQueryParams('filter', f.id)}
-              className={`px-3.5 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === f.id
                   ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-semibold'
                   : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
@@ -310,20 +307,131 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
             type="date"
             value={startDate}
             onChange={(e) => handleDateChange(e.target.value, endDate)}
-            className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
+            className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
           />
           <span className="text-[var(--md-sys-color-on-surface-variant)]">to</span>
           <input
             type="date"
             value={endDate}
             onChange={(e) => handleDateChange(startDate, e.target.value)}
-            className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
+            className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
           />
         </div>
       </Card>
 
-      {/* Attendance Table */}
-      <Card variant="outlined" className="p-0 border border-[var(--md-sys-color-outline-variant)] overflow-hidden">
+      {/* 1. Mobile Shift Cards (< 768px) */}
+      <div className="flex flex-col gap-4 md:hidden">
+        {records && records.length > 0 ? (
+          records.map((item) => {
+            const hasLogout = !!item.logout_time
+            const today = isToday(item.login_time)
+            const isWorking = !hasLogout && today
+            const breakSecs = item.break_duration_seconds || 0
+            const status = item.approval_status || 'pending'
+            const payout = item.payout_amount || 0
+
+            return (
+              <Card
+                key={item.id}
+                variant="outlined"
+                className="p-4 flex flex-col gap-3 border border-[var(--md-sys-color-outline-variant)]"
+              >
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-xs font-bold shrink-0">
+                      {item.candidateName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold">{item.candidateName}</h4>
+                      <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                        {formatDate(item.login_time)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isWorking ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+                      <Clock className="w-3.5 h-3.5" /> Working
+                    </span>
+                  ) : status === 'approved' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Approved (${payout.toFixed(2)})
+                    </span>
+                  ) : status === 'rejected' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Rejected
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)]">
+                      <Clock className="w-3.5 h-3.5" /> Pending
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2 rounded bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
+                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-sans uppercase">Login / Logout</span>
+                    <span>In: {formatTime(item.login_time)}</span>
+                    <span className="text-[var(--md-sys-color-on-surface-variant)]">Out: {formatTime(item.logout_time)}</span>
+                  </div>
+
+                  <div className="p-2 rounded bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
+                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-sans uppercase">Duration & Break</span>
+                    <span>Net: {calculateNetTotal(item.login_time, item.logout_time, breakSecs)}</span>
+                    <span className="text-amber-600 dark:text-amber-400">Break: {formatBreakDuration(breakSecs)}</span>
+                  </div>
+                </div>
+
+                {hasLogout && (
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+                    {status === 'approved' ? (
+                      <button
+                        onClick={() => openApproveModal(item)}
+                        className="px-3 py-1.5 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold hover:bg-[var(--md-sys-color-surface-container-highest)]"
+                      >
+                        Edit Payout (${payout.toFixed(2)})
+                      </button>
+                    ) : status === 'rejected' ? (
+                      <button
+                        onClick={() => openApproveModal(item)}
+                        className="px-3 py-1.5 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-semibold"
+                      >
+                        Approve Instead
+                      </button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outlined"
+                          size="sm"
+                          icon={<XCircle className="w-3.5 h-3.5" />}
+                          onClick={() => openRejectModal(item)}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          variant="filled"
+                          size="sm"
+                          icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                          onClick={() => openApproveModal(item)}
+                        >
+                          Approve Payout
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )
+          })
+        ) : (
+          <Card variant="outlined" className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+            No attendance records found matching criteria.
+          </Card>
+        )}
+      </div>
+
+      {/* 2. Desktop Attendance Table (>= 768px) */}
+      <Card variant="outlined" className="hidden md:block p-0 border border-[var(--md-sys-color-outline-variant)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
@@ -402,9 +510,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                             </span>
                           </div>
                         ) : status === 'rejected' ? (
-                          <div className="flex flex-col gap-0.5 max-w-[200px]">
+                          <div className="flex flex-col gap-0.5 max-w-[220px]">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
-                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <XCircle className="w-3.5 h-3.5" />
                               Rejected
                             </span>
                             {item.rejection_reason && (
@@ -414,9 +522,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                             )}
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)]">
                             <Clock className="w-3.5 h-3.5" />
-                            Pending Admin Review
+                            Pending Approval
                           </span>
                         )}
                       </td>
@@ -424,23 +532,40 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                       <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
                         {hasLogout && (
                           <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant={status === 'approved' ? 'outlined' : 'filled'}
-                              size="sm"
-                              onClick={() => openApproveModal(item)}
-                              icon={status === 'approved' ? <Edit2 className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                            >
-                              {status === 'approved' ? 'Edit Payout' : 'Approve'}
-                            </Button>
-
-                            <Button
-                              variant="outlined"
-                              size="sm"
-                              onClick={() => openRejectModal(item)}
-                              icon={<X className="w-3.5 h-3.5 text-rose-600" />}
-                            >
-                              {status === 'rejected' ? 'Edit Rejection' : 'Reject'}
-                            </Button>
+                            {status === 'approved' ? (
+                              <button
+                                onClick={() => openApproveModal(item)}
+                                className="px-3 py-1 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
+                                title="Edit Approved Payout"
+                              >
+                                Edit Payout (${payout.toFixed(2)})
+                              </button>
+                            ) : status === 'rejected' ? (
+                              <button
+                                onClick={() => openApproveModal(item)}
+                                className="px-3 py-1 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-semibold transition-colors cursor-pointer"
+                                title="Approve Instead"
+                              >
+                                Approve
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => openRejectModal(item)}
+                                  className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-error)] transition-colors cursor-pointer"
+                                  title="Reject Shift"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => openApproveModal(item)}
+                                  className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-success)] transition-colors cursor-pointer"
+                                  title="Approve Payout"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </td>
@@ -449,9 +574,8 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                    <FileSpreadsheet className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    No attendance records found matching selected criteria.
+                  <td colSpan={7} className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    No attendance records found matching criteria.
                   </td>
                 </tr>
               )}
@@ -460,17 +584,16 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         </div>
       </Card>
 
-      {/* Approve Shift Payment Modal */}
+      {/* Approve Shift Modal Dialog */}
       {approveItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
-              <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                <DollarSign className="w-5 h-5" />
-                Approve Shift Payment
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                Approve Shift & Record Payment
               </h3>
               <button
-                type="button"
                 onClick={() => setApproveItem(null)}
                 className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
               >
@@ -478,27 +601,17 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
               </button>
             </div>
 
-            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1.5 text-xs border border-[var(--md-sys-color-outline-variant)]">
+            <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 text-xs border border-[var(--md-sys-color-outline-variant)]">
               <div className="flex justify-between font-semibold">
-                <span>Candidate:</span>
-                <span>{approveItem.candidateName}</span>
+                <span>Candidate: {approveItem.candidateName}</span>
+                <span>Date: {formatDate(approveItem.login_time)}</span>
               </div>
-              <div className="flex justify-between text-[var(--md-sys-color-on-surface-variant)]">
-                <span>Shift Date:</span>
-                <span>{formatDate(approveItem.login_time)}</span>
-              </div>
-              <div className="flex justify-between text-[var(--md-sys-color-on-surface-variant)]">
-                <span>Net Work Duration:</span>
-                <span className="font-mono font-bold">
-                  {calculateNetTotal(approveItem.login_time, approveItem.logout_time, approveItem.break_duration_seconds || 0)}
-                </span>
+              <div className="flex justify-between font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Shift Duration: {calculateNetTotal(approveItem.login_time, approveItem.logout_time, approveItem.break_duration_seconds)}</span>
               </div>
             </div>
 
-            <form
-              action={handleApproveSubmit}
-              className="flex flex-col gap-4"
-            >
+            <form action={handleApproveSubmit} className="flex flex-col gap-4">
               <input type="hidden" name="attendanceId" value={approveItem.id} />
 
               <TextField
@@ -506,13 +619,13 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 type="number"
                 step="0.01"
                 min="0"
-                label="Approved Shift Payout Amount ($)"
+                label="Payment Amount ($)"
                 value={customPayoutText}
                 onChange={(e) => setCustomPayoutText(e.target.value)}
                 required
                 disabled={isApproving}
                 startIcon={<DollarSign className="w-4 h-4" />}
-                supportingText="Auto-calculated from hourly rate. You can adjust this value if needed."
+                supportingText="Auto-calculated from hourly rate; editable before confirming"
               />
 
               <div className="flex items-center justify-end gap-3 mt-2">
@@ -525,7 +638,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                   Cancel
                 </button>
                 <Button type="submit" variant="filled" size="md" isLoading={isApproving}>
-                  Confirm & Approve Payment
+                  Confirm Approval
                 </Button>
               </div>
             </form>
@@ -533,17 +646,16 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         </div>
       )}
 
-      {/* Reject Shift Reason Modal */}
+      {/* Reject Shift Modal Dialog */}
       {rejectItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
-              <h3 className="text-lg font-bold flex items-center gap-2 text-rose-600 dark:text-rose-400">
-                <AlertTriangle className="w-5 h-5" />
-                Reject Shift Payment
+              <h3 className="text-lg font-bold flex items-center gap-2 text-[var(--md-sys-color-error)]">
+                <XCircle className="w-5 h-5" />
+                Reject Shift
               </h3>
               <button
-                type="button"
                 onClick={() => setRejectItem(null)}
                 className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
               >
@@ -551,33 +663,25 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
               </button>
             </div>
 
-            <div className="p-3 rounded-[var(--md-sys-shape-corner-medium)] bg-rose-500/10 text-rose-600 dark:text-rose-300 text-xs flex items-start gap-2 border border-rose-500/20">
-              <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                <strong>Rejection Feedback:</strong> State the exact reason for rejecting this shift on <strong>{formatDate(rejectItem.login_time)}</strong> for <strong>{rejectItem.candidateName}</strong>. This feedback will be displayed in the candidate portal.
+            <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 text-xs border border-[var(--md-sys-color-outline-variant)]">
+              <div className="flex justify-between font-semibold">
+                <span>Candidate: {rejectItem.candidateName}</span>
+                <span>Date: {formatDate(rejectItem.login_time)}</span>
               </div>
             </div>
 
-            <form
-              action={handleRejectSubmit}
-              className="flex flex-col gap-4"
-            >
+            <form action={handleRejectSubmit} className="flex flex-col gap-4">
               <input type="hidden" name="attendanceId" value={rejectItem.id} />
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
-                  Rejection Reason (Why is this shift being rejected?)
-                </label>
-                <textarea
-                  name="rejectionReason"
-                  rows={3}
-                  required
-                  placeholder="e.g. Incomplete task documentation, unapproved overtime, incorrect session..."
-                  value={rejectionReasonText}
-                  onChange={(e) => setRejectionReasonText(e.target.value)}
-                  className="w-full p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
-                />
-              </div>
+              <TextField
+                name="rejectionReason"
+                label="Rejection Reason & Admin Feedback"
+                value={rejectionReasonText}
+                onChange={(e) => setRejectionReasonText(e.target.value)}
+                placeholder="e.g., Incomplete shift logs or unverified duration"
+                required
+                disabled={isRejecting}
+              />
 
               <div className="flex items-center justify-end gap-3 mt-2">
                 <button
@@ -600,7 +704,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       {/* Snackbar Notifications */}
       <Snackbar
         message={toast?.message || null}
-        variant={toast?.variant || 'info'}
+        variant={toast?.variant || 'success'}
         onClose={() => setToast(null)}
       />
     </div>

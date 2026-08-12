@@ -16,66 +16,95 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
 
   const navItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
-    { label: 'Attendance History', href: '/candidate/attendance', icon: History },
+    { label: 'Attendance', href: '/candidate/attendance', icon: History },
     { label: 'Profile', href: '/candidate/profile', icon: User },
   ]
 
   return (
-    <header className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shadow-[var(--md-sys-elevation-1)]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Brand */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="w-10 h-10 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-              Candidate Portal
-            </h1>
-            {userName && (
-              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] truncate max-w-[200px]">
-                {userName}
-              </p>
-            )}
+    <>
+      {/* Top Navigation Header */}
+      <header className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shadow-[var(--md-sys-elevation-1)] sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          {/* Brand & User Info */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-sm sm:text-base font-bold text-[var(--md-sys-color-on-surface)] leading-tight">
+                Candidate Portal
+              </h1>
+              {userName && (
+                <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate max-w-[150px] sm:max-w-[220px]">
+                  {userName}
+                </p>
+              )}
+            </div>
           </div>
 
-          <form action={logoutAction} className="ml-auto sm:hidden">
+          {/* Desktop Navigation Tabs */}
+          <nav className="hidden sm:flex items-center gap-2">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={true}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-xs'
+                      : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--md-sys-color-primary)]' : ''}`} />
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Sign Out Action Button */}
+          <form action={logoutAction}>
             <Button variant="outlined" size="sm" icon={<LogOut className="w-4 h-4" />}>
-              Logout
+              <span className="hidden sm:inline">Sign Out</span>
+              <span className="sm:hidden">Exit</span>
             </Button>
           </form>
         </div>
+      </header>
 
-        {/* Navigation Tabs */}
-        <nav className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={true}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer whitespace-nowrap ${
+      {/* Mobile Fixed Bottom Navigation Bar (< 640px) */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--md-sys-color-surface-container-low)] border-t border-[var(--md-sys-color-outline-variant)] shadow-[var(--md-sys-elevation-3)] px-2 py-1.5 flex items-center justify-around">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              prefetch={true}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-[var(--md-sys-shape-corner-medium)] text-[10px] font-semibold transition-all cursor-pointer ${
+                isActive
+                  ? 'text-[var(--md-sys-color-primary)]'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              <div
+                className={`w-10 h-7 rounded-full flex items-center justify-center mb-0.5 transition-all ${
                   isActive
-                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
-                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]'
+                    : ''
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--md-sys-color-primary)]' : ''}`} />
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* Desktop Logout Button */}
-        <form action={logoutAction} className="hidden sm:block">
-          <Button variant="outlined" size="sm" icon={<LogOut className="w-4 h-4" />}>
-            Sign Out
-          </Button>
-        </form>
-      </div>
-    </header>
+                <Icon className="w-4 h-4" />
+              </div>
+              <span>{item.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+    </>
   )
 }
