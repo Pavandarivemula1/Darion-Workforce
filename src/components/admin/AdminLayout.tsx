@@ -60,6 +60,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer ${
                   isActive
                     ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
@@ -130,6 +131,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     onClick={() => setIsMobileOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer ${
                       isActive

@@ -55,6 +55,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer whitespace-nowrap ${
                   isActive
                     ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'

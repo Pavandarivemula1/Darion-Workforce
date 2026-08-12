@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import React, { useState, useTransition, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -53,12 +53,11 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   records: initialRecords,
 }) => {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
-  const selectedCandidate = searchParams.get('candidateId') || 'all'
-  const selectedFilter = searchParams.get('filter') || 'this_week'
-  const startDate = searchParams.get('startDate') || ''
-  const endDate = searchParams.get('endDate') || ''
+  const [selectedCandidate, setSelectedCandidate] = useState<string>('all')
+  const [selectedFilter, setSelectedFilter] = useState<string>('this_week')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
 
   const [isApproving, startApproveTransition] = useTransition()
   const [isRejecting, startRejectTransition] = useTransition()
@@ -76,37 +75,68 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
 
-  const records = initialRecords.map((r) => {
-    const override = optimisticOverrides[r.id]
-    if (override) {
-      return { ...r, ...override }
-    }
-    return r
-  })
+  const records = useMemo(() => {
+    return initialRecords
+      .map((r) => {
+        const override = optimisticOverrides[r.id]
+        return override ? { ...r, ...override } : r
+      })
+      .filter((r) => {
+        if (selectedCandidate !== 'all' && r.user_id !== selectedCandidate) return false
+
+        const loginDate = new Date(r.login_time)
+        const now = new Date()
+
+        if (selectedFilter === 'today') {
+          const startOfToday = new Date()
+          startOfToday.setHours(0, 0, 0, 0)
+          return loginDate >= startOfToday
+        } else if (selectedFilter === 'this_week') {
+          const day = now.getDay()
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1)
+          const startOfWeek = new Date(now.setDate(diff))
+          startOfWeek.setHours(0, 0, 0, 0)
+          return loginDate >= startOfWeek
+        } else if (selectedFilter === 'last_week') {
+          const day = now.getDay()
+          const diff = now.getDate() - day - 6
+          const startOfWeek = new Date(now.setDate(diff))
+          startOfWeek.setHours(0, 0, 0, 0)
+          const endOfWeek = new Date(startOfWeek)
+          endOfWeek.setDate(endOfWeek.getDate() + 6)
+          endOfWeek.setHours(23, 59, 59, 999)
+          return loginDate >= startOfWeek && loginDate <= endOfWeek
+        } else if (selectedFilter === 'this_month') {
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+          return loginDate >= startOfMonth
+        } else if (selectedFilter === 'custom') {
+          if (startDate && loginDate < new Date(startDate)) return false
+          if (endDate) {
+            const end = new Date(endDate)
+            end.setHours(23, 59, 59, 999)
+            if (loginDate > end) return false
+          }
+        }
+        return true
+      })
+  }, [initialRecords, optimisticOverrides, selectedCandidate, selectedFilter, startDate, endDate])
 
   const updateQueryParams = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams)
     if (key === 'filter') {
-      params.set('filter', value)
+      setSelectedFilter(value)
       if (value !== 'custom') {
-        params.delete('startDate')
-        params.delete('endDate')
+        setStartDate('')
+        setEndDate('')
       }
     } else if (key === 'candidateId') {
-      if (value === 'all') params.delete('candidateId')
-      else params.set('candidateId', value)
+      setSelectedCandidate(value)
     }
-    router.push(`/admin/attendance?${params.toString()}`)
   }
 
   const handleDateChange = (start: string, end: string) => {
-    const params = new URLSearchParams(searchParams)
-    params.set('filter', 'custom')
-    if (start) params.set('startDate', start)
-    else params.delete('startDate')
-    if (end) params.set('endDate', end)
-    else params.delete('endDate')
-    router.push(`/admin/attendance?${params.toString()}`)
+    setSelectedFilter('custom')
+    setStartDate(start)
+    setEndDate(end)
   }
 
   const formatTime = (isoString?: string | null) => {
