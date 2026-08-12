@@ -205,7 +205,7 @@ export async function approveShiftAction(
     finalPayoutAmount = Math.round(netHours * hourlyRate * 100) / 100
   }
 
-  const { error: updateError } = await supabase
+  const { data: updatedData, error: updateError } = await supabase
     .from('attendance')
     .update({
       approval_status: 'approved',
@@ -213,10 +213,18 @@ export async function approveShiftAction(
       rejection_reason: null,
     })
     .eq('id', attendanceId)
+    .select()
 
   if (updateError) {
     console.error('[approveShiftAction] Update Error:', updateError)
     return { error: updateError.message || 'Failed to approve shift.' }
+  }
+
+  if (!updatedData || updatedData.length === 0) {
+    console.error('[approveShiftAction] RLS Blocked Update: 0 rows modified for ID:', attendanceId)
+    return {
+      error: 'Update blocked by Supabase Database RLS. Please run the SQL script in Supabase SQL Editor to enable Admin shift approvals.',
+    }
   }
 
   console.log('[approveShiftAction] SUCCESS for shift:', attendanceId, 'payout:', finalPayoutAmount)
@@ -259,7 +267,7 @@ export async function rejectShiftAction(
     return { error: 'Attendance ID and Rejection Reason are required.' }
   }
 
-  const { error } = await supabase
+  const { data: updatedData, error } = await supabase
     .from('attendance')
     .update({
       approval_status: 'rejected',
@@ -267,9 +275,17 @@ export async function rejectShiftAction(
       payout_amount: 0,
     })
     .eq('id', attendanceId)
+    .select()
 
   if (error) {
     return { error: error.message || 'Failed to reject shift.' }
+  }
+
+  if (!updatedData || updatedData.length === 0) {
+    console.error('[rejectShiftAction] RLS Blocked Update: 0 rows modified for ID:', attendanceId)
+    return {
+      error: 'Update blocked by Supabase Database RLS. Please run the SQL script in Supabase SQL Editor to enable Admin shift rejections.',
+    }
   }
 
   revalidatePath('/admin/attendance')
