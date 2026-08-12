@@ -29,14 +29,18 @@ CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- 3. Security Definer Helper Function to check if a user is an admin
+-- 3. Non-recursive Security Definer Helper Function to check if a user is an admin
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN AS $$
+DECLARE
+  u_role TEXT;
 BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = user_id AND role = 'admin'
-  );
+  IF user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  SELECT role INTO u_role FROM public.profiles WHERE id = user_id;
+  RETURN (u_role = 'admin');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
@@ -113,8 +117,8 @@ CREATE POLICY "Candidates insert own attendance"
 DROP POLICY IF EXISTS "Candidates update own active attendance" ON public.attendance;
 CREATE POLICY "Candidates update own active attendance"
   ON public.attendance FOR UPDATE
-  USING (auth.uid() = user_id AND logout_time IS NULL)
-  WITH CHECK (auth.uid() = user_id);
+  USING (auth.uid() = user_id OR public.is_admin(auth.uid()))
+  WITH CHECK (auth.uid() = user_id OR public.is_admin(auth.uid()));
 
 DROP POLICY IF EXISTS "Admins update attendance approval" ON public.attendance;
 CREATE POLICY "Admins update attendance approval"

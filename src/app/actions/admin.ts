@@ -180,25 +180,33 @@ export async function approveShiftAction(
     return { error: 'Cannot approve an active shift before candidate logs out.' }
   }
 
-  // Fetch candidate profile for hourly rate
-  const { data: candidateProfile } = await supabase
-    .from('profiles')
-    .select('hourly_rate')
-    .eq('id', shift.user_id)
-    .single()
+  const customPayoutStr = formData.get('payoutAmount') as string
+  let finalPayoutAmount = 0
 
-  const hourlyRate = candidateProfile?.hourly_rate || 0
-  const grossMs = Math.max(0, new Date(shift.logout_time).getTime() - new Date(shift.login_time).getTime())
-  const breakMs = (shift.break_duration_seconds || 0) * 1000
-  const netMs = Math.max(0, grossMs - breakMs)
-  const netHours = netMs / (1000 * 60 * 60)
-  const payoutAmount = Math.round(netHours * hourlyRate * 100) / 100
+  if (customPayoutStr !== null && customPayoutStr !== undefined && customPayoutStr.trim() !== '') {
+    const parsed = parseFloat(customPayoutStr)
+    finalPayoutAmount = isNaN(parsed) ? 0 : Math.max(0, parsed)
+  } else {
+    // Fetch candidate profile for hourly rate
+    const { data: candidateProfile } = await supabase
+      .from('profiles')
+      .select('hourly_rate')
+      .eq('id', shift.user_id)
+      .single()
+
+    const hourlyRate = candidateProfile?.hourly_rate || 0
+    const grossMs = Math.max(0, new Date(shift.logout_time).getTime() - new Date(shift.login_time).getTime())
+    const breakMs = (shift.break_duration_seconds || 0) * 1000
+    const netMs = Math.max(0, grossMs - breakMs)
+    const netHours = netMs / (1000 * 60 * 60)
+    finalPayoutAmount = Math.round(netHours * hourlyRate * 100) / 100
+  }
 
   const { error: updateError } = await supabase
     .from('attendance')
     .update({
       approval_status: 'approved',
-      payout_amount: payoutAmount,
+      payout_amount: finalPayoutAmount,
       rejection_reason: null,
     })
     .eq('id', attendanceId)

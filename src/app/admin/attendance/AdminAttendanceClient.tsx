@@ -4,6 +4,7 @@ import React, { useState, useEffect, useActionState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { TextField } from '@/components/ui/TextField'
 import { Snackbar } from '@/components/ui/Snackbar'
 import { approveShiftAction, rejectShiftAction, type AdminActionState } from '@/app/actions/admin'
 import {
@@ -16,6 +17,9 @@ import {
   FileSpreadsheet,
   Check,
   X,
+  DollarSign,
+  Edit2,
+  HelpCircle,
 } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 
@@ -61,6 +65,10 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   const [optimisticOverrides, setOptimisticOverrides] = useState<
     Record<string, { approval_status: 'approved' | 'rejected'; payout_amount?: number; rejection_reason?: string }>
   >({})
+
+  // Modal dialog states
+  const [approveItem, setApproveItem] = useState<SystemAttendanceItem | null>(null)
+  const [customPayoutText, setCustomPayoutText] = useState('')
   const [rejectItem, setRejectItem] = useState<SystemAttendanceItem | null>(null)
   const [rejectionReasonText, setRejectionReasonText] = useState('')
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
@@ -92,7 +100,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   let snackbarVariant: 'success' | 'error' = 'success'
 
   if (approveState?.success && dismissedKey !== 'approve-success') {
-    snackbarMessage = 'Shift approved and payout calculated successfully.'
+    snackbarMessage = 'Shift approved and payout recorded.'
     snackbarVariant = 'success'
   } else if (approveState?.error && dismissedKey !== `approve-error-${approveState.error}`) {
     snackbarMessage = approveState.error
@@ -171,20 +179,27 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     return formatDurationMs(netMs)
   }
 
-  const handleOptimisticApprove = (item: SystemAttendanceItem) => {
+  const calculateAutoPayout = (item: SystemAttendanceItem) => {
     const candidate = candidates.find((c) => c.id === item.user_id)
     const rate = candidate?.hourly_rate || 0
     const start = new Date(item.login_time).getTime()
     const end = item.logout_time ? new Date(item.logout_time).getTime() : start
     const netMs = Math.max(0, end - start - (item.break_duration_seconds || 0) * 1000)
     const netHours = netMs / (1000 * 60 * 60)
-    const payout = Math.round(netHours * rate * 100) / 100
+    return Math.round(netHours * rate * 100) / 100
+  }
 
-    setOptimisticOverrides((prev) => ({
-      ...prev,
-      [item.id]: { approval_status: 'approved', payout_amount: payout },
-    }))
-    setDismissedKey(null)
+  const openApproveModal = (item: SystemAttendanceItem) => {
+    const autoAmount = item.payout_amount !== null && item.payout_amount !== undefined
+      ? item.payout_amount
+      : calculateAutoPayout(item)
+    setCustomPayoutText(autoAmount.toFixed(2))
+    setApproveItem(item)
+  }
+
+  const openRejectModal = (item: SystemAttendanceItem) => {
+    setRejectionReasonText(item.rejection_reason || '')
+    setRejectItem(item)
   }
 
   return (
@@ -333,7 +348,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                             Shift In Progress
                           </span>
                         ) : status === 'approved' ? (
-                          <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Approved (${payout.toFixed(2)})
@@ -362,37 +377,23 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                       <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
                         {hasLogout && (
                           <div className="flex items-center justify-end gap-2">
-                            {status !== 'approved' && (
-                              <form
-                                action={approveFormAction}
-                                onSubmit={() => handleOptimisticApprove(item)}
-                              >
-                                <input type="hidden" name="attendanceId" value={item.id} />
-                                <Button
-                                  type="submit"
-                                  variant="outlined"
-                                  size="sm"
-                                  isLoading={isApproving}
-                                  icon={<Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                >
-                                  Approve
-                                </Button>
-                              </form>
-                            )}
+                            <Button
+                              variant={status === 'approved' ? 'outlined' : 'filled'}
+                              size="sm"
+                              onClick={() => openApproveModal(item)}
+                              icon={status === 'approved' ? <Edit2 className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                            >
+                              {status === 'approved' ? 'Edit Payout' : 'Approve'}
+                            </Button>
 
-                            {status !== 'rejected' && (
-                              <Button
-                                variant="outlined"
-                                size="sm"
-                                onClick={() => {
-                                  setRejectItem(item)
-                                  setRejectionReasonText('')
-                                }}
-                                icon={<X className="w-3.5 h-3.5 text-rose-600" />}
-                              >
-                                Reject
-                              </Button>
-                            )}
+                            <Button
+                              variant="outlined"
+                              size="sm"
+                              onClick={() => openRejectModal(item)}
+                              icon={<X className="w-3.5 h-3.5 text-rose-600" />}
+                            >
+                              {status === 'rejected' ? 'Edit Rejection' : 'Reject'}
+                            </Button>
                           </div>
                         )}
                       </td>
@@ -412,6 +413,96 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         </div>
       </Card>
 
+      {/* Approve Shift Payment Modal */}
+      {approveItem && !approveState?.success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <DollarSign className="w-5 h-5" />
+                Approve Shift Payment
+              </h3>
+              <button
+                onClick={() => setApproveItem(null)}
+                className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1.5 text-xs border border-[var(--md-sys-color-outline-variant)]">
+              <div className="flex justify-between font-semibold">
+                <span>Candidate:</span>
+                <span>{approveItem.candidateName}</span>
+              </div>
+              <div className="flex justify-between text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Shift Date:</span>
+                <span>{formatDate(approveItem.login_time)}</span>
+              </div>
+              <div className="flex justify-between text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Net Work Duration:</span>
+                <span className="font-mono font-bold">
+                  {calculateNetTotal(approveItem.login_time, approveItem.logout_time, approveItem.break_duration_seconds || 0)}
+                </span>
+              </div>
+            </div>
+
+            <form
+              action={approveFormAction}
+              onSubmit={() => {
+                const amount = parseFloat(customPayoutText) || 0
+                setOptimisticOverrides((prev) => ({
+                  ...prev,
+                  [approveItem.id]: {
+                    approval_status: 'approved',
+                    payout_amount: amount,
+                  },
+                }))
+                setApproveItem(null)
+                setDismissedKey(null)
+              }}
+              className="flex flex-col gap-4"
+            >
+              <input type="hidden" name="attendanceId" value={approveItem.id} />
+
+              <TextField
+                name="payoutAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                label="Approved Shift Payout Amount ($)"
+                value={customPayoutText}
+                onChange={(e) => setCustomPayoutText(e.target.value)}
+                required
+                disabled={isApproving}
+                startIcon={<DollarSign className="w-4 h-4" />}
+                supportingText="Auto-calculated from hourly rate. You can adjust this value if needed."
+              />
+
+              {approveState?.error && (
+                <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs font-medium">
+                  {approveState.error}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setApproveItem(null)}
+                  disabled={isApproving}
+                  className="px-4 h-10 rounded-full text-sm font-medium text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <Button type="submit" variant="filled" size="md" isLoading={isApproving}>
+                  Confirm & Approve Payment
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Reject Shift Reason Modal */}
       {rejectItem && !rejectState?.success && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
@@ -429,9 +520,12 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
               </button>
             </div>
 
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-              Specify the reason for rejecting shift on <strong>{formatDate(rejectItem.login_time)}</strong> for <strong>{rejectItem.candidateName}</strong>. This reason will be displayed to the candidate.
-            </p>
+            <div className="p-3 rounded-[var(--md-sys-shape-corner-medium)] bg-rose-500/10 text-rose-600 dark:text-rose-300 text-xs flex items-start gap-2 border border-rose-500/20">
+              <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong>Rejection Feedback:</strong> State the exact reason for rejecting this shift on <strong>{formatDate(rejectItem.login_time)}</strong> for <strong>{rejectItem.candidateName}</strong>. This feedback will be displayed in the candidate portal.
+              </div>
+            </div>
 
             <form
               action={rejectFormAction}
@@ -444,6 +538,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                     payout_amount: 0,
                   },
                 }))
+                setRejectItem(null)
                 setDismissedKey(null)
               }}
               className="flex flex-col gap-4"
@@ -452,13 +547,13 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
-                  Rejection Reason
+                  Rejection Reason (Why is this shift being rejected?)
                 </label>
                 <textarea
                   name="rejectionReason"
                   rows={3}
                   required
-                  placeholder="e.g. Unapproved overtime, incomplete task documentation..."
+                  placeholder="e.g. Incomplete task documentation, unapproved overtime, incorrect session..."
                   value={rejectionReasonText}
                   onChange={(e) => setRejectionReasonText(e.target.value)}
                   className="w-full p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
