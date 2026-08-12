@@ -122,7 +122,7 @@ export default async function CandidateDashboardPage() {
     <div className="min-h-screen bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col">
       <CandidateNav userName={profile?.full_name || 'Candidate'} />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-8">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-24 sm:pb-6 flex flex-col gap-8">
         {/* Welcome Section */}
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">

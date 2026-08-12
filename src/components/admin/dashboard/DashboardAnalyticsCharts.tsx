@@ -68,22 +68,22 @@ export const DashboardAnalyticsCharts: React.FC<DashboardAnalyticsChartsProps> =
         </div>
 
         {/* Bar Graph Visual Container */}
-        <div className="pt-4 pb-2 px-2">
-          <div className="h-48 flex items-end justify-between gap-2 sm:gap-4 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
+        <div className="pt-2 pb-1 px-1 sm:px-2">
+          <div className="h-48 flex items-end justify-between gap-1 sm:gap-4 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
             {dailyData.map((d) => {
               const heightPercent = Math.min(100, Math.max(8, (d.hoursNum / maxHours) * 100))
               const isZero = d.hoursNum === 0
 
               return (
-                <div key={d.dateIso} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
+                <div key={d.dateIso} className="flex-1 min-w-0 flex flex-col items-center gap-1.5 group h-full justify-end">
                   {/* Tooltip on hover */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none shadow-xs">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none shadow-xs">
                     {d.formattedDuration}
                   </div>
 
                   {/* Visual Bar */}
                   <div
-                    className={`w-full max-w-[36px] rounded-t-md transition-all duration-500 relative ${
+                    className={`w-full max-w-[28px] sm:max-w-[36px] rounded-t-md transition-all duration-500 relative ${
                       isZero
                         ? 'bg-[var(--md-sys-color-surface-container-high)] border-t border-[var(--md-sys-color-outline-variant)]'
                         : 'bg-gradient-to-t from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-tertiary)] hover:brightness-110 shadow-xs'
@@ -91,16 +91,16 @@ export const DashboardAnalyticsCharts: React.FC<DashboardAnalyticsChartsProps> =
                     style={{ height: `${heightPercent}%` }}
                   >
                     {!isZero && (
-                      <span className="text-[10px] font-bold text-white font-mono absolute -top-5 left-1/2 -translate-x-1/2 hidden sm:block">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-white font-mono absolute -top-4 left-1/2 -translate-x-1/2 hidden sm:block">
                         {Math.round(d.hoursNum)}h
                       </span>
                     )}
                   </div>
 
                   {/* Day Label */}
-                  <div className="text-center mt-1">
-                    <p className="text-xs font-bold">{d.dayName}</p>
-                    <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{d.dateStr}</p>
+                  <div className="text-center mt-0.5">
+                    <p className="text-[10px] sm:text-xs font-bold leading-tight truncate">{d.dayName}</p>
+                    <p className="text-[9px] sm:text-[10px] text-[var(--md-sys-color-on-surface-variant)] leading-tight truncate">{d.dateStr}</p>
                   </div>
                 </div>
               )
