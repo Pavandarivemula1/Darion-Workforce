@@ -45,6 +45,9 @@ export async function loginAction(
     const tDbEnd = performance.now()
     role = profile?.role || 'candidate'
 
+    // Update user metadata in Supabase Auth so future proxy checks & logins read role directly from JWT (0ms DB cost)
+    supabase.auth.updateUser({ data: { role } }).catch(() => {})
+
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Perf] DB Profile Role Fallback: ${(tDbEnd - tDbStart).toFixed(2)}ms`)
     }

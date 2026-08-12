@@ -101,6 +101,9 @@ CREATE INDEX IF NOT EXISTS idx_attendance_login_time
 CREATE INDEX IF NOT EXISTS idx_profiles_role
   ON public.profiles (role);
 
+CREATE INDEX IF NOT EXISTS idx_attendance_approval_status
+  ON public.attendance (approval_status);
+
 -- 8. Enable Row Level Security (RLS) on Attendance
 ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
 

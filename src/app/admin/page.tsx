@@ -27,29 +27,25 @@ export default async function AdminDashboardPage() {
     redirect('/login')
   }
 
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    redirect('/candidate')
-  }
-
   // Calculate Current Week Boundaries
   const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
 
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
 
-  // Execute all 4 queries concurrently in Parallel (Promise.all)
+  // Execute all 5 queries concurrently in Parallel (Promise.all)
   const [
+    { data: adminProfile },
     { data: candidates },
     { data: activeSessions },
     { data: todayRecords },
     { data: weekRecords },
   ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .eq('id', user.id)
+      .single(),
     supabase
       .from('profiles')
       .select('id, full_name, role, created_at')
@@ -69,6 +65,10 @@ export default async function AdminDashboardPage() {
       .gte('login_time', startOfWeek.toISOString())
       .lte('login_time', endOfWeek.toISOString()),
   ])
+
+  if (!adminProfile || adminProfile.role !== 'admin') {
+    redirect('/candidate')
+  }
 
   const totalCandidates = candidates?.length || 0
   const workingNowCount = activeSessions?.length || 0
