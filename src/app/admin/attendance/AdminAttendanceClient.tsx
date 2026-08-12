@@ -71,7 +71,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   const [customPayoutText, setCustomPayoutText] = useState('')
   const [rejectItem, setRejectItem] = useState<SystemAttendanceItem | null>(null)
   const [rejectionReasonText, setRejectionReasonText] = useState('')
-  const [dismissedKey, setDismissedKey] = useState<string | null>(null)
+
+  // Toast dismissal tracking
+  const [dismissedToastKey, setDismissedToastKey] = useState<string | null>(null)
 
   const records = initialRecords.map((r) => {
     const override = optimisticOverrides[r.id]
@@ -96,25 +98,25 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     }
   }, [approveState, rejectState, router])
 
-  let snackbarMessage: string | null = null
-  let snackbarVariant: 'success' | 'error' = 'success'
+  // Derive Toast Notification without synchronous setState in effect
+  let toast: { message: string; variant: 'success' | 'error' } | null = null
 
-  if (approveState?.success && dismissedKey !== 'approve-success') {
-    snackbarMessage = 'Shift approved and payout recorded.'
-    snackbarVariant = 'success'
-  } else if (approveState?.error && dismissedKey !== `approve-error-${approveState.error}`) {
-    snackbarMessage = approveState.error
-    snackbarVariant = 'error'
-  } else if (rejectState?.success && dismissedKey !== 'reject-success') {
-    snackbarMessage = 'Shift rejected with reason recorded.'
-    snackbarVariant = 'success'
-  } else if (rejectState?.error && dismissedKey !== `reject-error-${rejectState.error}`) {
-    snackbarMessage = rejectState.error
-    snackbarVariant = 'error'
+  if (approveState?.success && dismissedToastKey !== 'approve-success') {
+    toast = { message: 'Shift approved and payout recorded successfully.', variant: 'success' }
+  } else if (approveState?.error && dismissedToastKey !== `approve-error-${approveState.error}`) {
+    toast = { message: approveState.error, variant: 'error' }
+  } else if (rejectState?.success && dismissedToastKey !== 'reject-success') {
+    toast = { message: 'Shift rejected with feedback recorded.', variant: 'success' }
+  } else if (rejectState?.error && dismissedToastKey !== `reject-error-${rejectState.error}`) {
+    toast = { message: rejectState.error, variant: 'error' }
   }
 
-  const handleDismissSnackbar = () => {
-    setDismissedKey('dismissed')
+  const handleDismissToast = () => {
+    if (approveState?.success) setDismissedToastKey('approve-success')
+    else if (approveState?.error) setDismissedToastKey(`approve-error-${approveState.error}`)
+    else if (rejectState?.success) setDismissedToastKey('reject-success')
+    else if (rejectState?.error) setDismissedToastKey(`reject-error-${rejectState.error}`)
+    else setDismissedToastKey('dismissed')
   }
 
   const updateQueryParams = (key: string, value: string) => {
@@ -190,17 +192,22 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   }
 
   const openApproveModal = (item: SystemAttendanceItem) => {
-    const autoAmount = item.payout_amount !== null && item.payout_amount !== undefined
+    const autoAmount = item.payout_amount !== null && item.payout_amount !== undefined && item.payout_amount > 0
       ? item.payout_amount
       : calculateAutoPayout(item)
     setCustomPayoutText(autoAmount.toFixed(2))
     setApproveItem(item)
+    setDismissedToastKey(null)
   }
 
   const openRejectModal = (item: SystemAttendanceItem) => {
     setRejectionReasonText(item.rejection_reason || '')
     setRejectItem(item)
+    setDismissedToastKey(null)
   }
+
+  const showApproveModal = approveItem && !approveState?.success
+  const showRejectModal = rejectItem && !rejectState?.success
 
   return (
     <div className="flex flex-col gap-6">
@@ -414,7 +421,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       </Card>
 
       {/* Approve Shift Payment Modal */}
-      {approveItem && !approveState?.success && (
+      {showApproveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
@@ -423,6 +430,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 Approve Shift Payment
               </h3>
               <button
+                type="button"
                 onClick={() => setApproveItem(null)}
                 className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
               >
@@ -458,8 +466,6 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                     payout_amount: amount,
                   },
                 }))
-                setApproveItem(null)
-                setDismissedKey(null)
               }}
               className="flex flex-col gap-4"
             >
@@ -478,12 +484,6 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 startIcon={<DollarSign className="w-4 h-4" />}
                 supportingText="Auto-calculated from hourly rate. You can adjust this value if needed."
               />
-
-              {approveState?.error && (
-                <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs font-medium">
-                  {approveState.error}
-                </div>
-              )}
 
               <div className="flex items-center justify-end gap-3 mt-2">
                 <button
@@ -504,7 +504,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       )}
 
       {/* Reject Shift Reason Modal */}
-      {rejectItem && !rejectState?.success && (
+      {showRejectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
@@ -513,6 +513,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 Reject Shift Payment
               </h3>
               <button
+                type="button"
                 onClick={() => setRejectItem(null)}
                 className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
               >
@@ -538,8 +539,6 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                     payout_amount: 0,
                   },
                 }))
-                setRejectItem(null)
-                setDismissedKey(null)
               }}
               className="flex flex-col gap-4"
             >
@@ -559,12 +558,6 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                   className="w-full p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
                 />
               </div>
-
-              {rejectState?.error && (
-                <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs font-medium">
-                  {rejectState.error}
-                </div>
-              )}
 
               <div className="flex items-center justify-end gap-3 mt-2">
                 <button
@@ -586,9 +579,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
 
       {/* Snackbar Notifications */}
       <Snackbar
-        message={snackbarMessage}
-        variant={snackbarVariant}
-        onClose={handleDismissSnackbar}
+        message={toast?.message || null}
+        variant={toast?.variant || 'info'}
+        onClose={handleDismissToast}
       />
     </div>
   )
