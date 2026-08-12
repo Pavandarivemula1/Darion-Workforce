@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
-import { getWeekBoundaries } from '@/lib/utils/timesheet'
+import { getWeekBoundaries, getKolkataDateKey } from '@/lib/utils/timesheet'
 import { TimesheetClientView } from './TimesheetClientView'
 
 export interface PageProps {
@@ -54,7 +54,7 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
     .lte('login_time', endOfWeek.toISOString())
     .order('login_time', { ascending: true })
 
-  const referenceDateIso = referenceDate.toISOString().split('T')[0]
+  const referenceDateIso = getKolkataDateKey(referenceDate.toISOString())
 
   return (
     <AdminLayout adminName={adminProfile.full_name}>

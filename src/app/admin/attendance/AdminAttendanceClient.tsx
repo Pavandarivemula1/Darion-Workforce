@@ -38,7 +38,19 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
 
   const updateQueryParams = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams)
-    if (value && value !== 'all') {
+    if (key === 'filter') {
+      params.set('filter', value)
+      if (value !== 'custom') {
+        params.delete('startDate')
+        params.delete('endDate')
+      }
+    } else if (key === 'candidateId') {
+      if (value && value !== 'all') {
+        params.set('candidateId', value)
+      } else {
+        params.delete('candidateId')
+      }
+    } else if (value) {
       params.set(key, value)
     } else {
       params.delete(key)

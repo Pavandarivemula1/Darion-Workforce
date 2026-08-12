@@ -44,54 +44,61 @@ export function getWeekBoundaries(referenceDate: Date = new Date()): {
   weekLabel: string
   daysHeader: { dayName: string; dateStr: string; dateIso: string }[]
 } {
-  // Convert referenceDate to string representation in Asia/Kolkata
-  const kolkataDateStr = new Intl.DateTimeFormat('en-US', {
+  // Extract YYYY, MM, DD in Asia/Kolkata
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: TIMEZONE,
     year: 'numeric',
     month: 'numeric',
     day: 'numeric',
-  }).format(referenceDate)
+  }).formatToParts(referenceDate)
 
-  const [month, day, year] = kolkataDateStr.split('/').map(Number)
+  const year = Number(parts.find((p) => p.type === 'year')?.value)
+  const month = Number(parts.find((p) => p.type === 'month')?.value)
+  const day = Number(parts.find((p) => p.type === 'day')?.value)
 
-  // Create local Date object corresponding to Kolkata midnight
-  const targetDate = new Date(year, month - 1, day, 12, 0, 0)
-  const dayOfWeek = targetDate.getDay() // 0 = Sun, 1 = Mon, ...
-
-  // Monday offset (if Sunday=0, offset is -6; if Mon=1, offset is 0)
+  // Determine day of week in Kolkata (0=Sun, 1=Mon, ..., 6=Sat)
+  const refKolkata = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+  const dayOfWeek = refKolkata.getUTCDay()
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
 
-  const mondayDate = new Date(targetDate)
-  mondayDate.setDate(targetDate.getDate() + mondayOffset)
-  mondayDate.setHours(0, 0, 0, 0)
+  // Monday YYYY-MM-DD in Kolkata
+  const mondayKolkata = new Date(Date.UTC(year, month - 1, day + mondayOffset, 12, 0, 0))
+  const mYear = mondayKolkata.getUTCFullYear()
+  const mMonth = mondayKolkata.getUTCMonth()
+  const mDay = mondayKolkata.getUTCDate()
 
-  const sundayDate = new Date(mondayDate)
-  sundayDate.setDate(mondayDate.getDate() + 6)
-  sundayDate.setHours(23, 59, 59, 999)
-
-  // Format Week Label (e.g. "August 10 – August 16, 2026")
-  const startMonthStr = mondayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: TIMEZONE })
-  const endMonthStr = sundayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: TIMEZONE })
-  const weekLabel = `${startMonthStr} – ${endMonthStr}`
+  // Start of week: Monday 00:00:00 in Kolkata (UTC+5:30 -> subtract 5.5h)
+  const startOfWeekUtc = new Date(Date.UTC(mYear, mMonth, mDay, 0, 0, 0, 0) - 5.5 * 60 * 60 * 1000)
+  const endOfWeekUtc = new Date(Date.UTC(mYear, mMonth, mDay + 6, 23, 59, 59, 999) - 5.5 * 60 * 60 * 1000)
 
   // Generate 7 days header (Mon..Sun)
-  const daysHeader = []
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const daysHeader = []
 
   for (let i = 0; i < 7; i++) {
-    const cur = new Date(mondayDate)
-    cur.setDate(mondayDate.getDate() + i)
-    const dateStr = cur.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: TIMEZONE })
+    const curDate = new Date(Date.UTC(mYear, mMonth, mDay + i, 12, 0, 0))
+    const cY = curDate.getUTCFullYear()
+    const cM = curDate.getUTCMonth() + 1
+    const cD = curDate.getUTCDate()
+
+    const dateIso = `${cY}-${String(cM).padStart(2, '0')}-${String(cD).padStart(2, '0')}`
+    const dateStr = `${cM}/${cD}`
+
     daysHeader.push({
       dayName: dayNames[i],
       dateStr,
-      dateIso: cur.toISOString().split('T')[0],
+      dateIso,
     })
   }
 
+  // Week Label
+  const startMonthName = new Date(Date.UTC(mYear, mMonth, mDay)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const endMonthName = new Date(Date.UTC(mYear, mMonth, mDay + 6)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  const weekLabel = `${startMonthName} – ${endMonthName}`
+
   return {
-    startOfWeek: mondayDate,
-    endOfWeek: sundayDate,
+    startOfWeek: startOfWeekUtc,
+    endOfWeek: endOfWeekUtc,
     weekLabel,
     daysHeader,
   }
