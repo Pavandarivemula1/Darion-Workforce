@@ -7,7 +7,6 @@ export async function loginAction(
   prevState: { error?: string } | null,
   formData: FormData
 ) {
-  const t0 = performance.now()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -17,12 +16,10 @@ export async function loginAction(
 
   const supabase = await createClient()
 
-  const tAuthStart = performance.now()
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
-  const tAuthEnd = performance.now()
 
   if (error) {
     return { error: error.message || 'Invalid email or password.' }
@@ -36,26 +33,15 @@ export async function loginAction(
   let role = data.user.user_metadata?.role || data.user.app_metadata?.role
 
   if (!role) {
-    const tDbStart = performance.now()
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', data.user.id)
       .maybeSingle()
-    const tDbEnd = performance.now()
     role = profile?.role || 'candidate'
 
     // Update user metadata in Supabase Auth so future proxy checks & logins read role directly from JWT (0ms DB cost)
     supabase.auth.updateUser({ data: { role } }).catch(() => {})
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Perf] DB Profile Role Fallback: ${(tDbEnd - tDbStart).toFixed(2)}ms`)
-    }
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Perf] Supabase signInWithPassword: ${(tAuthEnd - tAuthStart).toFixed(2)}ms`)
-    console.log(`[Perf] Total loginAction before redirect: ${(performance.now() - t0).toFixed(2)}ms`)
   }
 
   if (role === 'admin') {
