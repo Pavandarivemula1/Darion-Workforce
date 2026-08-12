@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { TextField } from '@/components/ui/TextField'
 import { Button } from '@/components/ui/Button'
 import { Snackbar } from '@/components/ui/Snackbar'
-import { User, Mail, ShieldCheck, Calendar, KeyRound, Lock } from 'lucide-react'
+import { User, Mail, ShieldCheck, Calendar, KeyRound, Lock, DollarSign } from 'lucide-react'
 
 export interface CandidateProfileClientProps {
   profile: {
@@ -14,6 +14,7 @@ export interface CandidateProfileClientProps {
     full_name: string
     role: string
     created_at: string
+    hourly_rate?: number
   }
   email: string
 }
@@ -40,13 +41,15 @@ export const CandidateProfileClient: React.FC<CandidateProfileClientProps> = ({
     setDismissed(false)
   }
 
+  const rate = profile.hourly_rate || 0
+
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
       {/* Header */}
       <div>
         <h2 className="text-xl sm:text-2xl font-bold">Candidate Profile</h2>
         <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-          View your personal details and update your login password
+          View your personal details, hourly payment rate, and update your password
         </p>
       </div>
 
@@ -80,7 +83,17 @@ export const CandidateProfileClient: React.FC<CandidateProfileClientProps> = ({
               </div>
             </div>
 
-            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)] sm:col-span-2">
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)]">
+              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)]">Assigned Hourly Rate</p>
+                <p className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                  ${rate.toFixed(2)} / hr
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)]">
               <Calendar className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
               <div>
                 <p className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)]">Member Since</p>

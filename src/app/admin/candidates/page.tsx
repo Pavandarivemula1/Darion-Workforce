@@ -45,6 +45,7 @@ export default async function AdminCandidatesPage() {
     full_name: c.full_name,
     role: c.role,
     created_at: c.created_at,
+    hourly_rate: c.hourly_rate || 0,
     isWorking: activeUserIds.has(c.id),
   }))
 

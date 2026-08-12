@@ -5,6 +5,9 @@ export interface AttendanceRecord {
   logout_time: string | null
   break_start_time?: string | null
   break_duration_seconds?: number
+  approval_status?: 'pending' | 'approved' | 'rejected'
+  rejection_reason?: string | null
+  payout_amount?: number | null
   created_at: string
 }
 
@@ -12,6 +15,7 @@ export interface CandidateProfile {
   id: string
   full_name: string
   role: string
+  hourly_rate?: number
   created_at: string
   email?: string
 }

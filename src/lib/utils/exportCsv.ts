@@ -17,7 +17,10 @@ export function exportAttendanceToCsv(
     'Logout Time',
     'Break Duration',
     'Net Working Hours',
-    'Status',
+    'Shift Status',
+    'Payment Approval',
+    'Approved Payout ($)',
+    'Rejection Reason',
   ]
 
   const rows = records.map((r) => {
@@ -40,7 +43,7 @@ export function exportAttendanceToCsv(
 
     let formattedLogout = '--'
     let totalHoursStr = '--'
-    let status = 'Incomplete'
+    let shiftStatus = 'Incomplete'
 
     const breakSecs = r.break_duration_seconds || 0
     const breakDurationStr = formatBreakDuration(breakSecs)
@@ -56,15 +59,19 @@ export function exportAttendanceToCsv(
       const grossMs = Math.max(0, logoutDate.getTime() - loginDate.getTime())
       const netMs = Math.max(0, grossMs - breakSecs * 1000)
       totalHoursStr = formatDurationMs(netMs)
-      status = 'Completed'
+      shiftStatus = 'Completed'
     } else {
       const isToday =
         new Date().toLocaleDateString('en-IN', { timeZone: TIMEZONE }) ===
         loginDate.toLocaleDateString('en-IN', { timeZone: TIMEZONE })
       if (isToday) {
-        status = r.break_start_time ? 'On Break' : 'Working'
+        shiftStatus = r.break_start_time ? 'On Break' : 'Working'
       }
     }
+
+    const approvalStatus = r.approval_status ? r.approval_status.toUpperCase() : 'PENDING'
+    const payoutAmountStr = r.payout_amount ? `$${r.payout_amount.toFixed(2)}` : '$0.00'
+    const rejectionReasonStr = r.rejection_reason || ''
 
     const escapeCsv = (val: string) => `"${val.replace(/"/g, '""')}"`
 
@@ -75,7 +82,10 @@ export function exportAttendanceToCsv(
       escapeCsv(formattedLogout),
       escapeCsv(breakDurationStr),
       escapeCsv(totalHoursStr),
-      escapeCsv(status),
+      escapeCsv(shiftStatus),
+      escapeCsv(approvalStatus),
+      escapeCsv(payoutAmountStr),
+      escapeCsv(rejectionReasonStr),
     ].join(',')
   })
 

@@ -1,14 +1,28 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useActionState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
-import { Filter, Calendar, Users, CheckCircle2, Clock, AlertTriangle, FileSpreadsheet } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Snackbar } from '@/components/ui/Snackbar'
+import { approveShiftAction, rejectShiftAction, type AdminActionState } from '@/app/actions/admin'
+import {
+  Filter,
+  Calendar,
+  Users,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  FileSpreadsheet,
+  Check,
+  X,
+} from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 
 export interface CandidateOption {
   id: string
   full_name: string
+  hourly_rate?: number
 }
 
 export interface SystemAttendanceItem {
@@ -18,6 +32,9 @@ export interface SystemAttendanceItem {
   logout_time: string | null
   break_start_time?: string | null
   break_duration_seconds?: number
+  approval_status?: 'pending' | 'approved' | 'rejected'
+  rejection_reason?: string | null
+  payout_amount?: number | null
   created_at: string
   candidateName: string
 }
@@ -26,6 +43,8 @@ export interface AdminAttendanceClientProps {
   candidates: CandidateOption[]
   records: SystemAttendanceItem[]
 }
+
+const initialState: AdminActionState = { error: '', success: false }
 
 export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   candidates,
@@ -39,6 +58,40 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   const startDate = searchParams.get('startDate') || ''
   const endDate = searchParams.get('endDate') || ''
 
+  const [rejectItem, setRejectItem] = useState<SystemAttendanceItem | null>(null)
+  const [rejectionReasonText, setRejectionReasonText] = useState('')
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null)
+
+  const [approveState, approveFormAction, isApproving] = useActionState(
+    approveShiftAction,
+    initialState
+  )
+  const [rejectState, rejectFormAction, isRejecting] = useActionState(
+    rejectShiftAction,
+    initialState
+  )
+
+  let snackbarMessage: string | null = null
+  let snackbarVariant: 'success' | 'error' = 'success'
+
+  if (approveState?.success && dismissedKey !== 'approve-success') {
+    snackbarMessage = 'Shift approved and payout calculated successfully.'
+    snackbarVariant = 'success'
+  } else if (approveState?.error && dismissedKey !== `approve-error-${approveState.error}`) {
+    snackbarMessage = approveState.error
+    snackbarVariant = 'error'
+  } else if (rejectState?.success && dismissedKey !== 'reject-success') {
+    snackbarMessage = 'Shift rejected with reason recorded.'
+    snackbarVariant = 'success'
+  } else if (rejectState?.error && dismissedKey !== `reject-error-${rejectState.error}`) {
+    snackbarMessage = rejectState.error
+    snackbarVariant = 'error'
+  }
+
+  const handleDismissSnackbar = () => {
+    setDismissedKey('dismissed')
+  }
+
   const updateQueryParams = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams)
     if (key === 'filter') {
@@ -48,15 +101,8 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         params.delete('endDate')
       }
     } else if (key === 'candidateId') {
-      if (value && value !== 'all') {
-        params.set('candidateId', value)
-      } else {
-        params.delete('candidateId')
-      }
-    } else if (value) {
-      params.set(key, value)
-    } else {
-      params.delete(key)
+      if (value === 'all') params.delete('candidateId')
+      else params.set('candidateId', value)
     }
     router.push(`/admin/attendance?${params.toString()}`)
   }
@@ -71,19 +117,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     router.push(`/admin/attendance?${params.toString()}`)
   }
 
-  const isToday = (dateString: string) => {
-    const date = new Date(dateString)
-    const today = new Date()
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    )
-  }
-
   const formatTime = (isoString?: string | null) => {
     if (!isoString) return '--:--'
-    return new Date(isoString).toLocaleTimeString([], {
+    return new Date(isoString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
@@ -99,6 +135,16 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     })
   }
 
+  const isToday = (dateString: string) => {
+    const date = new Date(dateString)
+    const today = new Date()
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    )
+  }
+
   const calculateNetTotal = (loginIso: string, logoutIso: string | null, breakSecs = 0) => {
     if (!logoutIso) return '--'
     const start = new Date(loginIso).getTime()
@@ -112,25 +158,24 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl sm:text-2xl font-bold">System Attendance Records</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Attendance & Shift Payment Approvals</h2>
         <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-          View and filter attendance activity across candidates
+          Review completed work shifts, approve hourly payouts, or reject with feedback
         </p>
       </div>
 
-      {/* Filter Toolbar Card */}
-      <Card variant="elevated" className="border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* Candidate Dropdown */}
-          <div className="flex items-center gap-2 text-xs font-medium">
-            <Users className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-            <span className="text-[var(--md-sys-color-on-surface-variant)]">Candidate:</span>
+      {/* Filter Control Card */}
+      <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-4 flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
+          {/* Candidate Dropdown Filter */}
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
             <select
               value={selectedCandidate}
               onChange={(e) => updateQueryParams('candidateId', e.target.value)}
-              className="h-9 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs font-medium focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+              className="w-full h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs font-semibold focus:outline-none focus:border-[var(--md-sys-color-primary)]"
             >
-              <option value="all">All Candidates</option>
+              <option value="all">All Candidates ({candidates.length})</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.full_name}
@@ -139,7 +184,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
             </select>
           </div>
 
-          {/* Preset Date Filter Buttons */}
+          {/* Quick Date Presets */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <Filter className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1" />
             {[
@@ -154,7 +199,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 onClick={() => updateQueryParams('filter', f.id)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
                   selectedFilter === f.id
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-semibold'
                     : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
                 }`}
               >
@@ -163,10 +208,10 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
             ))}
           </div>
 
-          {/* Custom Date Range */}
-          <div className="flex items-center gap-2 text-xs">
+          {/* Custom Date Picker */}
+          <div className="flex items-center gap-2 text-xs flex-wrap">
             <Calendar className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
-            <span className="text-[var(--md-sys-color-on-surface-variant)]">Range:</span>
+            <span className="text-[var(--md-sys-color-on-surface-variant)] font-medium">Range:</span>
             <input
               type="date"
               value={startDate}
@@ -192,11 +237,11 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
               <tr className="bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] text-xs font-semibold uppercase tracking-wider border-b border-[var(--md-sys-color-outline-variant)]">
                 <th className="py-3.5 px-4 sm:px-6">Candidate</th>
                 <th className="py-3.5 px-4">Date</th>
-                <th className="py-3.5 px-4">Login</th>
-                <th className="py-3.5 px-4">Logout</th>
+                <th className="py-3.5 px-4">Login / Logout</th>
                 <th className="py-3.5 px-4">Break</th>
                 <th className="py-3.5 px-4">Net Work Time</th>
-                <th className="py-3.5 px-4 sm:px-6">Status</th>
+                <th className="py-3.5 px-4">Payment Approval</th>
+                <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
@@ -207,6 +252,8 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                   const isWorking = !hasLogout && today
                   const isOnBreak = isWorking && !!item.break_start_time
                   const breakSecs = item.break_duration_seconds || 0
+                  const status = item.approval_status || 'pending'
+                  const payout = item.payout_amount || 0
 
                   return (
                     <tr
@@ -216,18 +263,24 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                       <td className="py-4 px-4 sm:px-6 font-semibold whitespace-nowrap">
                         {item.candidateName}
                       </td>
+
                       <td className="py-4 px-4 whitespace-nowrap text-xs">
                         {formatDate(item.login_time)}
                       </td>
+
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs">
-                        {formatTime(item.login_time)}
+                        <div className="flex flex-col">
+                          <span>In: {formatTime(item.login_time)}</span>
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">
+                            Out: {formatTime(item.logout_time)}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-4 px-4 whitespace-nowrap font-mono text-xs">
-                        {formatTime(item.logout_time)}
-                      </td>
+
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs text-amber-600 dark:text-amber-400 font-semibold">
                         {formatBreakDuration(breakSecs)}
                       </td>
+
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs font-semibold">
                         {isOnBreak ? (
                           <span className="text-amber-600 dark:text-amber-400 animate-pulse">
@@ -241,27 +294,72 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                           calculateNetTotal(item.login_time, item.logout_time, breakSecs)
                         )}
                       </td>
-                      <td className="py-4 px-4 sm:px-6 whitespace-nowrap">
-                        {hasLogout ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Completed
-                          </span>
-                        ) : isOnBreak ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                            <Clock className="w-3.5 h-3.5" />
-                            On Break
-                          </span>
-                        ) : isWorking ? (
+
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        {isWorking ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
                             <Clock className="w-3.5 h-3.5" />
-                            Working
+                            Shift In Progress
                           </span>
+                        ) : status === 'approved' ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Approved (${payout.toFixed(2)})
+                            </span>
+                          </div>
+                        ) : status === 'rejected' ? (
+                          <div className="flex flex-col gap-0.5 max-w-[200px]">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              Rejected
+                            </span>
+                            {item.rejection_reason && (
+                              <span className="text-[10px] text-rose-500 truncate" title={item.rejection_reason}>
+                                Reason: {item.rejection_reason}
+                              </span>
+                            )}
+                          </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                            Incomplete
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-pulse">
+                            <Clock className="w-3.5 h-3.5" />
+                            Pending Admin Review
                           </span>
+                        )}
+                      </td>
+
+                      <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
+                        {hasLogout && (
+                          <div className="flex items-center justify-end gap-2">
+                            {status !== 'approved' && (
+                              <form action={approveFormAction}>
+                                <input type="hidden" name="attendanceId" value={item.id} />
+                                <Button
+                                  type="submit"
+                                  variant="outlined"
+                                  size="sm"
+                                  isLoading={isApproving}
+                                  icon={<Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                >
+                                  Approve
+                                </Button>
+                              </form>
+                            )}
+
+                            {status !== 'rejected' && (
+                              <Button
+                                variant="outlined"
+                                size="sm"
+                                onClick={() => {
+                                  setRejectItem(item)
+                                  setRejectionReasonText('')
+                                }}
+                                icon={<X className="w-3.5 h-3.5 text-rose-600" />}
+                              >
+                                Reject
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -269,11 +367,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <FileSpreadsheet className="w-8 h-8 opacity-40" />
-                      <span>No attendance records matching the selected filters.</span>
-                    </div>
+                  <td colSpan={7} className="py-12 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    <FileSpreadsheet className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    No attendance records found matching selected criteria.
                   </td>
                 </tr>
               )}
@@ -281,6 +377,76 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
           </table>
         </div>
       </Card>
+
+      {/* Reject Shift Reason Modal */}
+      {rejectItem && !rejectState?.success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="w-5 h-5" />
+                Reject Shift Payment
+              </h3>
+              <button
+                onClick={() => setRejectItem(null)}
+                className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              Specify the reason for rejecting shift on <strong>{formatDate(rejectItem.login_time)}</strong> for <strong>{rejectItem.candidateName}</strong>. This reason will be displayed to the candidate.
+            </p>
+
+            <form action={rejectFormAction} className="flex flex-col gap-4">
+              <input type="hidden" name="attendanceId" value={rejectItem.id} />
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+                  Rejection Reason
+                </label>
+                <textarea
+                  name="rejectionReason"
+                  rows={3}
+                  required
+                  placeholder="e.g. Unapproved overtime, incomplete task documentation..."
+                  value={rejectionReasonText}
+                  onChange={(e) => setRejectionReasonText(e.target.value)}
+                  className="w-full p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
+                />
+              </div>
+
+              {rejectState?.error && (
+                <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs font-medium">
+                  {rejectState.error}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectItem(null)}
+                  disabled={isRejecting}
+                  className="px-4 h-10 rounded-full text-sm font-medium text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <Button type="submit" variant="filled" size="md" isLoading={isRejecting}>
+                  Confirm Rejection
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Snackbar Notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        variant={snackbarVariant}
+        onClose={handleDismissSnackbar}
+      />
     </div>
   )
 }

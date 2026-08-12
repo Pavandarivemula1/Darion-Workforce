@@ -70,12 +70,12 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
 
   const candidatesPromise = supabase
     .from('profiles')
-    .select('id, full_name')
+    .select('id, full_name, hourly_rate')
     .eq('role', 'candidate')
 
   let attendanceQuery = supabase
     .from('attendance')
-    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at, profiles(full_name)')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at, profiles(full_name)')
     .order('login_time', { ascending: false })
 
   if (candidateId !== 'all') {
@@ -106,6 +106,9 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
     logout_time: string | null
     break_start_time?: string | null
     break_duration_seconds?: number
+    approval_status?: 'pending' | 'approved' | 'rejected'
+    rejection_reason?: string | null
+    payout_amount?: number | null
     created_at: string
     profiles?: { full_name: string } | { full_name: string }[] | null
   }) => {
@@ -117,6 +120,9 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
       logout_time: r.logout_time,
       break_start_time: r.break_start_time,
       break_duration_seconds: r.break_duration_seconds,
+      approval_status: r.approval_status || 'pending',
+      rejection_reason: r.rejection_reason || null,
+      payout_amount: r.payout_amount || 0,
       created_at: r.created_at,
       candidateName: profileObj?.full_name || 'Unknown Candidate',
     }

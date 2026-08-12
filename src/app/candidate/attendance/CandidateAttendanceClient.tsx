@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react'
 import { AttendanceFilters } from '@/components/candidate/AttendanceFilters'
 import { AttendanceTable, AttendanceItem } from '@/components/candidate/AttendanceTable'
 import { Card } from '@/components/ui/Card'
-import { Clock, CalendarRange, CheckCircle } from 'lucide-react'
+import { Clock, CalendarRange, CheckCircle, DollarSign } from 'lucide-react'
 import { formatDurationMs } from '@/lib/utils/timesheet'
 
 export interface CandidateAttendanceClientProps {
@@ -76,10 +76,20 @@ export const CandidateAttendanceClient: React.FC<CandidateAttendanceClientProps>
     return sumMs
   }, [filteredRecords])
 
+  const totalApprovedEarnings = useMemo(() => {
+    let sum = 0
+    filteredRecords.forEach((r) => {
+      if (r.approval_status === 'approved' && r.payout_amount) {
+        sum += r.payout_amount
+      }
+    })
+    return sum
+  }, [filteredRecords])
+
   return (
     <div className="flex flex-col gap-6">
       {/* Metrics Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card variant="elevated" className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
             <CalendarRange className="w-5 h-5" />
@@ -105,8 +115,20 @@ export const CandidateAttendanceClient: React.FC<CandidateAttendanceClientProps>
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Total Hours Worked</p>
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Net Work Duration</p>
             <p className="text-lg font-bold font-mono">{formatDurationMs(totalDurationMs)}</p>
+          </div>
+        </Card>
+
+        <Card variant="elevated" className="flex items-center gap-4 border border-emerald-500/30">
+          <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <DollarSign className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Approved Earnings</p>
+            <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+              ${totalApprovedEarnings.toFixed(2)}
+            </p>
           </div>
         </Card>
       </div>

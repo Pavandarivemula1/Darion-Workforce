@@ -7,9 +7,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('admin', 'candidate')),
+  hourly_rate NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure hourly_rate column exists if updating existing table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS hourly_rate NUMERIC(10, 2) NOT NULL DEFAULT 0.00;
 
 -- 2. Updated_at Trigger Function
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
@@ -57,7 +61,6 @@ CREATE POLICY "Users can update own profile"
   USING (auth.uid() = id OR public.is_admin(auth.uid()))
   WITH CHECK (auth.uid() = id OR public.is_admin(auth.uid()));
 
-
 -- 5. Create Attendance Table
 CREATE TABLE IF NOT EXISTS public.attendance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -66,17 +69,33 @@ CREATE TABLE IF NOT EXISTS public.attendance (
   logout_time TIMESTAMPTZ NULL,
   break_start_time TIMESTAMPTZ NULL,
   break_duration_seconds INT NOT NULL DEFAULT 0,
+  approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+  rejection_reason TEXT NULL,
+  payout_amount NUMERIC(10, 2) NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure approval & payment columns exist if updating existing table
+ALTER TABLE public.attendance ADD COLUMN IF NOT EXISTS break_start_time TIMESTAMPTZ NULL;
+ALTER TABLE public.attendance ADD COLUMN IF NOT EXISTS break_duration_seconds INT NOT NULL DEFAULT 0;
+ALTER TABLE public.attendance ADD COLUMN IF NOT EXISTS approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE public.attendance ADD COLUMN IF NOT EXISTS rejection_reason TEXT NULL;
+ALTER TABLE public.attendance ADD COLUMN IF NOT EXISTS payout_amount NUMERIC(10, 2) NULL;
 
 -- 6. Enforce at most 1 active work session per user (logout_time IS NULL)
 CREATE UNIQUE INDEX IF NOT EXISTS unique_active_attendance_per_user
   ON public.attendance (user_id)
   WHERE (logout_time IS NULL);
 
--- 7. Performance Index
+-- 7. Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_attendance_user_login
   ON public.attendance (user_id, login_time DESC);
+
+CREATE INDEX IF NOT EXISTS idx_attendance_login_time
+  ON public.attendance (login_time DESC);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_role
+  ON public.profiles (role);
 
 -- 8. Enable Row Level Security (RLS) on Attendance
 ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
@@ -96,6 +115,12 @@ CREATE POLICY "Candidates update own active attendance"
   ON public.attendance FOR UPDATE
   USING (auth.uid() = user_id AND logout_time IS NULL)
   WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins update attendance approval" ON public.attendance;
+CREATE POLICY "Admins update attendance approval"
+  ON public.attendance FOR UPDATE
+  USING (public.is_admin(auth.uid()))
+  WITH CHECK (public.is_admin(auth.uid()));
 
 DROP POLICY IF EXISTS "Admins delete attendance" ON public.attendance;
 CREATE POLICY "Admins delete attendance"

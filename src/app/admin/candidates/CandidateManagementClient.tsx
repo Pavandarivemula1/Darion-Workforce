@@ -4,6 +4,7 @@ import React, { useState, useActionState } from 'react'
 import {
   createCandidateAction,
   resetCandidatePasswordAction,
+  updateCandidateHourlyRateAction,
   type AdminActionState,
 } from '@/app/actions/admin'
 import { Card } from '@/components/ui/Card'
@@ -20,6 +21,8 @@ import {
   Mail,
   Lock,
   User,
+  DollarSign,
+  Edit2,
 } from 'lucide-react'
 
 export interface CandidateUser {
@@ -29,6 +32,7 @@ export interface CandidateUser {
   created_at: string
   email?: string
   isWorking?: boolean
+  hourly_rate?: number
 }
 
 export interface CandidateManagementClientProps {
@@ -36,13 +40,13 @@ export interface CandidateManagementClientProps {
 }
 
 const initialState: AdminActionState = { error: '', success: false }
-const initialResetState: AdminActionState = { error: '', success: false }
 
 export const CandidateManagementClient: React.FC<CandidateManagementClientProps> = ({
   candidates,
 }) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [resetEmail, setResetEmail] = useState<string | null>(null)
+  const [rateCandidate, setRateCandidate] = useState<CandidateUser | null>(null)
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
 
   const [createState, createFormAction, isCreating] = useActionState(
@@ -51,10 +55,13 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
   )
   const [resetState, resetFormAction, isResetting] = useActionState(
     resetCandidatePasswordAction,
-    initialResetState
+    initialState
+  )
+  const [rateState, rateFormAction, isUpdatingRate] = useActionState(
+    updateCandidateHourlyRateAction,
+    initialState
   )
 
-  // Derive notifications directly without synchronous effect calls
   let snackbarMessage: string | null = null
   let snackbarVariant: 'success' | 'error' = 'success'
 
@@ -64,8 +71,14 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
   } else if (createState?.error && dismissedKey !== `create-error-${createState.error}`) {
     snackbarMessage = createState.error
     snackbarVariant = 'error'
+  } else if (rateState?.success && dismissedKey !== 'rate-success') {
+    snackbarMessage = 'Candidate hourly rate updated successfully.'
+    snackbarVariant = 'success'
+  } else if (rateState?.error && dismissedKey !== `rate-error-${rateState.error}`) {
+    snackbarMessage = rateState.error
+    snackbarVariant = 'error'
   } else if (resetState?.success && dismissedKey !== 'reset-success') {
-    snackbarMessage = 'Password reset instructions sent successfully.'
+    snackbarMessage = 'Password reset email sent.'
     snackbarVariant = 'success'
   } else if (resetState?.error && dismissedKey !== `reset-error-${resetState.error}`) {
     snackbarMessage = resetState.error
@@ -73,11 +86,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
   }
 
   const handleDismissSnackbar = () => {
-    if (createState?.success) setDismissedKey('create-success')
-    else if (createState?.error) setDismissedKey(`create-error-${createState.error}`)
-    else if (resetState?.success) setDismissedKey('reset-success')
-    else if (resetState?.error) setDismissedKey(`reset-error-${resetState.error}`)
-    else setDismissedKey('dismissed')
+    setDismissedKey('dismissed')
   }
 
   return (
@@ -87,7 +96,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Candidate Roster</h2>
           <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-            Manage system candidates, view shift statuses, and reset passwords
+            Manage system candidates, hourly payment rates ($/hr), and account security
           </p>
         </div>
 
@@ -114,7 +123,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
             <thead>
               <tr className="bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] text-xs font-semibold uppercase tracking-wider border-b border-[var(--md-sys-color-outline-variant)]">
                 <th className="py-3.5 px-4 sm:px-6">Candidate Name</th>
-                <th className="py-3.5 px-4">Role</th>
+                <th className="py-3.5 px-4">Hourly Rate ($/hr)</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4">Created Date</th>
                 <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
@@ -122,73 +131,85 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
             </thead>
             <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
               {candidates.length > 0 ? (
-                candidates.map((c) => (
-                  <tr key={c.id} className="hover:bg-[var(--md-sys-color-surface-container-low)] transition-colors">
-                    <td className="py-4 px-4 sm:px-6 font-semibold flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-xs font-bold shrink-0">
-                        {c.full_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex flex-col">
-                        <span>{c.full_name}</span>
-                        {c.email && (
-                          <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                            {c.email}
+                candidates.map((c) => {
+                  const rate = c.hourly_rate || 0
+                  return (
+                    <tr key={c.id} className="hover:bg-[var(--md-sys-color-surface-container-low)] transition-colors">
+                      <td className="py-4 px-4 sm:px-6 font-semibold flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-xs font-bold shrink-0">
+                          {c.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex flex-col">
+                          <span>{c.full_name}</span>
+                          {c.email && (
+                            <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                              {c.email}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            ${rate.toFixed(2)} / hr
+                          </span>
+                          <button
+                            onClick={() => setRateCandidate(c)}
+                            className="p-1 rounded hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] transition-colors cursor-pointer"
+                            title="Edit Hourly Rate"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        {c.isWorking ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                            Working Now
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
+                            <UserCheck className="w-3.5 h-3.5" />
+                            Off Shift
                           </span>
                         )}
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] uppercase tracking-wider">
-                        {c.role}
-                      </span>
-                    </td>
+                      <td className="py-4 px-4 whitespace-nowrap text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                        {new Date(c.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </td>
 
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      {c.isWorking ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                          Working Now
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
-                          <UserCheck className="w-3.5 h-3.5" />
-                          Off Shift
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-4 px-4 whitespace-nowrap text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                      {new Date(c.created_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </td>
-
-                    <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/admin/attendance?candidateId=${c.id}`}
-                          className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer"
-                          title="View Attendance"
-                        >
-                          <History className="w-4 h-4" />
-                        </Link>
-
-                        {c.email && (
-                          <button
-                            onClick={() => setResetEmail(c.email || null)}
-                            className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] transition-colors cursor-pointer"
-                            title="Reset Password"
+                      <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/admin/attendance?candidateId=${c.id}`}
+                            className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer"
+                            title="View Attendance & Approvals"
                           >
-                            <KeyRound className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                            <History className="w-4 h-4" />
+                          </Link>
+
+                          {c.email && (
+                            <button
+                              onClick={() => setResetEmail(c.email || null)}
+                              className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] transition-colors cursor-pointer"
+                              title="Reset Password"
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               ) : (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
@@ -237,6 +258,18 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
               />
 
               <TextField
+                name="hourlyRate"
+                type="number"
+                step="0.01"
+                min="0"
+                label="Hourly Payment Rate ($/hr)"
+                placeholder="25.00"
+                required
+                disabled={isCreating}
+                startIcon={<DollarSign className="w-4 h-4" />}
+              />
+
+              <TextField
                 name="password"
                 type="password"
                 label="Initial Password"
@@ -263,6 +296,66 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                 </button>
                 <Button type="submit" variant="filled" size="md" isLoading={isCreating}>
                   Create Candidate
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Hourly Rate Dialog */}
+      {rateCandidate && !rateState?.success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+                Update Hourly Payment Rate
+              </h3>
+              <button
+                onClick={() => setRateCandidate(null)}
+                className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              Set the hourly rate ($/hr) for candidate <strong>{rateCandidate.full_name}</strong>. Calculated payout will automatically display on candidate dashboard & approved shifts.
+            </p>
+
+            <form action={rateFormAction} className="flex flex-col gap-4">
+              <input type="hidden" name="candidateId" value={rateCandidate.id} />
+
+              <TextField
+                name="hourlyRate"
+                type="number"
+                step="0.01"
+                min="0"
+                label="Hourly Payment Rate ($/hr)"
+                defaultValue={rateCandidate.hourly_rate || 0}
+                required
+                disabled={isUpdatingRate}
+                startIcon={<DollarSign className="w-4 h-4" />}
+              />
+
+              {rateState?.error && (
+                <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs font-medium">
+                  {rateState.error}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setRateCandidate(null)}
+                  disabled={isUpdatingRate}
+                  className="px-4 h-10 rounded-full text-sm font-medium text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <Button type="submit" variant="filled" size="md" isLoading={isUpdatingRate}>
+                  Save Hourly Rate
                 </Button>
               </div>
             </form>

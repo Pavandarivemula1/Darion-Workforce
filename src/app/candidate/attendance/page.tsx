@@ -32,7 +32,7 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
 
   const recordsPromise = supabase
     .from('attendance')
-    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at')
     .eq('user_id', user.id)
     .order('login_time', { ascending: false })
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Card } from '@/components/ui/Card'
-import { CheckCircle2, Clock, AlertTriangle, FileSpreadsheet, Coffee } from 'lucide-react'
+import { CheckCircle2, Clock, AlertTriangle, FileSpreadsheet } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 
 export interface AttendanceItem {
@@ -10,6 +10,9 @@ export interface AttendanceItem {
   logout_time: string | null
   break_start_time?: string | null
   break_duration_seconds?: number
+  approval_status?: 'pending' | 'approved' | 'rejected'
+  rejection_reason?: string | null
+  payout_amount?: number | null
   created_at: string
 }
 
@@ -20,7 +23,7 @@ export interface AttendanceTableProps {
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => {
   if (!records || records.length === 0) {
     return (
-      <Card variant="outlined" className="w-full py-12 flex flex-col items-center justify-center gap-3 text-center">
+      <Card variant="outlined" className="w-full py-12 flex flex-col items-center justify-center gap-3 text-center border border-[var(--md-sys-color-outline-variant)]">
         <div className="w-12 h-12 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-center">
           <FileSpreadsheet className="w-6 h-6" />
         </div>
@@ -80,7 +83,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
               <th className="py-3.5 px-4">Logout</th>
               <th className="py-3.5 px-4">Break</th>
               <th className="py-3.5 px-4">Net Work Time</th>
-              <th className="py-3.5 px-4 sm:px-6">Status</th>
+              <th className="py-3.5 px-4 sm:px-6">Shift Payment Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
@@ -90,6 +93,8 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
               const isWorking = !hasLogout && today
               const isOnBreak = isWorking && !!item.break_start_time
               const breakSecs = item.break_duration_seconds || 0
+              const status = item.approval_status || 'pending'
+              const payout = item.payout_amount || 0
 
               return (
                 <tr
@@ -118,14 +123,9 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                     )}
                   </td>
                   <td className="py-4 px-4 sm:px-6 whitespace-nowrap">
-                    {hasLogout ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Completed
-                      </span>
-                    ) : isOnBreak ? (
+                    {isOnBreak ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                        <Coffee className="w-3.5 h-3.5" />
+                        <Clock className="w-3.5 h-3.5" />
                         On Break
                       </span>
                     ) : isWorking ? (
@@ -133,10 +133,27 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                         <Clock className="w-3.5 h-3.5" />
                         Working
                       </span>
+                    ) : status === 'approved' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Approved (${payout.toFixed(2)})
+                      </span>
+                    ) : status === 'rejected' ? (
+                      <div className="flex flex-col gap-0.5 max-w-[220px]">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Rejected
+                        </span>
+                        {item.rejection_reason && (
+                          <span className="text-[10px] text-rose-500 truncate" title={item.rejection_reason}>
+                            Admin Reason: {item.rejection_reason}
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        Incomplete
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                        <Clock className="w-3.5 h-3.5" />
+                        Pending Approval
                       </span>
                     )}
                   </td>
