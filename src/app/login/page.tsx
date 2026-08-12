@@ -19,7 +19,7 @@ export default function LoginPage() {
   const activeError = state?.error && state.error !== dismissedError ? state.error : null
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]">
       <div className="w-full max-w-md flex flex-col items-center gap-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">

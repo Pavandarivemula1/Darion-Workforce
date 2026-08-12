@@ -126,34 +126,34 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                   </td>
                   <td className="py-4 px-4 sm:px-6 whitespace-nowrap">
                     {isOnBreak ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)]">
                         <Clock className="w-3.5 h-3.5" />
                         On Break
                       </span>
                     ) : isWorking ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
                         <Clock className="w-3.5 h-3.5" />
                         Working
                       </span>
                     ) : status === 'approved' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Approved (${payout.toFixed(2)})
                       </span>
                     ) : status === 'rejected' ? (
                       <div className="flex flex-col gap-0.5 max-w-[220px]">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           Rejected
                         </span>
                         {item.rejection_reason && (
-                          <span className="text-[10px] text-rose-500 truncate" title={item.rejection_reason}>
+                          <span className="text-[10px] text-[var(--md-sys-color-error)] truncate" title={item.rejection_reason}>
                             Admin Reason: {item.rejection_reason}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)]">
                         <Clock className="w-3.5 h-3.5" />
                         Pending Approval
                       </span>

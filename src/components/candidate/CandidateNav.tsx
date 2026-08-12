@@ -57,11 +57,11 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
                 href={item.href}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer whitespace-nowrap ${
                   isActive
-                    ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--md-sys-color-primary)]' : ''}`} />
                 <span>{item.label}</span>
               </Link>
             )

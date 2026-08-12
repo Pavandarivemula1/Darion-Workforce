@@ -211,22 +211,22 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
 
             {/* Status Badges */}
             {isOnBreak ? (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-pulse">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
                 <Coffee className="w-4 h-4" />
                 On Break
               </span>
             ) : isWorking ? (
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] animate-pulse">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--md-sys-color-primary)]" />
                 Working
               </span>
             ) : isCompletedToday ? (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Shift Completed
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)]">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]">
                 <AlertCircle className="w-3.5 h-3.5" />
                 Not Started
               </span>
@@ -253,11 +253,11 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
               </span>
             </div>
 
-            <div className="p-4 rounded-[var(--md-sys-shape-corner-medium)] bg-amber-500/10 flex flex-col gap-1 border border-amber-500/20">
-              <span className="text-xs text-amber-700 dark:text-amber-400 uppercase tracking-wider font-medium flex items-center gap-1">
+            <div className="p-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-xs opacity-90 uppercase tracking-wider font-medium flex items-center gap-1">
                 <Coffee className="w-3.5 h-3.5" /> Break Taken
               </span>
-              <span className="text-lg font-bold font-mono text-amber-700 dark:text-amber-400">
+              <span className="text-lg font-bold font-mono">
                 {breakDurationText}
               </span>
             </div>

@@ -66,7 +66,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
               >
-                <Icon className="w-5 h-5 shrink-0" />
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[var(--md-sys-color-primary)]' : ''}`} />
                 <span>{item.label}</span>
               </Link>
             )

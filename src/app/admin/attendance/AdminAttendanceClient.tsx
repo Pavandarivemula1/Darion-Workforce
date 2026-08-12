@@ -340,13 +340,13 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                         </div>
                       </td>
 
-                      <td className="py-4 px-4 whitespace-nowrap font-mono text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                      <td className="py-4 px-4 whitespace-nowrap font-mono text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
                         {formatBreakDuration(breakSecs)}
                       </td>
 
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs font-semibold">
                         {isOnBreak ? (
-                          <span className="text-amber-600 dark:text-amber-400 animate-pulse">
+                          <span className="text-[var(--md-sys-color-warning)] animate-pulse">
                             Paused (On Break)
                           </span>
                         ) : isWorking ? (
@@ -360,31 +360,31 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
 
                       <td className="py-4 px-4 whitespace-nowrap">
                         {isWorking ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
                             <Clock className="w-3.5 h-3.5" />
                             Shift In Progress
                           </span>
                         ) : status === 'approved' ? (
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Approved (${payout.toFixed(2)})
                             </span>
                           </div>
                         ) : status === 'rejected' ? (
                           <div className="flex flex-col gap-0.5 max-w-[200px]">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
                               <AlertTriangle className="w-3.5 h-3.5" />
                               Rejected
                             </span>
                             {item.rejection_reason && (
-                              <span className="text-[10px] text-rose-500 truncate" title={item.rejection_reason}>
+                              <span className="text-[10px] text-[var(--md-sys-color-error)] truncate" title={item.rejection_reason}>
                                 Reason: {item.rejection_reason}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-pulse">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
                             <Clock className="w-3.5 h-3.5" />
                             Pending Admin Review
                           </span>

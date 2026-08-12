@@ -42,7 +42,7 @@ export const TextField: React.FC<TextFieldProps> = ({
         )}
         <input
           id={inputId}
-          className={`w-full h-11 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] border px-3.5 ${
+          className={`w-full h-11 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface)] border px-3.5 ${
             startIcon ? 'pl-10' : ''
           } ${endIcon ? 'pr-10' : ''} text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/50 transition-all duration-200 focus:outline-none ${
             error
