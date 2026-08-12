@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useActionState } from 'react'
+import React, { useState, useEffect, useActionState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -48,7 +48,7 @@ const initialState: AdminActionState = { error: '', success: false }
 
 export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   candidates,
-  records,
+  records: initialRecords,
 }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -58,9 +58,20 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   const startDate = searchParams.get('startDate') || ''
   const endDate = searchParams.get('endDate') || ''
 
+  const [optimisticOverrides, setOptimisticOverrides] = useState<
+    Record<string, { approval_status: 'approved' | 'rejected'; payout_amount?: number; rejection_reason?: string }>
+  >({})
   const [rejectItem, setRejectItem] = useState<SystemAttendanceItem | null>(null)
   const [rejectionReasonText, setRejectionReasonText] = useState('')
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
+
+  const records = initialRecords.map((r) => {
+    const override = optimisticOverrides[r.id]
+    if (override) {
+      return { ...r, ...override }
+    }
+    return r
+  })
 
   const [approveState, approveFormAction, isApproving] = useActionState(
     approveShiftAction,
@@ -70,6 +81,12 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     rejectShiftAction,
     initialState
   )
+
+  useEffect(() => {
+    if (approveState?.success || rejectState?.success) {
+      router.refresh()
+    }
+  }, [approveState, rejectState, router])
 
   let snackbarMessage: string | null = null
   let snackbarVariant: 'success' | 'error' = 'success'
@@ -154,6 +171,22 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     return formatDurationMs(netMs)
   }
 
+  const handleOptimisticApprove = (item: SystemAttendanceItem) => {
+    const candidate = candidates.find((c) => c.id === item.user_id)
+    const rate = candidate?.hourly_rate || 0
+    const start = new Date(item.login_time).getTime()
+    const end = item.logout_time ? new Date(item.logout_time).getTime() : start
+    const netMs = Math.max(0, end - start - (item.break_duration_seconds || 0) * 1000)
+    const netHours = netMs / (1000 * 60 * 60)
+    const payout = Math.round(netHours * rate * 100) / 100
+
+    setOptimisticOverrides((prev) => ({
+      ...prev,
+      [item.id]: { approval_status: 'approved', payout_amount: payout },
+    }))
+    setDismissedKey(null)
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -165,67 +198,65 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       </div>
 
       {/* Filter Control Card */}
-      <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-4 flex flex-col gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
-          {/* Candidate Dropdown Filter */}
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
-            <select
-              value={selectedCandidate}
-              onChange={(e) => updateQueryParams('candidateId', e.target.value)}
-              className="w-full h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs font-semibold focus:outline-none focus:border-[var(--md-sys-color-primary)]"
-            >
-              <option value="all">All Candidates ({candidates.length})</option>
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Quick Date Presets */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <Filter className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1" />
-            {[
-              { id: 'today', label: 'Today' },
-              { id: 'this_week', label: 'This Week' },
-              { id: 'last_week', label: 'Last Week' },
-              { id: 'this_month', label: 'This Month' },
-              { id: 'all', label: 'All Time' },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => updateQueryParams('filter', f.id)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
-                  selectedFilter === f.id
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-semibold'
-                    : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
-                }`}
-              >
-                {f.label}
-              </button>
+      <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        {/* Candidate Dropdown Filter */}
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <Users className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
+          <select
+            value={selectedCandidate}
+            onChange={(e) => updateQueryParams('candidateId', e.target.value)}
+            className="w-full h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs font-semibold focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+          >
+            <option value="all">All Candidates ({candidates.length})</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.full_name}
+              </option>
             ))}
-          </div>
+          </select>
+        </div>
 
-          {/* Custom Date Picker */}
-          <div className="flex items-center gap-2 text-xs flex-wrap">
-            <Calendar className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
-            <span className="text-[var(--md-sys-color-on-surface-variant)] font-medium">Range:</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => handleDateChange(e.target.value, endDate)}
-              className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
-            />
-            <span className="text-[var(--md-sys-color-on-surface-variant)]">to</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => handleDateChange(startDate, e.target.value)}
-              className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
-            />
-          </div>
+        {/* Quick Date Presets */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Filter className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1" />
+          {[
+            { id: 'today', label: 'Today' },
+            { id: 'this_week', label: 'This Week' },
+            { id: 'last_week', label: 'Last Week' },
+            { id: 'this_month', label: 'This Month' },
+            { id: 'all', label: 'All Time' },
+          ].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => updateQueryParams('filter', f.id)}
+              className={`px-3.5 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                selectedFilter === f.id
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-semibold'
+                  : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Date Picker */}
+        <div className="flex items-center gap-2 text-xs flex-wrap">
+          <Calendar className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
+          <span className="text-[var(--md-sys-color-on-surface-variant)] font-medium">Range:</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => handleDateChange(e.target.value, endDate)}
+            className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
+          />
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">to</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => handleDateChange(startDate, e.target.value)}
+            className="h-8 px-2 rounded-[var(--md-sys-shape-corner-extra-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs focus:outline-none focus:border-[var(--md-sys-color-primary)]"
+          />
         </div>
       </Card>
 
@@ -332,7 +363,10 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                         {hasLogout && (
                           <div className="flex items-center justify-end gap-2">
                             {status !== 'approved' && (
-                              <form action={approveFormAction}>
+                              <form
+                                action={approveFormAction}
+                                onSubmit={() => handleOptimisticApprove(item)}
+                              >
                                 <input type="hidden" name="attendanceId" value={item.id} />
                                 <Button
                                   type="submit"
@@ -399,7 +433,21 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
               Specify the reason for rejecting shift on <strong>{formatDate(rejectItem.login_time)}</strong> for <strong>{rejectItem.candidateName}</strong>. This reason will be displayed to the candidate.
             </p>
 
-            <form action={rejectFormAction} className="flex flex-col gap-4">
+            <form
+              action={rejectFormAction}
+              onSubmit={() => {
+                setOptimisticOverrides((prev) => ({
+                  ...prev,
+                  [rejectItem.id]: {
+                    approval_status: 'rejected',
+                    rejection_reason: rejectionReasonText.trim(),
+                    payout_amount: 0,
+                  },
+                }))
+                setDismissedKey(null)
+              }}
+              className="flex flex-col gap-4"
+            >
               <input type="hidden" name="attendanceId" value={rejectItem.id} />
 
               <div className="flex flex-col gap-1.5">
