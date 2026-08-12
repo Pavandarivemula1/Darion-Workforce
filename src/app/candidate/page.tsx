@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { CandidateNav } from '@/components/candidate/CandidateNav'
 import { WorkStatusCard } from '@/components/candidate/WorkStatusCard'
 import { AttendanceTable } from '@/components/candidate/AttendanceTable'
+import { CandidateAnalyticsCharts } from '@/components/candidate/CandidateAnalyticsCharts'
+import { getWeekBoundaries, getKolkataDateKey, formatDurationMs } from '@/lib/utils/timesheet'
 import Link from 'next/link'
 import { ArrowRight, History } from 'lucide-react'
 
@@ -48,7 +50,66 @@ export default async function CandidateDashboardPage() {
     .limit(1)
     .maybeSingle()
 
-  // 3. Fetch recent 5 attendance records
+  // 3. Calculate Current Week Hours & Daily Bar Graph Data
+  const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
+
+  const { data: weekRecords } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('user_id', user.id)
+    .gte('login_time', startOfWeek.toISOString())
+    .lte('login_time', endOfWeek.toISOString())
+
+  let weeklyTotalMs = 0
+  let completedShiftsCount = 0
+
+  weekRecords?.forEach((r) => {
+    if (r.logout_time) {
+      weeklyTotalMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+      completedShiftsCount++
+    }
+  })
+
+  const dailyData = daysHeader.map(({ dayName, dateStr, dateIso }) => {
+    let dayMs = 0
+    const dayRecs = (weekRecords || []).filter(
+      (r) => getKolkataDateKey(r.login_time) === dateIso
+    )
+
+    dayRecs.forEach((r) => {
+      if (r.logout_time) {
+        dayMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+      }
+    })
+
+    const hoursNum = dayMs / (1000 * 60 * 60)
+
+    return {
+      dayName,
+      dateStr,
+      dateIso,
+      totalMs: dayMs,
+      formattedDuration: formatDurationMs(dayMs),
+      hoursNum: Math.round(hoursNum * 10) / 10,
+    }
+  })
+
+  // 4. Calculate Current Month Total Hours
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  const { data: monthRecords } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('user_id', user.id)
+    .gte('login_time', startOfMonth.toISOString())
+
+  let monthTotalMs = 0
+  monthRecords?.forEach((r) => {
+    if (r.logout_time) {
+      monthTotalMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+    }
+  })
+
+  // 5. Fetch recent 5 attendance records for table
   const { data: recentRecords } = await supabase
     .from('attendance')
     .select('*')
@@ -67,14 +128,23 @@ export default async function CandidateDashboardPage() {
             Welcome back, {profile?.full_name || 'Candidate'}
           </h2>
           <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-1">
-            Track your daily attendance and work shift duration
+            Track your daily attendance, shift progress, and weekly performance
           </p>
         </div>
 
-        {/* Work Status Card */}
+        {/* Work Status Card (Start/End Work) */}
         <WorkStatusCard
           activeSession={activeSession || null}
           todaySession={todaySession || null}
+        />
+
+        {/* Visual Analytics Bar Graph & Weekly Target Progress */}
+        <CandidateAnalyticsCharts
+          dailyData={dailyData}
+          weeklyTotalMs={weeklyTotalMs}
+          formattedWeeklyTotal={formatDurationMs(weeklyTotalMs)}
+          formattedMonthTotal={formatDurationMs(monthTotalMs)}
+          completedShiftsCount={completedShiftsCount}
         />
 
         {/* Recent Activity Table */}
