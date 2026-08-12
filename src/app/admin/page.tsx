@@ -12,6 +12,8 @@ import {
   ArrowRight,
   AlertCircle,
 } from 'lucide-react'
+import { getWeekBoundaries, getKolkataDateKey, formatDurationMs } from '@/lib/utils/timesheet'
+import { DashboardAnalyticsCharts } from '@/components/admin/dashboard/DashboardAnalyticsCharts'
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
@@ -35,11 +37,12 @@ export default async function AdminDashboardPage() {
     redirect('/candidate')
   }
 
-  // 1. Query candidate count
+  // 1. Query candidate list
   const { data: candidates } = await supabase
     .from('profiles')
     .select('*')
     .eq('role', 'candidate')
+    .order('created_at', { ascending: true })
 
   const totalCandidates = candidates?.length || 0
 
@@ -62,30 +65,88 @@ export default async function AdminDashboardPage() {
 
   const todayRecordsCount = todayRecords?.length || 0
 
-  // 4. Query This Week total hours
-  const now = new Date()
-  const day = now.getDay()
-  const diffToMon = now.getDate() - day + (day === 0 ? -6 : 1)
-  const startOfWeek = new Date(now.setDate(diffToMon))
-  startOfWeek.setHours(0, 0, 0, 0)
+  // 4. Query Current Week records & Boundaries
+  const { startOfWeek, endOfWeek, daysHeader } = getWeekBoundaries()
 
   const { data: weekRecords } = await supabase
     .from('attendance')
     .select('*')
     .gte('login_time', startOfWeek.toISOString())
+    .lte('login_time', endOfWeek.toISOString())
 
+  // Calculate Total Week Duration
   let totalWeekMs = 0
+  let completedCount = 0
+  let incompleteCount = 0
+
+  const todayKolkataKey = getKolkataDateKey(new Date().toISOString())
+
   weekRecords?.forEach((r) => {
-    if (r.login_time && r.logout_time) {
+    if (r.logout_time) {
       totalWeekMs += new Date(r.logout_time).getTime() - new Date(r.login_time).getTime()
-    } else if (r.login_time && !r.logout_time) {
-      totalWeekMs += new Date().getTime() - new Date(r.login_time).getTime()
+      completedCount++
+    } else {
+      const recKey = getKolkataDateKey(r.login_time)
+      if (recKey !== todayKolkataKey) {
+        incompleteCount++
+      }
     }
   })
 
   const weekHours = Math.floor(totalWeekMs / (1000 * 60 * 60))
   const weekMins = Math.floor((totalWeekMs % (1000 * 60 * 60)) / (1000 * 60))
   const thisWeekDuration = `${weekHours}h ${weekMins.toString().padStart(2, '0')}m`
+
+  // 5. Calculate Daily Bar Chart Data (Mon - Sun)
+  const dailyData = daysHeader.map(({ dayName, dateStr, dateIso }) => {
+    let dayMs = 0
+    const dayRecs = (weekRecords || []).filter(
+      (r) => getKolkataDateKey(r.login_time) === dateIso
+    )
+
+    dayRecs.forEach((r) => {
+      if (r.logout_time) {
+        dayMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+      }
+    })
+
+    const hoursNum = dayMs / (1000 * 60 * 60)
+
+    return {
+      dayName,
+      dateStr,
+      dateIso,
+      totalMs: dayMs,
+      formattedDuration: formatDurationMs(dayMs),
+      hoursNum: Math.round(hoursNum * 10) / 10,
+    }
+  })
+
+  // 6. Calculate Candidate Performance Breakdowns
+  const candidateBreakdowns = (candidates || []).map((cand) => {
+    const candRecs = (weekRecords || []).filter((r) => r.user_id === cand.id)
+    let candMs = 0
+    let candCompleted = 0
+
+    candRecs.forEach((r) => {
+      if (r.logout_time) {
+        candMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+        candCompleted++
+      }
+    })
+
+    const targetMs = 40 * 60 * 60 * 1000
+    const percentOfTarget = Math.round((candMs / targetMs) * 100)
+
+    return {
+      id: cand.id,
+      name: cand.full_name,
+      totalMs: candMs,
+      formattedDuration: formatDurationMs(candMs),
+      completedCount: candCompleted,
+      percentOfTarget,
+    }
+  })
 
   return (
     <AdminLayout adminName={adminProfile.full_name}>
@@ -95,7 +156,7 @@ export default async function AdminDashboardPage() {
           <div>
             <h2 className="text-xl sm:text-2xl font-bold">Admin Dashboard</h2>
             <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-              Overview of candidate time tracking activity and working sessions
+              Overview of candidate time tracking activity, working sessions, and visual analytics
             </p>
           </div>
           <Link
@@ -174,7 +235,16 @@ export default async function AdminDashboardPage() {
           </Card>
         </div>
 
-        {/* Live Working Candidates Section */}
+        {/* Visual Analytics Bar Chart & Distribution */}
+        <DashboardAnalyticsCharts
+          dailyData={dailyData}
+          candidateBreakdowns={candidateBreakdowns}
+          completedCount={completedCount}
+          workingNowCount={workingNowCount}
+          incompleteCount={incompleteCount}
+        />
+
+        {/* Live Working Candidates & Quick Controls Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card variant="outlined" className="flex flex-col gap-4 border border-[var(--md-sys-color-outline-variant)]">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
@@ -194,7 +264,7 @@ export default async function AdminDashboardPage() {
                     <div>
                       <p className="text-sm font-semibold">{session.profiles?.full_name || 'Candidate'}</p>
                       <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                        Login: {new Date(session.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        Login: {new Date(session.login_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </p>
                     </div>
                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
