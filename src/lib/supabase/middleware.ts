@@ -1,61 +1,65 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+interface JwtPayload {
+  sub?: string
+  exp?: number
+  user_metadata?: { role?: string }
+  app_metadata?: { role?: string }
+}
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
+function parseJwtFromCookies(request: NextRequest): { userId: string; role: string } | null {
+  try {
+    const allCookies = request.cookies.getAll()
+    const authCookie = allCookies.find(
+      (c) => (c.name.startsWith('sb-') && c.name.endsWith('-auth-token')) || c.name === 'sb-access-token'
+    )
+
+    if (!authCookie || !authCookie.value) return null
+
+    let rawVal = authCookie.value
+    if (rawVal.startsWith('[')) {
+      const parsed = JSON.parse(rawVal)
+      rawVal = Array.isArray(parsed) ? parsed[0] : ''
     }
-  )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    if (!rawVal || typeof rawVal !== 'string' || !rawVal.includes('.')) return null
 
+    const parts = rawVal.split('.')
+    if (parts.length < 2) return null
+
+    const payloadBase64 = parts[1]
+    const jsonStr = Buffer.from(payloadBase64, 'base64url').toString('utf8')
+    const payload: JwtPayload = JSON.parse(jsonStr)
+
+    if (!payload || !payload.sub) return null
+
+    // Check expiration (with 10-second buffer)
+    if (payload.exp && Date.now() / 1000 > payload.exp - 10) {
+      return null
+    }
+
+    const role = payload.user_metadata?.role || payload.app_metadata?.role || 'candidate'
+    return { userId: payload.sub, role }
+  } catch {
+    return null
+  }
+}
+
+export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+  const session = parseJwtFromCookies(request)
 
-  // 1. Protected routes check for unauthenticated users
-  if (!user && (pathname.startsWith('/admin') || pathname.startsWith('/candidate'))) {
+  // 1. Unauthenticated users trying to access protected routes
+  if (!session && (pathname.startsWith('/admin') || pathname.startsWith('/candidate'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
   }
 
-  // 2. Fast role check from JWT metadata, fallback to DB if missing
-  if (user) {
-    let role = user.user_metadata?.role || user.app_metadata?.role
-
-    if (!role) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      role = profile?.role || 'candidate'
-    }
+  // 2. Authenticated users checks
+  if (session) {
+    const { role } = session
 
     // Redirect logged-in users away from /login or /
     if (pathname === '/login' || pathname === '/') {
@@ -64,7 +68,7 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Strict Role-based access control
+    // Role-based access control
     if (pathname.startsWith('/admin') && role !== 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/candidate'
@@ -78,5 +82,5 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  return supabaseResponse
+  return NextResponse.next({ request })
 }
