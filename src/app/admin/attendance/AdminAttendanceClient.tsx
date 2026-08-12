@@ -4,6 +4,7 @@ import React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Filter, Calendar, Users, CheckCircle2, Clock, AlertTriangle, FileSpreadsheet } from 'lucide-react'
+import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 
 export interface CandidateOption {
   id: string
@@ -104,9 +105,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     const end = new Date(logoutIso).getTime()
     const grossMs = Math.max(0, end - start)
     const netMs = Math.max(0, grossMs - breakSecs * 1000)
-    const hours = Math.floor(netMs / (1000 * 60 * 60))
-    const mins = Math.floor((netMs % (1000 * 60 * 60)) / (1000 * 60))
-    return `${hours}h ${mins.toString().padStart(2, '0')}m`
+    return formatDurationMs(netMs)
   }
 
   return (
@@ -208,7 +207,6 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                   const isWorking = !hasLogout && today
                   const isOnBreak = isWorking && !!item.break_start_time
                   const breakSecs = item.break_duration_seconds || 0
-                  const bMins = Math.floor(breakSecs / 60)
 
                   return (
                     <tr
@@ -228,7 +226,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                         {formatTime(item.logout_time)}
                       </td>
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs text-amber-600 dark:text-amber-400 font-semibold">
-                        {bMins > 0 ? `${bMins}m` : '0m'}
+                        {formatBreakDuration(breakSecs)}
                       </td>
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs font-semibold">
                         {isOnBreak ? (

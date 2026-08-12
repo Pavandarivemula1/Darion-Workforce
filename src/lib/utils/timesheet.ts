@@ -107,14 +107,25 @@ export function getWeekBoundaries(referenceDate: Date = new Date()): {
 }
 
 /**
- * Formats milliseconds duration into "XXh YYm"
+ * Formats milliseconds duration into "XXh YYm ZZs"
  */
 export function formatDurationMs(ms: number): string {
-  if (!ms || ms <= 0) return '0h 00m'
-  const totalMins = Math.floor(ms / (1000 * 60))
-  const hours = Math.floor(totalMins / 60)
-  const mins = totalMins % 60
-  return `${hours}h ${mins.toString().padStart(2, '0')}m`
+  if (!ms || ms <= 0) return '0h 00m 00s'
+  const totalSecs = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSecs / 3600)
+  const mins = Math.floor((totalSecs % 3600) / 60)
+  const secs = totalSecs % 60
+  return `${hours}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`
+}
+
+/**
+ * Formats break seconds into "XXm YYs"
+ */
+export function formatBreakDuration(totalSecs = 0): string {
+  if (!totalSecs || totalSecs <= 0) return '0m 00s'
+  const mins = Math.floor(totalSecs / 60)
+  const secs = totalSecs % 60
+  return `${mins}m ${secs.toString().padStart(2, '0')}s`
 }
 
 /**

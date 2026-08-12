@@ -1,6 +1,7 @@
 import React from 'react'
 import { Card } from '@/components/ui/Card'
 import { CheckCircle2, Clock, AlertTriangle, FileSpreadsheet, Coffee } from 'lucide-react'
+import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 
 export interface AttendanceItem {
   id: string
@@ -65,9 +66,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
     const end = new Date(logoutIso).getTime()
     const grossMs = Math.max(0, end - start)
     const netMs = Math.max(0, grossMs - breakSecs * 1000)
-    const hours = Math.floor(netMs / (1000 * 60 * 60))
-    const mins = Math.floor((netMs % (1000 * 60 * 60)) / (1000 * 60))
-    return `${hours}h ${mins.toString().padStart(2, '0')}m`
+    return formatDurationMs(netMs)
   }
 
   return (
@@ -91,7 +90,6 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
               const isWorking = !hasLogout && today
               const isOnBreak = isWorking && !!item.break_start_time
               const breakSecs = item.break_duration_seconds || 0
-              const bMins = Math.floor(breakSecs / 60)
 
               return (
                 <tr
@@ -108,7 +106,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                     {formatTime(item.logout_time)}
                   </td>
                   <td className="py-4 px-4 whitespace-nowrap font-mono text-xs text-amber-600 dark:text-amber-400 font-semibold">
-                    {bMins > 0 ? `${bMins}m` : '0m'}
+                    {formatBreakDuration(breakSecs)}
                   </td>
                   <td className="py-4 px-4 whitespace-nowrap font-mono text-xs font-semibold">
                     {isOnBreak ? (

@@ -1,4 +1,4 @@
-import { AttendanceRecord, CandidateProfile, formatDurationMs } from './timesheet'
+import { AttendanceRecord, CandidateProfile, formatDurationMs, formatBreakDuration } from './timesheet'
 
 const TIMEZONE = 'Asia/Kolkata'
 
@@ -43,8 +43,7 @@ export function exportAttendanceToCsv(
     let status = 'Incomplete'
 
     const breakSecs = r.break_duration_seconds || 0
-    const bMins = Math.floor(breakSecs / 60)
-    const breakDurationStr = `${bMins}m`
+    const breakDurationStr = formatBreakDuration(breakSecs)
 
     if (r.logout_time) {
       const logoutDate = new Date(r.logout_time)
