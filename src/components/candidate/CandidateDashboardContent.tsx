@@ -3,6 +3,7 @@ import { WorkStatusCard } from '@/components/candidate/WorkStatusCard'
 import { AttendanceTable } from '@/components/candidate/AttendanceTable'
 import { CandidateAnalyticsCharts } from '@/components/candidate/CandidateAnalyticsCharts'
 import { getWeekBoundaries, getKolkataDateKey, formatDurationMs } from '@/lib/utils/timesheet'
+import { DEFAULT_FALLBACK_SHIFT, type ShiftConfig } from '@/lib/utils/shift'
 import Link from 'next/link'
 import { ArrowRight, History, Clock, Users } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -20,6 +21,7 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 
   const [
+    { data: profileData, error: profileError },
     { data: activeSession },
     { data: todaySession },
     { data: weekRecords },
@@ -27,16 +29,22 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
     { data: recentRecords },
     { data: overshiftRequest },
     { data: allActiveSessions },
+    { data: defaultShiftData },
   ] = await Promise.all([
     supabase
+      .from('profiles')
+      .select('hourly_rate, shift_id')
+      .eq('id', userId)
+      .single(),
+    supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
       .eq('user_id', userId)
       .is('logout_time', null)
       .maybeSingle(),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
       .eq('user_id', userId)
       .gte('login_time', startOfToday.toISOString())
       .order('login_time', { ascending: false })
@@ -44,18 +52,18 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
       .maybeSingle(),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
       .eq('user_id', userId)
       .gte('login_time', startOfWeek.toISOString())
       .lte('login_time', endOfWeek.toISOString()),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
       .eq('user_id', userId)
       .gte('login_time', startOfMonth.toISOString()),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
       .eq('user_id', userId)
       .order('login_time', { ascending: false })
       .limit(5),
@@ -69,27 +77,75 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
       .from('attendance')
       .select('id, user_id, login_time, break_start_time, profiles(full_name)')
       .is('logout_time', null),
+    supabase
+      .from('shifts')
+      .select('id, name, start_time, end_time, grace_period_mins, auto_logout_enabled, is_overnight, is_default')
+      .eq('is_default', true)
+      .maybeSingle(),
   ])
+
+  let profile: { hourly_rate?: number | null; shift_id?: string | null } | null = profileData
+  if (profileError || !profile) {
+    const { data: fallbackProfile } = await supabase
+      .from('profiles')
+      .select('hourly_rate')
+      .eq('id', userId)
+      .maybeSingle()
+    profile = fallbackProfile ? { hourly_rate: fallbackProfile.hourly_rate, shift_id: null } : null
+  }
+
+  // If candidate has a custom assigned shift_id, fetch it; otherwise use system default shift
+  let assignedShift: ShiftConfig = defaultShiftData || DEFAULT_FALLBACK_SHIFT
+  if (profile?.shift_id) {
+    const { data: customShift } = await supabase
+      .from('shifts')
+      .select('id, name, start_time, end_time, grace_period_mins, auto_logout_enabled, is_overnight, is_default')
+      .eq('id', profile.shift_id)
+      .maybeSingle()
+    if (customShift) {
+      assignedShift = customShift
+    }
+  }
+
+  const hourlyRate = Number(profile?.hourly_rate || 0)
 
   let weeklyTotalMs = 0
   let completedShiftsCount = 0
+  let weeklyPay = 0
 
   weekRecords?.forEach((r) => {
     if (r.logout_time) {
-      weeklyTotalMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+      const gross = Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+      const breakMs = (r.break_duration_seconds || 0) * 1000
+      const net = Math.max(0, gross - breakMs)
+      weeklyTotalMs += net
       completedShiftsCount++
+
+      const shiftPay = typeof r.payout_amount === 'number' && r.payout_amount > 0
+        ? r.payout_amount
+        : Math.round((net / (1000 * 60 * 60)) * hourlyRate * 100) / 100
+      weeklyPay += shiftPay
     }
   })
 
   const dailyData = daysHeader.map(({ dayName, dateStr, dateIso }) => {
     let dayMs = 0
+    let dayPay = 0
     const dayRecs = (weekRecords || []).filter(
       (r) => getKolkataDateKey(r.login_time) === dateIso
     )
 
     dayRecs.forEach((r) => {
       if (r.logout_time) {
-        dayMs += Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+        const gross = Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
+        const breakMs = (r.break_duration_seconds || 0) * 1000
+        const net = Math.max(0, gross - breakMs)
+        dayMs += net
+
+        const p = typeof r.payout_amount === 'number' && r.payout_amount > 0
+          ? r.payout_amount
+          : Math.round((net / (1000 * 60 * 60)) * hourlyRate * 100) / 100
+        dayPay += p
       }
     })
 
@@ -102,15 +158,23 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
       totalMs: dayMs,
       formattedDuration: formatDurationMs(dayMs),
       hoursNum: Math.round(hoursNum * 10) / 10,
+      dailyPay: Math.round(dayPay * 100) / 100,
     }
   })
 
   let monthTotalMs = 0
+  let monthPay = 0
   monthRecords?.forEach((r) => {
     if (r.logout_time) {
       const grossMs = Math.max(0, new Date(r.logout_time).getTime() - new Date(r.login_time).getTime())
       const breakMs = (r.break_duration_seconds || 0) * 1000
-      monthTotalMs += Math.max(0, grossMs - breakMs)
+      const net = Math.max(0, grossMs - breakMs)
+      monthTotalMs += net
+
+      const p = typeof r.payout_amount === 'number' && r.payout_amount > 0
+        ? r.payout_amount
+        : Math.round((net / (1000 * 60 * 60)) * hourlyRate * 100) / 100
+      monthPay += p
     }
   })
 
@@ -125,6 +189,9 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
         activeSession={activeSession || null}
         todaySession={todaySession || null}
         overshiftStatus={overshiftRequest?.status || null}
+        hourlyRate={hourlyRate}
+        todayPayoutAmount={todaySession?.payout_amount || 0}
+        assignedShift={assignedShift}
       />
 
       <CandidateAnalyticsCharts
@@ -133,6 +200,8 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
         formattedWeeklyTotal={formatDurationMs(weeklyTotalMs)}
         formattedMonthTotal={formatDurationMs(monthTotalMs)}
         completedShiftsCount={completedShiftsCount}
+        weeklyPay={Math.round(weeklyPay * 100) / 100}
+        monthPay={Math.round(monthPay * 100) / 100}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
@@ -157,7 +226,7 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold flex items-center gap-2">
               <Users className="w-4 h-4 text-emerald-500" />
-              Who's Working Now
+              Who&apos;s Working Now
             </h3>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
               {workingNowCount} Active
@@ -203,9 +272,8 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
                 })}
               </div>
             ) : (
-              <div className="py-12 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] flex flex-col items-center justify-center gap-2 h-full">
-                <Clock className="w-8 h-8 opacity-40" />
-                No one else is currently working.
+              <div className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                No other candidates active right now.
               </div>
             )}
           </Card>

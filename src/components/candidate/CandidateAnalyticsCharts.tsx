@@ -2,7 +2,8 @@
 
 import React from 'react'
 import { Card } from '@/components/ui/Card'
-import { BarChart3, Target, Clock, CheckCircle2 } from 'lucide-react'
+import { BarChart3, Target, Clock, CheckCircle2, IndianRupee } from 'lucide-react'
+import { formatINR } from '@/lib/utils/payroll'
 
 export interface CandidateDailyBar {
   dayName: string
@@ -11,6 +12,7 @@ export interface CandidateDailyBar {
   totalMs: number
   formattedDuration: string
   hoursNum: number
+  dailyPay?: number
 }
 
 export interface CandidateAnalyticsChartsProps {
@@ -19,6 +21,8 @@ export interface CandidateAnalyticsChartsProps {
   formattedWeeklyTotal: string
   formattedMonthTotal: string
   completedShiftsCount: number
+  weeklyPay?: number
+  monthPay?: number
 }
 
 export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> = ({
@@ -27,6 +31,8 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
   formattedWeeklyTotal,
   formattedMonthTotal,
   completedShiftsCount,
+  weeklyPay = 0,
+  monthPay = 0,
 }) => {
   // Target weekly hours (40h)
   const targetWeeklyMs = 40 * 60 * 60 * 1000
@@ -37,7 +43,7 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* 1. Candidate Weekly Hours Bar Graph */}
+      {/* 1. Candidate Weekly Hours & Daily Pay Bar Graph */}
       <Card variant="outlined" className="lg:col-span-2 flex flex-col gap-4 border border-[var(--md-sys-color-outline-variant)]">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
           <div className="flex items-center gap-2">
@@ -45,14 +51,14 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
               <BarChart3 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-bold">Your Weekly Work Hours</h3>
+              <h3 className="text-sm sm:text-base font-bold">Your Weekly Work & Daily Pay</h3>
               <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                Daily shift durations for the current week (Mon – Sun)
+                Daily shift duration & automated wage count for the current week
               </p>
             </div>
           </div>
-          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] shrink-0">
-            This Week
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 shrink-0 font-mono">
+            Week Pay: {formatINR(weeklyPay)}
           </span>
         </div>
 
@@ -75,9 +81,12 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
 
               return (
                 <div key={d.dateIso} className="flex-1 min-w-0 flex flex-col items-center gap-1.5 group h-full justify-end z-10">
-                  {/* Tooltip on hover */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none">
-                    {d.formattedDuration}
+                  {/* Tooltip on hover with auto daily pay */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] font-mono font-semibold px-2 py-1 rounded-md bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none shadow-lg z-30 flex flex-col items-center">
+                    <span>{d.formattedDuration}</span>
+                    {typeof d.dailyPay === 'number' && d.dailyPay > 0 && (
+                      <span className="text-emerald-400 font-bold">{formatINR(d.dailyPay)}</span>
+                    )}
                   </div>
 
                   {/* Visual Bar */}
@@ -98,10 +107,16 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
                     )}
                   </div>
 
-                  {/* Day Label */}
+                  {/* Day Label & Daily Pay Badge */}
                   <div className="text-center mt-0.5">
                     <p className="text-[10px] sm:text-xs font-bold leading-tight truncate">{d.dayName}</p>
-                    <p className="text-[9px] sm:text-[10px] text-[var(--md-sys-color-on-surface-variant)] leading-tight truncate">{d.dateStr}</p>
+                    {typeof d.dailyPay === 'number' && d.dailyPay > 0 ? (
+                      <p className="text-[9px] text-emerald-700 dark:text-emerald-400 font-mono font-bold leading-tight truncate">
+                        ₹{Math.round(d.dailyPay)}
+                      </p>
+                    ) : (
+                      <p className="text-[9px] sm:text-[10px] text-[var(--md-sys-color-on-surface-variant)] leading-tight truncate">{d.dateStr}</p>
+                    )}
                   </div>
                 </div>
               )
@@ -110,15 +125,17 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
         </div>
       </Card>
 
-      {/* 2. Target Progress & Performance Stats Card */}
+      {/* 2. Target Progress & Earnings Stats Card */}
       <Card variant="outlined" className="flex flex-col gap-4 border border-[var(--md-sys-color-outline-variant)] justify-between">
-        <div className="pb-3 border-b border-[var(--md-sys-color-outline-variant)] flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)] flex items-center justify-center shrink-0">
-            <Target className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-bold">40-Hour Weekly Goal</h3>
-            <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)]">Your goal progress this week</p>
+        <div className="pb-3 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)] flex items-center justify-center shrink-0">
+              <Target className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold">40-Hour Weekly Goal</h3>
+              <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)]">Your goal progress this week</p>
+            </div>
           </div>
         </div>
 
@@ -146,13 +163,15 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
           </p>
         </div>
 
-        {/* Monthly Summary Badges */}
+        {/* Monthly Summary Badges with Auto Pay Count */}
         <div className="pt-3 border-t border-[var(--md-sys-color-outline-variant)] grid grid-cols-2 gap-3">
-          <div className="p-2.5 sm:p-3 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-            <span className="text-[9px] sm:text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-semibold uppercase tracking-wider flex items-center gap-1">
-              <Clock className="w-3 h-3 text-[var(--md-sys-color-primary)]" /> Monthly Total
+          <div className="p-2.5 sm:p-3 rounded-[var(--md-sys-shape-corner-medium)] bg-emerald-500/10 flex flex-col gap-1 border border-emerald-500/30">
+            <span className="text-[9px] sm:text-[10px] text-emerald-800 dark:text-emerald-300 font-bold uppercase tracking-wider flex items-center gap-1">
+              <IndianRupee className="w-3 h-3" /> Month Earnings
             </span>
-            <span className="text-sm sm:text-base font-bold font-mono truncate">{formattedMonthTotal}</span>
+            <span className="text-sm sm:text-base font-extrabold font-mono text-emerald-700 dark:text-emerald-400 truncate">
+              {formatINR(monthPay)}
+            </span>
           </div>
 
           <div className="p-2.5 sm:p-3 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">

@@ -38,6 +38,7 @@ export async function createCandidateAction(
   const password = formData.get('password') as string
   const hourlyRateStr = formData.get('hourlyRate') as string
   const hourlyRate = parseFloat(hourlyRateStr || '0')
+  const shiftId = (formData.get('shiftId') as string) || null
 
   if (!email || !fullName || !password) {
     return { error: 'All fields (Full Name, Email, Password) are required.' }
@@ -45,6 +46,21 @@ export async function createCandidateAction(
 
   if (password.length < 6) {
     return { error: 'Password must be at least 6 characters long.' }
+  }
+
+  // Determine shift to assign (user chosen or company default)
+  let assignedShiftId = shiftId && shiftId !== 'none' ? shiftId : null
+  if (!assignedShiftId) {
+    try {
+      const { data: defaultShift } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('is_default', true)
+        .maybeSingle()
+      if (defaultShift) assignedShiftId = defaultShift.id
+    } catch {
+      // safe fallback if shifts table is empty or migrating
+    }
   }
 
   // 3. Create candidate user via Supabase Auth Admin Client (auto-confirms email)
@@ -65,14 +81,21 @@ export async function createCandidateAction(
   }
 
   if (authData.user) {
-    // Explicitly insert or upsert into profiles to include hourly_rate
-    const { error: profileError } = await supabase.from('profiles').upsert({
+    // Explicitly insert or upsert into profiles to include hourly_rate and shift_id
+    const profileData: any = {
       id: authData.user.id,
       full_name: fullName,
       role: 'candidate',
       hourly_rate: isNaN(hourlyRate) ? 0 : Math.max(0, hourlyRate),
       updated_at: new Date().toISOString(),
-    })
+    }
+    let { error: profileError } = await supabase.from('profiles').upsert(profileData)
+
+    if (profileError && profileData.shift_id) {
+      delete profileData.shift_id
+      const retry = await supabase.from('profiles').upsert(profileData)
+      profileError = retry.error
+    }
 
     if (profileError) {
       return { error: profileError.message || 'Candidate user created, but profile update failed.' }
@@ -80,6 +103,7 @@ export async function createCandidateAction(
   }
 
   revalidatePath('/admin/candidates')
+  revalidatePath('/admin/shifts')
   revalidatePath('/admin')
   return { success: true }
 }
@@ -166,6 +190,7 @@ export async function updateCandidateProfileAction(
   const phoneNumber = formData.get('phoneNumber') as string
   const address = formData.get('address') as string
   const idNumber = formData.get('idNumber') as string
+  const shiftId = formData.get('shiftId') as string | null
   const avatarFile = formData.get('avatarFile') as File | null
   
   if (!candidateId || !fullName) {
@@ -204,20 +229,31 @@ export async function updateCandidateProfileAction(
     updated_at: new Date().toISOString(),
   }
 
+  if (shiftId !== null && shiftId !== undefined) {
+    updateData.shift_id = shiftId === 'none' || !shiftId ? null : shiftId
+  }
+
   if (avatarUrl !== undefined) {
     updateData.avatar_url = avatarUrl
   }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from('profiles')
     .update(updateData)
     .eq('id', candidateId)
+
+  if (error && updateData.shift_id !== undefined) {
+    delete updateData.shift_id
+    const retry = await supabase.from('profiles').update(updateData).eq('id', candidateId)
+    error = retry.error
+  }
 
   if (error) {
     return { error: error.message || 'Failed to update profile.' }
   }
 
   revalidatePath('/admin/candidates')
+  revalidatePath('/admin/shifts')
   revalidatePath('/admin/attendance')
   revalidatePath('/admin/timesheet')
   revalidatePath('/admin')

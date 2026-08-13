@@ -1,7 +1,7 @@
 import React from 'react'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'filled' | 'outlined' | 'text' | 'elevated'
+  variant?: 'filled' | 'outlined' | 'text' | 'elevated' | 'tonal'
   size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
   icon?: React.ReactNode
@@ -30,6 +30,7 @@ export const Button: React.FC<ButtonProps> = ({
     outlined: 'border border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 active:scale-[0.98]',
     text: 'text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 active:scale-[0.98]',
     elevated: 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] active:scale-[0.98]',
+    tonal: 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] hover:opacity-90 active:scale-[0.98]',
   }
 
   return (

@@ -166,13 +166,30 @@ export async function endWorkAction() {
     finalBreakSeconds += elapsedSec
   }
 
-  // Update active session with logout_time and final break seconds
+  // Fetch candidate hourly rate for automatic daily pay calculation
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('hourly_rate')
+    .eq('id', user.id)
+    .single()
+
+  const hourlyRate = Number(profile?.hourly_rate || 0)
+  const logoutDate = new Date()
+  const loginDate = new Date(activeSession.login_time)
+  const grossMs = Math.max(0, logoutDate.getTime() - loginDate.getTime())
+  const netMs = Math.max(0, grossMs - finalBreakSeconds * 1000)
+  const netHours = netMs / (1000 * 60 * 60)
+  const autoDailyPayout = Math.round(netHours * hourlyRate * 100) / 100
+
+  // Update active session with logout_time, final break seconds, and auto-calculated daily payout amount
   const { error: updateError } = await supabase
     .from('attendance')
     .update({
-      logout_time: new Date().toISOString(),
+      logout_time: logoutDate.toISOString(),
       break_start_time: null,
       break_duration_seconds: finalBreakSeconds,
+      payout_amount: autoDailyPayout,
+      payment_status: 'unpaid',
     })
     .eq('id', activeSession.id)
     .is('logout_time', null)
@@ -183,5 +200,11 @@ export async function endWorkAction() {
 
   revalidatePath('/candidate')
   revalidatePath('/candidate/attendance')
+  revalidatePath('/candidate/payroll')
+  revalidatePath('/admin')
+  revalidatePath('/admin/shifts')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/payroll')
+  revalidatePath('/admin/timesheet')
   return { success: true }
 }

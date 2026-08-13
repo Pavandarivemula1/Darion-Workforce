@@ -14,7 +14,10 @@ import {
   LogOut,
   Menu,
   X,
+  Banknote,
+  MessageSquare,
 } from 'lucide-react'
+import { FeedbackWidget } from './FeedbackWidget'
 
 export interface CandidateLayoutProps {
   children: React.ReactNode
@@ -29,6 +32,8 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
   const navItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
     { label: 'Attendance', href: '/candidate/attendance', icon: History },
+    { label: 'Earnings', href: '/candidate/payroll', icon: Banknote },
+    { label: 'Feedback', href: '/candidate/feedback', icon: MessageSquare },
     { label: 'Profile', href: '/candidate/profile', icon: User },
   ]
 
@@ -127,6 +132,9 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
           {children}
         </div>
       </div>
+
+      {/* Floating Feedback Widget */}
+      <FeedbackWidget />
     </div>
   )
 }

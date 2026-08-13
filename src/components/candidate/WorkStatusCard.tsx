@@ -21,7 +21,19 @@ import {
   AlertCircle,
   Coffee,
   Pause,
+  IndianRupee,
+  Moon,
+  Sun,
 } from 'lucide-react'
+import { formatINR } from '@/lib/utils/payroll'
+import {
+  type ShiftConfig,
+  DEFAULT_FALLBACK_SHIFT,
+  getShiftWindowDates,
+  getShiftEndTimeForSession,
+  formatShiftTime,
+} from '@/lib/utils/shift'
+import { ShiftFeedbackDialog } from './ShiftFeedbackDialog'
 
 export interface AttendanceRecord {
   id: string
@@ -37,24 +49,9 @@ export interface WorkStatusCardProps {
   activeSession: AttendanceRecord | null
   todaySession: AttendanceRecord | null
   overshiftStatus?: string | null
-}
-
-function getShiftEndTime(loginTime: string) {
-  const loginDate = new Date(new Date(loginTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
-  const hour = loginDate.getHours()
-  
-  const endTime = new Date(loginDate)
-  if (hour >= 9 && hour < 16) {
-    endTime.setHours(17, 0, 0, 0)
-  } else if (hour >= 16 || hour < 4) {
-    if (hour >= 16) {
-      endTime.setDate(endTime.getDate() + 1)
-    }
-    endTime.setHours(0, 0, 0, 0)
-  } else {
-    endTime.setHours(17, 0, 0, 0)
-  }
-  return endTime
+  hourlyRate?: number
+  todayPayoutAmount?: number
+  assignedShift?: ShiftConfig
 }
 
 function calculateInitialWorkDuration(
@@ -98,11 +95,23 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   activeSession,
   todaySession,
   overshiftStatus,
+  hourlyRate = 0,
+  todayPayoutAmount = 0,
+  assignedShift = DEFAULT_FALLBACK_SHIFT,
 }) => {
   const [workDuration, setWorkDuration] = useState<string>(() =>
     calculateInitialWorkDuration(activeSession, todaySession)
   )
   const [breakDurationText, setBreakDurationText] = useState<string>('0m 00s')
+  const [liveDailyPay, setLiveDailyPay] = useState<number>(() => {
+    if (todayPayoutAmount && todayPayoutAmount > 0) return todayPayoutAmount
+    if (todaySession?.logout_time && todaySession?.login_time) {
+      const gross = Math.max(0, new Date(todaySession.logout_time).getTime() - new Date(todaySession.login_time).getTime())
+      const net = Math.max(0, gross - (todaySession.break_duration_seconds || 0) * 1000)
+      return Math.round((net / (1000 * 60 * 60)) * hourlyRate * 100) / 100
+    }
+    return 0
+  })
   const [isPending, setIsPending] = useState<boolean>(false)
   const [confirmDialog, setConfirmDialog] = useState<
     'start' | 'startBreak' | 'endBreak' | 'end' | 'requestOvershift' | null
@@ -115,6 +124,8 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   const [isWithinRegularHours, setIsWithinRegularHours] = useState(true)
   const [liveTime, setLiveTime] = useState<string>('')
   const [scheduledDate, setScheduledDate] = useState<string>('')
+  const [showShiftFeedback, setShowShiftFeedback] = useState<boolean>(false)
+  const [feedbackSessionId, setFeedbackSessionId] = useState<string | null>(null)
   const isAutoEndingRef = useRef(false)
 
   useEffect(() => {
@@ -174,22 +185,33 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
           .padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`
       )
 
-      // Auto stop logic
+      // Realtime auto pay calculation
+      const curHours = netMs / (1000 * 60 * 60)
+      const curPay = Math.round(curHours * hourlyRate * 100) / 100
+      setLiveDailyPay(curPay)
+
+      // Dynamic Auto stop logic based on candidate's assigned shift
       const nowKolkata = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
-      const endTime = getShiftEndTime(activeSession.login_time)
+      const endTime = getShiftEndTimeForSession(activeSession.login_time, assignedShift)
       
       if (
+        assignedShift.auto_logout_enabled &&
         nowKolkata.getTime() >= endTime.getTime() &&
         localOvershiftStatus !== 'approved' &&
         !isAutoEndingRef.current
       ) {
         isAutoEndingRef.current = true
         setIsPending(true)
+        const currentSessionId = activeSession.id
         endWorkAction().then(res => {
           setIsPending(false)
           if (res?.error) setErrorMsg(res.error)
-          else setSuccessMsg('Shift ended automatically.')
-        }).catch(err => {
+          else {
+            setSuccessMsg(`Shift completed. Ended automatically at scheduled end time (${formatShiftTime(assignedShift.end_time)}).`)
+            setFeedbackSessionId(currentSessionId)
+            setShowShiftFeedback(true)
+          }
+        }).catch(() => {
           setIsPending(false)
           setErrorMsg('Failed to auto-end shift.')
         })
@@ -199,7 +221,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
     updateTimers()
     const interval = setInterval(updateTimers, 1000)
     return () => clearInterval(interval)
-  }, [activeSession, localOvershiftStatus])
+  }, [activeSession, localOvershiftStatus, assignedShift, hourlyRate])
 
   useEffect(() => {
     const setFavicon = (color: string) => {
@@ -235,33 +257,15 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
 
   useEffect(() => {
     const checkShift = () => {
-      const kolkataTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
-      const nowKolkata = new Date(kolkataTimeStr)
-      const hour = nowKolkata.getHours()
-      
-      const isRegular = hour >= 9
-      setIsWithinRegularHours(isRegular)
-      
-      if (!isRegular) {
-        const next9AM = new Date(nowKolkata)
-        next9AM.setHours(9, 0, 0, 0)
-        const diffMs = next9AM.getTime() - nowKolkata.getTime()
-        if (diffMs > 0) {
-          const h = Math.floor(diffMs / (1000 * 60 * 60))
-          const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-          setTimeToNextShift(`${h}h ${m}m`)
-        } else {
-          setTimeToNextShift(null)
-        }
-      } else {
-        setTimeToNextShift(null)
-      }
+      const { isWithinWindow, formattedTimeUntilStart } = getShiftWindowDates(assignedShift)
+      setIsWithinRegularHours(isWithinWindow)
+      setTimeToNextShift(formattedTimeUntilStart)
     }
     
     checkShift()
-    const intv = setInterval(checkShift, 60000)
+    const intv = setInterval(checkShift, 10000)
     return () => clearInterval(intv)
-  }, [])
+  }, [assignedShift])
 
   const handleStartWork = async () => {
     setIsPending(true)
@@ -297,6 +301,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   }
 
   const handleEndWork = async () => {
+    const currentSessionId = activeSession?.id || null
     setIsPending(true)
     setErrorMsg(null)
     setConfirmDialog(null)
@@ -304,7 +309,11 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
     setIsPending(false)
 
     if (res?.error) setErrorMsg(res.error)
-    else setSuccessMsg('Work session ended successfully.')
+    else {
+      setSuccessMsg('Work session ended successfully.')
+      setFeedbackSessionId(currentSessionId)
+      setShowShiftFeedback(true)
+    }
   }
 
   const formatTime = (isoString?: string | null) => {
@@ -355,7 +364,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         <div className="flex flex-col gap-6">
           {/* Header Status Row */}
           <div className="flex items-center justify-between gap-4 flex-wrap pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
                 <span className="text-sm font-medium" suppressHydrationWarning>
@@ -373,66 +382,98 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
                   {liveTime}
                 </span>
               </div>
+
+              {/* Assigned Shift Pill */}
+              <div className="flex items-center gap-2 pl-8 pt-0.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                  {assignedShift.is_overnight ? (
+                    <Moon className="w-3 h-3 text-indigo-500" />
+                  ) : (
+                    <Sun className="w-3 h-3 text-amber-500" />
+                  )}
+                  <span>
+                    Shift: <strong>{assignedShift.name}</strong> ({formatShiftTime(assignedShift.start_time)} – {formatShiftTime(assignedShift.end_time)})
+                  </span>
+                </span>
+              </div>
             </div>
 
             {/* Status Badges */}
-            {isOnBreak ? (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
-                <Coffee className="w-4 h-4" />
-                On Break
-              </span>
-            ) : isWorking ? (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] animate-pulse">
-                <span className="w-2.5 h-2.5 rounded-full bg-[var(--md-sys-color-primary)]" />
-                Working
-              </span>
-            ) : isCompletedToday ? (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Shift Completed
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]">
-                <AlertCircle className="w-3.5 h-3.5" />
-                Not Started
-              </span>
-            )}
+            <div className="flex flex-col sm:items-end gap-1.5">
+              {isOnBreak ? (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
+                  <Coffee className="w-4 h-4" />
+                  On Break
+                </span>
+              ) : isWorking ? (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] animate-pulse">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--md-sys-color-primary)]" />
+                  Working
+                </span>
+              ) : isCompletedToday ? (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Shift Completed
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Not Started
+                </span>
+              )}
+
+              {!isWorking && !isCompletedToday && timeToNextShift && (
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
+                  Shift begins in <strong className="text-[var(--md-sys-color-primary)]">{timeToNextShift}</strong>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Time & Duration Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="p-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-medium">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-semibold">
                 Started
               </span>
-              <span className="text-lg font-bold">
+              <span className="text-base sm:text-lg font-bold">
                 {formatTime(activeSession?.login_time || todaySession?.login_time)}
               </span>
             </div>
 
-            <div className="p-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-medium">
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-semibold">
                 Ended
               </span>
-              <span className="text-lg font-bold">
+              <span className="text-base sm:text-lg font-bold">
                 {formatTime(activeSession ? null : todaySession?.logout_time)}
               </span>
             </div>
 
-            <div className="p-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-xs opacity-90 uppercase tracking-wider font-medium flex items-center gap-1">
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold flex items-center gap-1">
                 <Coffee className="w-3.5 h-3.5" /> Break Taken
               </span>
-              <span className="text-lg font-bold font-mono">
+              <span className="text-base sm:text-lg font-bold font-mono">
                 {breakDurationText}
               </span>
             </div>
 
-            <div className="p-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-xs opacity-80 uppercase tracking-wider font-medium flex items-center gap-1">
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[11px] opacity-80 uppercase tracking-wider font-semibold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" /> Net Work Time
               </span>
-              <span className="text-lg font-bold font-mono">{workDuration}</span>
+              <span className="text-base sm:text-lg font-bold font-mono">{workDuration}</span>
+            </div>
+
+            <div className="col-span-2 sm:col-span-1 p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 flex flex-col gap-1 border border-emerald-500/30">
+              <span className="text-[11px] opacity-90 uppercase tracking-wider font-bold flex items-center gap-1">
+                <IndianRupee className="w-3.5 h-3.5" /> Today&apos;s Pay
+              </span>
+              <span className="text-base sm:text-lg font-black font-mono">
+                {formatINR(liveDailyPay)}
+              </span>
             </div>
           </div>
 
@@ -619,6 +660,12 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
           </div>
         </div>
       </Dialog>
+
+      <ShiftFeedbackDialog
+        isOpen={showShiftFeedback}
+        attendanceId={feedbackSessionId}
+        onClose={() => setShowShiftFeedback(false)}
+      />
 
       <Snackbar message={errorMsg} variant="error" onClose={() => setErrorMsg(null)} />
       <Snackbar message={successMsg} variant="success" onClose={() => setSuccessMsg(null)} />

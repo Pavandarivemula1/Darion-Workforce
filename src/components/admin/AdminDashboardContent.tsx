@@ -30,7 +30,7 @@ export default async function AdminDashboardContent() {
   ] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, role, created_at')
+      .select('id, full_name, role, hourly_rate, created_at')
       .eq('role', 'candidate')
       .order('created_at', { ascending: true }),
     supabase
@@ -39,11 +39,11 @@ export default async function AdminDashboardContent() {
       .is('logout_time', null),
     supabase
       .from('attendance')
-      .select('id')
+      .select('id, payout_amount')
       .gte('login_time', startOfToday.toISOString()),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount')
       .gte('login_time', startOfWeek.toISOString())
       .lte('login_time', endOfWeek.toISOString()),
   ])

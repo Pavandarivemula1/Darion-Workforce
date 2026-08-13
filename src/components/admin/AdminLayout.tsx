@@ -15,8 +15,11 @@ import {
   LogOut,
   ShieldCheck,
   ShieldAlert,
+  Banknote,
   Menu,
   X,
+  Clock,
+  MessageSquare,
 } from 'lucide-react'
 
 export interface AdminLayoutProps {
@@ -32,8 +35,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
   const navItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { label: 'Candidates', href: '/admin/candidates', icon: Users },
+    { label: 'Shifts', href: '/admin/shifts', icon: Clock },
     { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
     { label: 'Timesheet', href: '/admin/timesheet', icon: FileSpreadsheet },
+    { label: 'Payroll', href: '/admin/payroll', icon: Banknote },
+    { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
     { label: 'Security', href: '/admin/security', icon: ShieldAlert },
     { label: 'Profile', href: '/admin/profile', icon: User },
   ]

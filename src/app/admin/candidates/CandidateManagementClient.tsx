@@ -31,7 +31,9 @@ import {
   MapPin,
   IdCard,
   ShieldCheck,
+  Clock,
 } from 'lucide-react'
+import { type ShiftConfig, formatShiftTime, DEFAULT_FALLBACK_SHIFT } from '@/lib/utils/shift'
 
 export interface CandidateUser {
   id: string
@@ -45,18 +47,22 @@ export interface CandidateUser {
   phone_number?: string
   address?: string
   id_number?: string
+  shift_id?: string | null
 }
 
 export interface CandidateManagementClientProps {
   candidates: CandidateUser[]
+  shifts?: ShiftConfig[]
 }
 
 const initialState: AdminActionState = { error: '', success: false }
 
 export const CandidateManagementClient: React.FC<CandidateManagementClientProps> = ({
   candidates,
+  shifts = [],
 }) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const defaultShift = shifts.find((s) => s.is_default) || shifts[0] || DEFAULT_FALLBACK_SHIFT
   const [resetEmail, setResetEmail] = useState<string | null>(null)
   const [editCandidate, setEditCandidate] = useState<CandidateUser | null>(null)
   const [deleteCandidate, setDeleteCandidate] = useState<CandidateUser | null>(null)
@@ -194,7 +200,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                   <div className="p-2.5 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
                     <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase font-semibold">
                       Hourly Rate
@@ -211,6 +217,20 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
+                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase font-semibold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[var(--md-sys-color-primary)]" /> Assigned Shift
+                    </span>
+                    {(() => {
+                      const assignedShift = shifts.find((s) => s.id === c.shift_id) || defaultShift
+                      return (
+                        <span className="font-semibold text-xs text-[var(--md-sys-color-on-surface)] truncate" title={assignedShift.name}>
+                          {assignedShift.name} ({formatShiftTime(assignedShift.start_time)})
+                        </span>
+                      )
+                    })()}
                   </div>
 
                   <div className="p-2.5 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
@@ -272,6 +292,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
               <tr className="bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] text-xs font-semibold uppercase tracking-wider border-b border-[var(--md-sys-color-outline-variant)]">
                 <th className="py-3.5 px-4 sm:px-6">Candidate Name</th>
                 <th className="py-3.5 px-4">Hourly Rate (₹/hr)</th>
+                <th className="py-3.5 px-4">Assigned Shift</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4">Created Date</th>
                 <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
@@ -281,6 +302,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
               {candidates.length > 0 ? (
                 candidates.map((c) => {
                   const rate = c.hourly_rate || 0
+                  const assignedShift = shifts.find((s) => s.id === c.shift_id) || defaultShift
                   return (
                     <tr key={c.id} className="hover:bg-[var(--md-sys-color-surface-container-low)] transition-colors">
                       <td className="py-4 px-4 sm:px-6 font-semibold flex items-center gap-3">
@@ -326,6 +348,18 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs flex items-center gap-1 text-[var(--md-sys-color-on-surface)]">
+                            <Clock className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
+                            {assignedShift.name}
+                          </span>
+                          <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                            {formatShiftTime(assignedShift.start_time)} – {formatShiftTime(assignedShift.end_time)}
+                          </span>
                         </div>
                       </td>
 
@@ -452,6 +486,27 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                 supportingText="At least 6 characters"
               />
 
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" /> Assigned Shift Preset
+                </label>
+                <select
+                  name="shiftId"
+                  defaultValue={defaultShift.id}
+                  disabled={isCreating}
+                  className="h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-sm focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+                >
+                  {shifts.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({formatShiftTime(s.start_time)} – {formatShiftTime(s.end_time)}) {s.is_default ? '★ (Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                  Candidates start and auto-stop within their assigned shift hours
+                </span>
+              </div>
+
               {createState?.error && (
                 <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs font-medium">
                   {createState.error}
@@ -520,6 +575,25 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                 disabled={isEditing}
                 startIcon={<IndianRupee className="w-4 h-4" />}
               />
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" /> Assigned Shift
+                </label>
+                <select
+                  name="shiftId"
+                  defaultValue={editCandidate.shift_id || 'none'}
+                  disabled={isEditing}
+                  className="h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-sm focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+                >
+                  <option value="none">Company Default ({defaultShift.name})</option>
+                  {shifts.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({formatShiftTime(s.start_time)} – {formatShiftTime(s.end_time)}) {s.is_default ? '★ (Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
               
               <TextField
                 name="phoneNumber"
