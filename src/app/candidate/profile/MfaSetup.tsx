@@ -46,7 +46,7 @@ export function MfaSetup() {
       // Clean up any unverified factors first to prevent "already exists" errors
       const { data: factorsData } = await supabase.auth.mfa.listFactors()
       if (factorsData?.totp) {
-        const unverifiedFactors = factorsData.totp.filter(f => f.status === 'unverified')
+        const unverifiedFactors = factorsData.totp.filter(f => f.status !== 'verified')
         for (const factor of unverifiedFactors) {
           await supabase.auth.mfa.unenroll({ factorId: factor.id })
         }

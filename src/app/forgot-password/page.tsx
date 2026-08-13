@@ -9,7 +9,7 @@ import { Snackbar } from '@/components/ui/Snackbar'
 import { Mail, Clock, ShieldCheck } from 'lucide-react'
 import { requestPasswordResetAction } from '@/app/actions/forgot-password'
 
-const initialState = {
+const initialState: { error?: string; success?: boolean } = {
   error: '',
   success: false
 }

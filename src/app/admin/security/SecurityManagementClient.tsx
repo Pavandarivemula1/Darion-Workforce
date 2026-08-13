@@ -111,7 +111,7 @@ export function SecurityManagementClient({ initialRequests }: { initialRequests:
       )}
 
       <Snackbar 
-        message={state?.error} 
+        message={state?.error || null} 
         variant="error" 
       />
       {state?.success && (

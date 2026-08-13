@@ -111,16 +111,14 @@ export function ForceChangePasswordClient() {
       </Card>
 
       <Snackbar
-        message={error || ''}
-        isOpen={!!error}
+        message={error}
+        variant="error"
         onClose={() => setError(null)}
-        type="error"
       />
       <Snackbar
-        message={success || ''}
-        isOpen={!!success}
+        message={success}
+        variant="success"
         onClose={() => setSuccess(null)}
-        type="success"
       />
     </div>
   )

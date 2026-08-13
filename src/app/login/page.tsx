@@ -9,21 +9,21 @@ import { Button } from '@/components/ui/Button'
 import { Snackbar } from '@/components/ui/Snackbar'
 import { Mail, Lock, Clock, ShieldCheck, ArrowLeft, Send } from 'lucide-react'
 
-const initialLoginState = {
+const initialLoginState: { error?: string; requiresMfa?: boolean } = {
   error: '',
   requiresMfa: false,
 }
 
-const initialMfaState = {
+const initialMfaState: { error?: string } = {
   error: '',
 }
 
-const initialMagicLinkState = {
+const initialMagicLinkState: { error?: string; success?: boolean } = {
   error: '',
   success: false,
 }
 
-const initialMfaResetState = {
+const initialMfaResetState: { error?: string; success?: boolean } = {
   error: '',
   success: false,
 }
