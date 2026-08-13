@@ -105,7 +105,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                   </span>
                 ) : status === 'approved' ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
-                    <CheckCircle2 className="w-3 h-3" /> Approved (${payout.toFixed(2)})
+                    <CheckCircle2 className="w-3 h-3" /> Approved (₹{payout.toFixed(2)})
                   </span>
                 ) : status === 'rejected' ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
@@ -204,7 +204,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                       ) : status === 'approved' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Approved (${payout.toFixed(2)})
+                          Approved (₹{payout.toFixed(2)})
                         </span>
                       ) : status === 'rejected' ? (
                         <div className="flex flex-col gap-0.5 max-w-[220px]">

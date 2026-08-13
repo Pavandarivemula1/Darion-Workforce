@@ -1,4 +1,4 @@
-# Candidate Time Tracking System
+# Darion Workforce Time Tracking System
 
 A full-stack time-tracking application designed for **1 Admin** and **2 Candidates**, built with Next.js 16 (App Router), TypeScript, Supabase Auth & PostgreSQL Database with Row Level Security (RLS), and Material Design 3 UI aesthetics.
 

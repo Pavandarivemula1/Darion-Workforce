@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react'
 import { AttendanceFilters } from '@/components/candidate/AttendanceFilters'
 import { AttendanceTable, AttendanceItem } from '@/components/candidate/AttendanceTable'
 import { Card } from '@/components/ui/Card'
-import { Clock, CalendarRange, CheckCircle, DollarSign } from 'lucide-react'
+import { Clock, CalendarRange, CheckCircle, IndianRupee } from 'lucide-react'
 import { formatDurationMs } from '@/lib/utils/timesheet'
 
 export interface CandidateAttendanceClientProps {
@@ -122,12 +122,12 @@ export const CandidateAttendanceClient: React.FC<CandidateAttendanceClientProps>
 
         <Card variant="elevated" className="flex items-center gap-4 border border-emerald-500/30">
           <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <DollarSign className="w-5 h-5" />
+            <IndianRupee className="w-5 h-5" />
           </div>
           <div>
             <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Approved Earnings</p>
             <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
-              ${totalApprovedEarnings.toFixed(2)}
+              ₹{totalApprovedEarnings.toFixed(2)}
             </p>
           </div>
         </Card>

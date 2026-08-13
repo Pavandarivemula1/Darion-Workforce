@@ -7,6 +7,7 @@ import {
   endBreakAction,
   endWorkAction,
 } from '@/app/actions/attendance'
+import { requestOvershiftAction } from '@/app/actions/overshift'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
@@ -35,6 +36,7 @@ export interface AttendanceRecord {
 export interface WorkStatusCardProps {
   activeSession: AttendanceRecord | null
   todaySession: AttendanceRecord | null
+  overshiftStatus?: string | null
 }
 
 function calculateInitialWorkDuration(
@@ -77,6 +79,7 @@ function calculateInitialWorkDuration(
 export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   activeSession,
   todaySession,
+  overshiftStatus,
 }) => {
   const [workDuration, setWorkDuration] = useState<string>(() =>
     calculateInitialWorkDuration(activeSession, todaySession)
@@ -84,10 +87,32 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   const [breakDurationText, setBreakDurationText] = useState<string>('0m 00s')
   const [isPending, setIsPending] = useState<boolean>(false)
   const [confirmDialog, setConfirmDialog] = useState<
-    'start' | 'startBreak' | 'endBreak' | 'end' | null
+    'start' | 'startBreak' | 'endBreak' | 'end' | 'requestOvershift' | null
   >(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [overshiftPending, setOvershiftPending] = useState<boolean>(false)
+  const [localOvershiftStatus, setLocalOvershiftStatus] = useState<string | null>(overshiftStatus || null)
+  const [timeToNextShift, setTimeToNextShift] = useState<string | null>(null)
+  const [isWithinRegularHours, setIsWithinRegularHours] = useState(true)
+  const [liveTime, setLiveTime] = useState<string>('')
+
+  useEffect(() => {
+    const updateClock = () => {
+      setLiveTime(
+        new Date().toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
+      )
+    }
+    updateClock()
+    const intv = setInterval(updateClock, 1000)
+    return () => clearInterval(intv)
+  }, [])
 
   const isOnBreak = !!activeSession?.break_start_time
   const isWorking = !!activeSession
@@ -133,6 +158,36 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
     const interval = setInterval(updateTimers, 1000)
     return () => clearInterval(interval)
   }, [activeSession])
+
+  useEffect(() => {
+    const checkShift = () => {
+      const kolkataTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+      const nowKolkata = new Date(kolkataTimeStr)
+      const hour = nowKolkata.getHours()
+      
+      const isRegular = hour >= 9
+      setIsWithinRegularHours(isRegular)
+      
+      if (!isRegular) {
+        const next9AM = new Date(nowKolkata)
+        next9AM.setHours(9, 0, 0, 0)
+        const diffMs = next9AM.getTime() - nowKolkata.getTime()
+        if (diffMs > 0) {
+          const h = Math.floor(diffMs / (1000 * 60 * 60))
+          const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+          setTimeToNextShift(`${h}h ${m}m`)
+        } else {
+          setTimeToNextShift(null)
+        }
+      } else {
+        setTimeToNextShift(null)
+      }
+    }
+    
+    checkShift()
+    const intv = setInterval(checkShift, 60000)
+    return () => clearInterval(intv)
+  }, [])
 
   const handleStartWork = async () => {
     setIsPending(true)
@@ -188,7 +243,25 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
     })
   }
 
+  const handleRequestOvershift = async () => {
+    setOvershiftPending(true)
+    setErrorMsg(null)
+    setConfirmDialog(null)
+    
+    const todayParts = new Date().toLocaleString('en-CA', { timeZone: 'Asia/Kolkata' }).split(',')[0].split(' ')[0]
+    const res = await requestOvershiftAction(todayParts)
+    setOvershiftPending(false)
+    
+    if (res?.error) setErrorMsg(res.error)
+    else {
+      setSuccessMsg('Overshift requested successfully.')
+      setLocalOvershiftStatus('pending')
+    }
+  }
+
   const isCompletedToday = !isWorking && !!todaySession?.logout_time
+  const requiresOvershift = isCompletedToday || !isWithinRegularHours
+  const canStartWork = !requiresOvershift || localOvershiftStatus === 'approved'
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -196,17 +269,24 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         <div className="flex flex-col gap-6">
           {/* Header Status Row */}
           <div className="flex items-center justify-between gap-4 flex-wrap pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
-            <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
-              <span className="text-sm font-medium" suppressHydrationWarning>
-                {new Date().toLocaleDateString('en-US', {
-                  timeZone: 'Asia/Kolkata',
-                  weekday: 'long',
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </span>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+                <span className="text-sm font-medium" suppressHydrationWarning>
+                  {new Date().toLocaleDateString('en-US', {
+                    timeZone: 'Asia/Kolkata',
+                    weekday: 'long',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 pl-8">
+                <span className="text-lg font-bold font-mono text-[var(--md-sys-color-primary)] tracking-wide" suppressHydrationWarning>
+                  {liveTime}
+                </span>
+              </div>
             </div>
 
             {/* Status Badges */}
@@ -273,17 +353,41 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
           {/* Action Buttons Row */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
             {!isWorking ? (
-              <Button
-                variant="filled"
-                size="lg"
-                className="w-full"
-                icon={<Play className="w-5 h-5 fill-current" />}
-                isLoading={isPending}
-                disabled={isCompletedToday}
-                onClick={() => setConfirmDialog('start')}
-              >
-                {isCompletedToday ? 'Shift Finished Today' : 'Start Work'}
-              </Button>
+              <div className="w-full flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="filled"
+                  size="lg"
+                  className="w-full"
+                  icon={<Play className="w-5 h-5 fill-current" />}
+                  isLoading={isPending}
+                  disabled={!canStartWork}
+                  onClick={() => setConfirmDialog('start')}
+                >
+                  {isCompletedToday && localOvershiftStatus === 'approved'
+                    ? 'Start Overshift'
+                    : isCompletedToday
+                    ? 'Shift Finished Today'
+                    : 'Start Work'}
+                </Button>
+                {requiresOvershift && localOvershiftStatus !== 'approved' && (
+                  <Button
+                    variant="outlined"
+                    size="lg"
+                    className="w-full"
+                    isLoading={overshiftPending}
+                    disabled={localOvershiftStatus === 'pending'}
+                    onClick={() => setConfirmDialog('requestOvershift')}
+                  >
+                    {localOvershiftStatus === 'pending'
+                      ? 'Overshift Pending'
+                      : localOvershiftStatus === 'rejected'
+                      ? 'Overshift Rejected'
+                      : timeToNextShift
+                      ? `Req Overshift (or wait ${timeToNextShift})`
+                      : 'Request Overshift'}
+                  </Button>
+                )}
+              </div>
             ) : isOnBreak ? (
               <>
                 <Button
@@ -342,7 +446,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         isOpen={confirmDialog === 'start'}
         title="Start Work Session?"
         description="This will register your official shift login timestamp."
-        confirmLabel="Start Work"
+        confirmLabel={isPending ? 'Clocking In...' : 'Start Work'}
         isLoading={isPending}
         onConfirm={handleStartWork}
         onClose={() => setConfirmDialog(null)}
@@ -352,7 +456,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         isOpen={confirmDialog === 'startBreak'}
         title="Take a Break?"
         description="Your active work timer will pause while you are on break. Break duration is automatically excluded from your net working hours."
-        confirmLabel="Take Break"
+        confirmLabel={isPending ? 'Starting Break...' : 'Take Break'}
         isLoading={isPending}
         onConfirm={handleStartBreak}
         onClose={() => setConfirmDialog(null)}
@@ -362,7 +466,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         isOpen={confirmDialog === 'endBreak'}
         title="End Break?"
         description="Your break duration will be recorded and your net work timer will resume."
-        confirmLabel="Resume Work"
+        confirmLabel={isPending ? 'Resuming Work...' : 'Resume Work'}
         isLoading={isPending}
         onConfirm={handleEndBreak}
         onClose={() => setConfirmDialog(null)}
@@ -372,10 +476,20 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         isOpen={confirmDialog === 'end'}
         title="End Work Session?"
         description="Are you sure you want to end your work session? This will calculate your final net working hours."
-        confirmLabel="End Work"
+        confirmLabel={isPending ? 'Ending Work...' : 'End Work'}
         variant="error"
         isLoading={isPending}
         onConfirm={handleEndWork}
+        onClose={() => setConfirmDialog(null)}
+      />
+
+      <Dialog
+        isOpen={confirmDialog === 'requestOvershift'}
+        title="Request Overshift?"
+        description="You are trying to start work outside regular shift hours (or after completing a shift today). This requires an Admin's approval. Send request?"
+        confirmLabel={overshiftPending ? 'Requesting...' : 'Request Overshift'}
+        isLoading={overshiftPending}
+        onConfirm={handleRequestOvershift}
         onClose={() => setConfirmDialog(null)}
       />
 

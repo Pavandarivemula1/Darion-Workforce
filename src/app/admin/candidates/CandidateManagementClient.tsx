@@ -5,6 +5,7 @@ import {
   createCandidateAction,
   resetCandidatePasswordAction,
   updateCandidateHourlyRateAction,
+  deleteCandidateAction,
   type AdminActionState,
 } from '@/app/actions/admin'
 import { Card } from '@/components/ui/Card'
@@ -21,9 +22,10 @@ import {
   Mail,
   Lock,
   User,
-  DollarSign,
+  IndianRupee,
   Edit2,
   Calendar,
+  Trash2,
 } from 'lucide-react'
 
 export interface CandidateUser {
@@ -48,6 +50,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [resetEmail, setResetEmail] = useState<string | null>(null)
   const [rateCandidate, setRateCandidate] = useState<CandidateUser | null>(null)
+  const [deleteCandidate, setDeleteCandidate] = useState<CandidateUser | null>(null)
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
 
   const [createState, createFormAction, isCreating] = useActionState(
@@ -60,6 +63,10 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
   )
   const [rateState, rateFormAction, isUpdatingRate] = useActionState(
     updateCandidateHourlyRateAction,
+    initialState
+  )
+  const [deleteState, deleteFormAction, isDeleting] = useActionState(
+    deleteCandidateAction,
     initialState
   )
 
@@ -84,6 +91,12 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
   } else if (resetState?.error && dismissedKey !== `reset-error-${resetState.error}`) {
     snackbarMessage = resetState.error
     snackbarVariant = 'error'
+  } else if (deleteState?.success && dismissedKey !== 'delete-success') {
+    snackbarMessage = 'Candidate deleted successfully.'
+    snackbarVariant = 'success'
+  } else if (deleteState?.error && dismissedKey !== `delete-error-${deleteState.error}`) {
+    snackbarMessage = deleteState.error
+    snackbarVariant = 'error'
   }
 
   const handleDismissSnackbar = () => {
@@ -97,7 +110,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Candidate Roster</h2>
           <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-            Manage system candidates, hourly payment rates ($/hr), and account security
+            Manage system candidates, hourly payment rates (₹/hr), and account security
           </p>
         </div>
 
@@ -162,7 +175,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                     </span>
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                        ${rate.toFixed(2)}/hr
+                        ₹{rate.toFixed(2)}/hr
                       </span>
                       <button
                         onClick={() => setRateCandidate(c)}
@@ -205,6 +218,14 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                       <KeyRound className="w-4 h-4" />
                     </button>
                   )}
+
+                  <button
+                    onClick={() => setDeleteCandidate(c)}
+                    className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-error)]"
+                    title="Delete Candidate"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </Card>
             )
@@ -223,7 +244,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
             <thead>
               <tr className="bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] text-xs font-semibold uppercase tracking-wider border-b border-[var(--md-sys-color-outline-variant)]">
                 <th className="py-3.5 px-4 sm:px-6">Candidate Name</th>
-                <th className="py-3.5 px-4">Hourly Rate ($/hr)</th>
+                <th className="py-3.5 px-4">Hourly Rate (₹/hr)</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4">Created Date</th>
                 <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
@@ -252,7 +273,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                       <td className="py-4 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                            ${rate.toFixed(2)} / hr
+                            ₹{rate.toFixed(2)} / hr
                           </span>
                           <button
                             onClick={() => setRateCandidate(c)}
@@ -305,6 +326,14 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                               <KeyRound className="w-4 h-4" />
                             </button>
                           )}
+                          
+                          <button
+                            onClick={() => setDeleteCandidate(c)}
+                            className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-error)] transition-colors cursor-pointer"
+                            title="Delete Candidate"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -362,11 +391,11 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                 type="number"
                 step="0.01"
                 min="0"
-                label="Hourly Payment Rate ($/hr)"
+                label="Hourly Payment Rate (₹/hr)"
                 placeholder="25.00"
                 required
                 disabled={isCreating}
-                startIcon={<DollarSign className="w-4 h-4" />}
+                startIcon={<IndianRupee className="w-4 h-4" />}
               />
 
               <TextField
@@ -409,7 +438,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
               <h3 className="text-lg font-bold flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+                <IndianRupee className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
                 Update Hourly Payment Rate
               </h3>
               <button
@@ -421,7 +450,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
             </div>
 
             <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-              Set the hourly rate ($/hr) for candidate <strong>{rateCandidate.full_name}</strong>.
+              Set the hourly rate (₹/hr) for candidate <strong>{rateCandidate.full_name}</strong>.
             </p>
 
             <form action={rateFormAction} className="flex flex-col gap-4">
@@ -432,11 +461,11 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                 type="number"
                 step="0.01"
                 min="0"
-                label="Hourly Payment Rate ($/hr)"
+                label="Hourly Payment Rate (₹/hr)"
                 defaultValue={rateCandidate.hourly_rate || 0}
                 required
                 disabled={isUpdatingRate}
-                startIcon={<DollarSign className="w-4 h-4" />}
+                startIcon={<IndianRupee className="w-4 h-4" />}
               />
 
               {rateState?.error && (
@@ -504,6 +533,54 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                 </button>
                 <Button type="submit" variant="filled" size="md" isLoading={isResetting}>
                   Send Password Reset
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Candidate Dialog */}
+      {deleteCandidate && !deleteState?.success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-[var(--md-sys-color-error)]">
+                <Trash2 className="w-5 h-5" />
+                Delete Candidate
+              </h3>
+              <button
+                onClick={() => setDeleteCandidate(null)}
+                className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+              Are you sure you want to delete <strong>{deleteCandidate.full_name}</strong>? This will permanently delete their account and all associated attendance records. This action cannot be undone.
+            </p>
+
+            <form action={deleteFormAction} className="flex flex-col gap-4">
+              <input type="hidden" name="candidateId" value={deleteCandidate.id} />
+
+              {deleteState?.error && (
+                <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs font-medium">
+                  {deleteState.error}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setDeleteCandidate(null)}
+                  disabled={isDeleting}
+                  className="px-4 h-10 rounded-full text-sm font-medium text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <Button type="submit" className="bg-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error)]/90 text-[var(--md-sys-color-on-error)]" size="md" isLoading={isDeleting}>
+                  Delete Candidate
                 </Button>
               </div>
             </form>

@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Candidate Time Tracking System',
-  description: 'Material Design 3 time-tracking application for Admins and Candidates.',
+  title: 'Darion Workforce',
+  description: 'Darion Workforce Time Tracking Application.',
 }
 
 export default function RootLayout({

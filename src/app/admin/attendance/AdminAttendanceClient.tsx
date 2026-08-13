@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Snackbar } from '@/components/ui/Snackbar'
 import { approveShiftAction, rejectShiftAction } from '@/app/actions/admin'
+import { approveOvershiftAction, rejectOvershiftAction } from '@/app/actions/overshift'
 import {
   CheckCircle2,
   XCircle,
   Clock,
   Filter,
-  DollarSign,
+  IndianRupee,
   AlertTriangle,
   Calendar,
   Users,
@@ -40,14 +41,25 @@ export interface SystemAttendanceItem {
   candidateName: string
 }
 
+export interface OvershiftRequestItem {
+  id: string
+  user_id: string
+  request_date: string
+  status: 'pending' | 'approved' | 'rejected'
+  created_at: string
+  candidateName: string
+}
+
 export interface AdminAttendanceClientProps {
   candidates: CandidateItem[]
   records: SystemAttendanceItem[]
+  overshiftRequests?: OvershiftRequestItem[]
 }
 
 export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   candidates,
   records: initialRecords,
+  overshiftRequests = [],
 }) => {
   const router = useRouter()
 
@@ -71,6 +83,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  
+  const [isApprovingOvershift, startApproveOvershift] = useTransition()
+  const [isRejectingOvershift, startRejectOvershift] = useTransition()
 
   const records = useMemo(() => {
     return initialRecords
@@ -246,6 +261,40 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     })
   }
 
+  const handleApproveOvershift = (id: string) => {
+    startApproveOvershift(async () => {
+      const formData = new FormData()
+      formData.append('requestId', id)
+      const res = await approveOvershiftAction({ error: '', success: false }, formData)
+      if (res.success) {
+        setToast({ message: 'Overshift approved.', variant: 'success' })
+        router.refresh()
+      } else if (res.error) {
+        setToast({ message: res.error, variant: 'error' })
+      }
+    })
+  }
+
+  const handleRejectOvershift = (id: string) => {
+    startRejectOvershift(async () => {
+      const formData = new FormData()
+      formData.append('requestId', id)
+      const res = await rejectOvershiftAction({ error: '', success: false }, formData)
+      if (res.success) {
+        setToast({ message: 'Overshift rejected.', variant: 'success' })
+        router.refresh()
+      } else if (res.error) {
+        setToast({ message: res.error, variant: 'error' })
+      }
+    })
+  }
+
+  const pendingOvershifts = overshiftRequests.filter((req) => {
+    if (req.status !== 'pending') return false
+    if (selectedCandidate !== 'all' && req.user_id !== selectedCandidate) return false
+    return true
+  })
+
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
       {/* Header */}
@@ -255,6 +304,45 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
           Review completed work shifts, approve hourly payouts, or reject with feedback
         </p>
       </div>
+
+      {pendingOvershifts.length > 0 && (
+        <Card variant="outlined" className="border-amber-500/50 p-4">
+          <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" /> Pending Overshift Requests
+          </h3>
+          <div className="flex flex-col gap-3">
+            {pendingOvershifts.map((req) => (
+              <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]">
+                <div>
+                  <p className="font-semibold">{req.candidateName}</p>
+                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    Requested for: {req.request_date}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 mt-3 sm:mt-0">
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => handleRejectOvershift(req.id)}
+                    isLoading={isRejectingOvershift}
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    variant="filled"
+                    size="sm"
+                    className="bg-amber-600 text-white hover:bg-amber-700"
+                    onClick={() => handleApproveOvershift(req.id)}
+                    isLoading={isApprovingOvershift}
+                  >
+                    Approve Overshift
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Filter Control Card */}
       <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
@@ -355,7 +443,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                     </span>
                   ) : status === 'approved' ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Approved (${payout.toFixed(2)})
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Approved (₹{payout.toFixed(2)})
                     </span>
                   ) : status === 'rejected' ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
@@ -389,7 +477,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                         onClick={() => openApproveModal(item)}
                         className="px-3 py-1.5 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold hover:bg-[var(--md-sys-color-surface-container-highest)]"
                       >
-                        Edit Payout (${payout.toFixed(2)})
+                        Edit Payout (₹{payout.toFixed(2)})
                       </button>
                     ) : status === 'rejected' ? (
                       <button
@@ -506,7 +594,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              Approved (${payout.toFixed(2)})
+                              Approved (₹{payout.toFixed(2)})
                             </span>
                           </div>
                         ) : status === 'rejected' ? (
@@ -538,7 +626,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                                 className="px-3 py-1 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
                                 title="Edit Approved Payout"
                               >
-                                Edit Payout (${payout.toFixed(2)})
+                                Edit Payout (₹{payout.toFixed(2)})
                               </button>
                             ) : status === 'rejected' ? (
                               <button
@@ -619,12 +707,12 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 type="number"
                 step="0.01"
                 min="0"
-                label="Payment Amount ($)"
+                label="Payment Amount (₹)"
                 value={customPayoutText}
                 onChange={(e) => setCustomPayoutText(e.target.value)}
                 required
                 disabled={isApproving}
-                startIcon={<DollarSign className="w-4 h-4" />}
+                startIcon={<IndianRupee className="w-4 h-4" />}
                 supportingText="Auto-calculated from hourly rate; editable before confirming"
               />
 

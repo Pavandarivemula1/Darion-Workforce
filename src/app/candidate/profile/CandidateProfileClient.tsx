@@ -6,7 +6,8 @@ import { Card } from '@/components/ui/Card'
 import { TextField } from '@/components/ui/TextField'
 import { Button } from '@/components/ui/Button'
 import { Snackbar } from '@/components/ui/Snackbar'
-import { User, Mail, ShieldCheck, Calendar, KeyRound, Lock, DollarSign } from 'lucide-react'
+import { User, Mail, ShieldCheck, Calendar, KeyRound, Lock, IndianRupee } from 'lucide-react'
+import { MfaSetup } from './MfaSetup'
 
 export interface CandidateProfileClientProps {
   profile: {
@@ -85,11 +86,11 @@ export const CandidateProfileClient: React.FC<CandidateProfileClientProps> = ({
             </div>
 
             <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)]">
-              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <IndianRupee className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <div>
                 <p className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)]">Assigned Hourly Rate</p>
                 <p className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                  ${rate.toFixed(2)} / hr
+                  ₹{rate.toFixed(2)} / hr
                 </p>
               </div>
             </div>
@@ -160,6 +161,8 @@ export const CandidateProfileClient: React.FC<CandidateProfileClientProps> = ({
           </div>
         </form>
       </Card>
+
+      <MfaSetup />
 
       <Snackbar
         message={errorMsg}

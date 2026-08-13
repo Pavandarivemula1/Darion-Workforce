@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 interface JwtPayload {
   sub?: string
   exp?: number
-  user_metadata?: { role?: string }
+  user_metadata?: { role?: string; password_changed?: boolean }
   app_metadata?: { role?: string }
 }
 
@@ -17,7 +18,7 @@ interface JwtPayload {
  *   
  * We extract the access_token JWT and parse its payload for sub + user_metadata.role.
  */
-function parseSessionFromCookies(request: NextRequest): { userId: string; role: string } | null {
+function parseSessionFromCookies(request: NextRequest): { userId: string; role: string; password_changed: boolean } | null {
   try {
     const allCookies = request.cookies.getAll()
 
@@ -66,7 +67,10 @@ function parseSessionFromCookies(request: NextRequest): { userId: string; role: 
     }
 
     const role = payload.user_metadata?.role || payload.app_metadata?.role || 'candidate'
-    return { userId: payload.sub, role }
+    // Default to true for admins so they don't get locked out, false for candidates
+    const password_changed = payload.user_metadata?.password_changed ?? (role === 'admin')
+    
+    return { userId: payload.sub, role, password_changed }
   } catch {
     return null
   }
@@ -90,7 +94,7 @@ export async function updateSession(request: NextRequest) {
   })
 
   // 1. Protected routes — redirect unauthenticated users to login
-  if (!session && (pathname.startsWith('/admin') || pathname.startsWith('/candidate'))) {
+  if (!session && (pathname.startsWith('/admin') || pathname.startsWith('/candidate') || pathname.startsWith('/force-change-password'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', pathname)
@@ -99,7 +103,50 @@ export async function updateSession(request: NextRequest) {
 
   // 2. Authenticated user redirects & role-based access control
   if (session) {
-    const { role } = session
+    const { role, password_changed } = session
+    
+    // Check MFA status
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+            response.cookies.setAll(cookiesToSet)
+          },
+        },
+      }
+    )
+    
+    const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    const requiresMfa = mfaData?.nextLevel === 'aal2' && mfaData?.currentLevel === 'aal1'
+
+    if (requiresMfa) {
+      if (pathname !== '/login' && !pathname.startsWith('/actions') && !pathname.startsWith('/auth')) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
+      }
+      return response
+    }
+    
+    // Block access if password needs to be changed
+    if (!password_changed && !pathname.startsWith('/force-change-password') && !pathname.startsWith('/actions') && !pathname.startsWith('/auth')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/force-change-password'
+      return NextResponse.redirect(url)
+    }
+
+    // Redirect away from force-change-password if already changed
+    if (password_changed && pathname.startsWith('/force-change-password')) {
+      const url = request.nextUrl.clone()
+      url.pathname = role === 'admin' ? '/admin' : '/candidate'
+      return NextResponse.redirect(url)
+    }
 
     // Redirect logged-in users away from /login or /
     if (pathname === '/login' || pathname === '/') {

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export type AdminActionState = {
@@ -47,15 +47,16 @@ export async function createCandidateAction(
     return { error: 'Password must be at least 6 characters long.' }
   }
 
-  // 3. Create candidate user via Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // 3. Create candidate user via Supabase Auth Admin Client (auto-confirms email)
+  const adminClient = createAdminClient()
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: {
-        full_name: fullName,
-        role: 'candidate',
-      },
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+      role: 'candidate',
+      password_changed: false,
     },
   })
 
@@ -336,5 +337,124 @@ export async function resetCandidatePasswordAction(
     return { error: error.message || 'Failed to send password reset email.' }
   }
 
+  return { success: true }
+}
+
+export async function deleteCandidateAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const candidateId = formData.get('candidateId') as string
+  if (!candidateId) {
+    return { error: 'Candidate ID is required.' }
+  }
+
+  // Prevent admin from deleting themselves
+  if (candidateId === user.id) {
+    return { error: 'You cannot delete your own admin account.' }
+  }
+
+  // Delete the user from Auth using the admin client
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.auth.admin.deleteUser(candidateId)
+
+  if (error) {
+    return { error: error.message || 'Failed to delete candidate.' }
+  }
+
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function approveMfaResetAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const requestId = formData.get('requestId') as string
+  const userId = formData.get('userId') as string
+  const actionType = formData.get('actionType') as 'approve' | 'reject'
+
+  if (!requestId || !userId || !actionType) {
+    return { error: 'Request ID, User ID, and Action Type are required.' }
+  }
+
+  const adminClient = createAdminClient()
+
+  if (actionType === 'approve') {
+    // List all factors for the user and delete them to reset MFA
+    const { data: factors, error: factorsError } = await adminClient.auth.admin.mfa.listFactors({
+      userId,
+    })
+
+    if (factorsError) {
+      return { error: factorsError.message || 'Failed to fetch user MFA factors.' }
+    }
+
+    if (factors?.factors) {
+      for (const factor of factors.factors) {
+        await adminClient.auth.admin.mfa.deleteFactor({
+          userId,
+          id: factor.id,
+        })
+      }
+    }
+  }
+
+  // Update request status
+  const { error: updateError } = await supabase
+    .from('mfa_reset_requests')
+    .update({ status: actionType === 'approve' ? 'approved' : 'rejected' })
+    .eq('id', requestId)
+
+  if (updateError) {
+    return { error: updateError.message || 'Failed to update request status.' }
+  }
+
+  revalidatePath('/admin/security')
   return { success: true }
 }

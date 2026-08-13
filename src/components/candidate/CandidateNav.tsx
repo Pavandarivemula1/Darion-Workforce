@@ -32,7 +32,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
             </div>
             <div>
               <h1 className="text-sm sm:text-base font-bold text-[var(--md-sys-color-on-surface)] leading-tight">
-                Candidate Portal
+                Darion Workforce Candidate
               </h1>
               {userName && (
                 <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate max-w-[150px] sm:max-w-[220px]">

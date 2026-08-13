@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
+import { DynamicSidebar } from '@/components/ui/DynamicSidebar'
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +14,7 @@ import {
   User,
   LogOut,
   ShieldCheck,
+  ShieldAlert,
   Menu,
   X,
 } from 'lucide-react'
@@ -31,63 +33,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
     { label: 'Candidates', href: '/admin/candidates', icon: Users },
     { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
     { label: 'Timesheet', href: '/admin/timesheet', icon: FileSpreadsheet },
+    { label: 'Security', href: '/admin/security', icon: ShieldAlert },
     { label: 'Profile', href: '/admin/profile', icon: User },
   ]
 
   return (
     <div className="min-h-screen bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row">
-      {/* Desktop Sidebar Navigation Drawer */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shrink-0 shadow-[var(--md-sys-elevation-1)] min-h-screen sticky top-0 h-screen">
-        {/* Brand Header */}
-        <div className="flex items-center gap-3 px-3 py-4 mb-4 border-b border-[var(--md-sys-color-outline-variant)]">
-          <div className="w-10 h-10 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div className="overflow-hidden">
-            <h1 className="text-base font-bold truncate">Admin Portal</h1>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] truncate">
-              {adminName || 'System Admin'}
-            </p>
-          </div>
-        </div>
-
-        {/* Navigation List */}
-        <nav className="flex-1 flex flex-col gap-1.5">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={true}
-                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
-                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
-                }`}
-              >
-                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[var(--md-sys-color-primary)]' : ''}`} />
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* Footer Sign Out */}
-        <div className="pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-          <form action={logoutAction}>
-            <Button
-              variant="outlined"
-              size="md"
-              className="w-full justify-start"
-              icon={<LogOut className="w-4 h-4" />}
-            >
-              Sign Out
-            </Button>
-          </form>
-        </div>
-      </aside>
+      {/* Desktop Dynamic Sidebar Navigation Drawer */}
+      <DynamicSidebar
+        navItems={navItems}
+        brandIcon={<ShieldCheck className="w-6 h-6" />}
+        brandName="Darion Workforce"
+        subtitle={adminName || 'System Admin'}
+      />
 
       {/* Mobile Top Header (< 768px) */}
       <header className="md:hidden border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-3 flex items-center justify-between shadow-[var(--md-sys-elevation-1)] sticky top-0 z-40">
@@ -96,7 +54,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-sm font-bold leading-tight">Admin Portal</h1>
+            <h1 className="text-sm font-bold leading-tight">Darion Workforce Admin</h1>
             <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{adminName || 'System Admin'}</p>
           </div>
         </div>
@@ -164,7 +122,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName })
       )}
 
       {/* Main Content Container (Centered Max Width on Ultrawide Displays) */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
         <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
           {children}
         </div>

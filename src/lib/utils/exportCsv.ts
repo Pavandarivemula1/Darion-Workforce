@@ -19,7 +19,7 @@ export function exportAttendanceToCsv(
     'Net Working Hours',
     'Shift Status',
     'Payment Approval',
-    'Approved Payout ($)',
+    'Approved Payout (₹)',
     'Rejection Reason',
   ]
 
@@ -70,7 +70,7 @@ export function exportAttendanceToCsv(
     }
 
     const approvalStatus = r.approval_status ? r.approval_status.toUpperCase() : 'PENDING'
-    const payoutAmountStr = r.payout_amount ? `$${r.payout_amount.toFixed(2)}` : '$0.00'
+    const payoutAmountStr = r.payout_amount ? `₹${r.payout_amount.toFixed(2)}` : '₹0.00'
     const rejectionReasonStr = r.rejection_reason || ''
 
     const escapeCsv = (val: string) => `"${val.replace(/"/g, '""')}"`

@@ -86,10 +86,14 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
   }
 
   // Execute All Queries Concurrently (Promise.all)
-  const [{ data: adminProfile }, { data: candidates }, { data: attendanceData }] = await Promise.all([
+  const [{ data: adminProfile }, { data: candidates }, { data: attendanceData }, { data: overshiftsData }] = await Promise.all([
     adminProfilePromise,
     candidatesPromise,
     attendanceQuery,
+    supabase
+      .from('overshift_requests')
+      .select('id, user_id, request_date, status, created_at, profiles(full_name)')
+      .order('created_at', { ascending: false })
   ])
 
   if (!adminProfile || adminProfile.role !== 'admin') {
@@ -125,12 +129,22 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
     }
   })
 
+  const overshiftRecords = (overshiftsData || []).map((r: any) => ({
+    id: r.id,
+    user_id: r.user_id,
+    request_date: r.request_date,
+    status: r.status,
+    created_at: r.created_at,
+    candidateName: (Array.isArray(r.profiles) ? r.profiles[0] : r.profiles)?.full_name || 'Unknown',
+  }))
+
   return (
     <AdminLayout adminName={adminProfile.full_name}>
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6">
         <AdminAttendanceClient
           candidates={candidates || []}
           records={systemRecords}
+          overshiftRequests={overshiftRecords}
         />
       </main>
     </AdminLayout>
