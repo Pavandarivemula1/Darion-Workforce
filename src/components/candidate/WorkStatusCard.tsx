@@ -160,6 +160,38 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   }, [activeSession])
 
   useEffect(() => {
+    const setFavicon = (color: string) => {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+      if (!link) {
+        link = document.createElement('link')
+        link.rel = 'icon'
+        document.head.appendChild(link)
+      }
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="${color}"/><g stroke="white" stroke-width="5" fill="none"><path d="M5,50 h90 M14,25 h72 M14,75 h72" /><path d="M50,0 v100" /><path d="M50,0 A 30,50 0 0,1 50,100" /><path d="M50,0 A 30,50 0 0,0 50,100" /><circle cx="50" cy="50" r="47.5" /></g></svg>`
+      link.href = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+    }
+
+    if (activeSession) {
+      if (isOnBreak) {
+        document.title = `On Break | Darion Workforce`
+        setFavicon('#F59E0B') // Amber/Orange
+      } else {
+        document.title = `${workDuration} | Darion Workforce`
+        if (localOvershiftStatus === 'approved') {
+          setFavicon('#3B82F6') // Blue
+        } else {
+          setFavicon('#10B981') // Green
+        }
+      }
+    } else {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+      if (link) {
+        link.href = '/icon.svg'
+      }
+    }
+  }, [workDuration, isOnBreak, activeSession, localOvershiftStatus])
+
+  useEffect(() => {
     const checkShift = () => {
       const kolkataTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
       const nowKolkata = new Date(kolkataTimeStr)

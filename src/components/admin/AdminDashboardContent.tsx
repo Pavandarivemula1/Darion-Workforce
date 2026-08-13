@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { getWeekBoundaries, getKolkataDateKey, formatDurationMs } from '@/lib/utils/timesheet'
 import { DashboardAnalyticsCharts } from '@/components/admin/dashboard/DashboardAnalyticsCharts'
+import { LiveTabTitle } from '@/components/ui/LiveTabTitle'
 
 export default async function AdminDashboardContent() {
   const supabase = await createClient()
@@ -123,6 +124,8 @@ export default async function AdminDashboardContent() {
 
   return (
     <>
+      <LiveTabTitle count={workingNowCount} />
+
       {/* 4 MD3 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Candidates */}
@@ -216,6 +219,8 @@ export default async function AdminDashboardContent() {
             <div className="flex flex-col divide-y divide-[var(--md-sys-color-outline-variant)]">
               {activeSessions.map((session) => {
                 const profileObj = Array.isArray(session.profiles) ? session.profiles[0] : session.profiles
+                const isOnBreak = !!session.break_start_time
+                
                 return (
                   <div key={session.id} className="py-3 flex items-center justify-between">
                     <div>
@@ -224,10 +229,17 @@ export default async function AdminDashboardContent() {
                         Login: {new Date(session.login_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}
                       </p>
                     </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      In Progress
-                    </span>
+                    {isOnBreak ? (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" />
+                        On Break
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                        In Progress
+                      </span>
+                    )}
                   </div>
                 )
               })}

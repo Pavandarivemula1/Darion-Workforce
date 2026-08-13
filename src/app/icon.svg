@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#020B85" />
+      <stop offset="100%" stop-color="#008DFB" />
+    </linearGradient>
+    <mask id="briefcase-mask">
+      <rect x="0" y="0" width="100" height="100" fill="white" />
+      <path d="M 22 45 Q 25 50 30 50 L 70 50 Q 75 50 78 45" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" />
+      <rect x="44" y="26" width="12" height="6" rx="2" fill="black" />
+    </mask>
+  </defs>
+
+  <circle cx="50" cy="50" r="50" fill="url(#bg)" />
+  
+  <g fill="white">
+    <!-- Handle -->
+    <path d="M 39 30 V 25 A 4 4 0 0 1 43 21 H 57 A 4 4 0 0 1 61 25 V 30" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- Body -->
+    <g mask="url(#briefcase-mask)">
+      <rect x="22" y="30" width="56" height="48" rx="6" />
+      <!-- Clasp -->
+      <rect x="47" y="50" width="6" height="12" rx="3" />
+    </g>
+  </g>
+</svg>
