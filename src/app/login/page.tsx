@@ -57,9 +57,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md flex flex-col items-center gap-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shadow-[var(--md-sys-elevation-1)]">
-            {requiresMfa ? <ShieldCheck className="w-8 h-8" /> : <Clock className="w-8 h-8" />}
-          </div>
+
           <h1 className="text-3xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
             {showMfaReset ? 'Reset MFA' : requiresMfa ? 'Verify Identity' : 'Darion Workforce'}
           </h1>
