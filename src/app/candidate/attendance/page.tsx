@@ -1,6 +1,6 @@
 import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { CandidateNav } from '@/components/candidate/CandidateNav'
+import { CandidateLayout } from '@/components/candidate/CandidateLayout'
 import { CandidateAttendanceClient } from './CandidateAttendanceClient'
 
 export interface PageProps {
@@ -40,10 +40,8 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
   ])
 
   return (
-    <div className="min-h-screen bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col">
-      <CandidateNav userName={profile?.full_name || 'Candidate'} />
-
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-24 sm:pb-6 flex flex-col gap-6">
+    <CandidateLayout candidateName={profile?.full_name || 'Candidate'}>
+      <main className="max-w-5xl w-full mx-auto flex flex-col gap-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Attendance History</h2>
           <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-1">
@@ -57,6 +55,6 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
           initialFilter={initialFilter}
         />
       </main>
-    </div>
+    </CandidateLayout>
   )
 }
