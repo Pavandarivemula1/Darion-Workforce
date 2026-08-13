@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   startWorkAction,
   startBreakAction,
@@ -37,6 +37,24 @@ export interface WorkStatusCardProps {
   activeSession: AttendanceRecord | null
   todaySession: AttendanceRecord | null
   overshiftStatus?: string | null
+}
+
+function getShiftEndTime(loginTime: string) {
+  const loginDate = new Date(new Date(loginTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+  const hour = loginDate.getHours()
+  
+  const endTime = new Date(loginDate)
+  if (hour >= 9 && hour < 16) {
+    endTime.setHours(17, 0, 0, 0)
+  } else if (hour >= 16 || hour < 4) {
+    if (hour >= 16) {
+      endTime.setDate(endTime.getDate() + 1)
+    }
+    endTime.setHours(0, 0, 0, 0)
+  } else {
+    endTime.setHours(17, 0, 0, 0)
+  }
+  return endTime
 }
 
 function calculateInitialWorkDuration(
@@ -97,6 +115,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   const [isWithinRegularHours, setIsWithinRegularHours] = useState(true)
   const [liveTime, setLiveTime] = useState<string>('')
   const [scheduledDate, setScheduledDate] = useState<string>('')
+  const isAutoEndingRef = useRef(false)
 
   useEffect(() => {
     const updateClock = () => {
@@ -121,6 +140,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   // Live Timers Effect
   useEffect(() => {
     if (!activeSession) {
+      isAutoEndingRef.current = false
       return
     }
 
@@ -153,12 +173,33 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
           .toString()
           .padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`
       )
+
+      // Auto stop logic
+      const nowKolkata = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+      const endTime = getShiftEndTime(activeSession.login_time)
+      
+      if (
+        nowKolkata.getTime() >= endTime.getTime() &&
+        localOvershiftStatus !== 'approved' &&
+        !isAutoEndingRef.current
+      ) {
+        isAutoEndingRef.current = true
+        setIsPending(true)
+        endWorkAction().then(res => {
+          setIsPending(false)
+          if (res?.error) setErrorMsg(res.error)
+          else setSuccessMsg('Shift ended automatically.')
+        }).catch(err => {
+          setIsPending(false)
+          setErrorMsg('Failed to auto-end shift.')
+        })
+      }
     }
 
     updateTimers()
     const interval = setInterval(updateTimers, 1000)
     return () => clearInterval(interval)
-  }, [activeSession])
+  }, [activeSession, localOvershiftStatus])
 
   useEffect(() => {
     const setFavicon = (color: string) => {
