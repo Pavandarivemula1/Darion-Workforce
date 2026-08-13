@@ -17,7 +17,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
+  const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
   
   const sizeStyles = {
     sm: 'h-8 px-4 text-xs rounded-[var(--md-sys-shape-corner-full)] gap-1.5',
@@ -26,10 +26,10 @@ export const Button: React.FC<ButtonProps> = ({
   }
 
   const variantStyles = {
-    filled: 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:shadow-[var(--md-sys-elevation-1)] active:scale-[0.98]',
+    filled: 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] active:scale-[0.98]',
     outlined: 'border border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 active:scale-[0.98]',
     text: 'text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 active:scale-[0.98]',
-    elevated: 'bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-primary)] shadow-[var(--md-sys-elevation-1)] hover:shadow-[var(--md-sys-elevation-2)] active:scale-[0.98]',
+    elevated: 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] active:scale-[0.98]',
   }
 
   return (

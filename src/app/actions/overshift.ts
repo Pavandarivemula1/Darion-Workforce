@@ -8,7 +8,7 @@ export type OvershiftActionState = {
   success?: boolean
 }
 
-export async function requestOvershiftAction(date: string) {
+export async function requestOvershiftAction(date: string, requestType: 'now' | 'later' = 'now') {
   const supabase = await createClient()
 
   const {
@@ -19,11 +19,29 @@ export async function requestOvershiftAction(date: string) {
     return { error: 'Unauthorized. Please sign in.' }
   }
 
+  // Check for existing pending or approved requests for this date
+  const { data: existingRequests, error: checkError } = await supabase
+    .from('overshift_requests')
+    .select('id, status')
+    .eq('user_id', user.id)
+    .eq('request_date', date)
+    .in('status', ['pending', 'approved'])
+    .limit(1)
+
+  if (checkError) {
+    return { error: 'Error checking existing requests.' }
+  }
+
+  if (existingRequests && existingRequests.length > 0) {
+    return { error: `You already have a ${existingRequests[0].status} overshift request for this date.` }
+  }
+
   const { error } = await supabase
     .from('overshift_requests')
     .insert({
       user_id: user.id,
       request_date: date,
+      request_type: requestType,
     })
 
   if (error) {

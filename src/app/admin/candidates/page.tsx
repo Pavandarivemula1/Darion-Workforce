@@ -25,7 +25,7 @@ export default async function AdminCandidatesPage() {
       .single(),
     supabase
       .from('profiles')
-      .select('id, full_name, role, created_at, hourly_rate')
+      .select('id, full_name, role, created_at, hourly_rate, avatar_url, phone_number, address, id_number')
       .eq('role', 'candidate')
       .order('created_at', { ascending: true }),
     supabase
@@ -42,6 +42,10 @@ export default async function AdminCandidatesPage() {
     role: c.role,
     created_at: c.created_at,
     hourly_rate: c.hourly_rate || 0,
+    avatar_url: c.avatar_url,
+    phone_number: c.phone_number,
+    address: c.address,
+    id_number: c.id_number,
     isWorking: activeUserIds.has(c.id),
   }))
 

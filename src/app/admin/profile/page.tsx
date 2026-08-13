@@ -2,7 +2,8 @@ import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { Card } from '@/components/ui/Card'
-import { ShieldCheck, Mail, Calendar, Key } from 'lucide-react'
+import { ShieldCheck, Mail, Calendar, Key, Phone, MapPin, FileText } from 'lucide-react'
+import { ProfileAvatarZoom } from '@/components/ui/ProfileAvatarZoom'
 
 export default async function AdminProfilePage() {
   const user = await getCurrentUserFast()
@@ -19,12 +20,14 @@ export default async function AdminProfilePage() {
 
   const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('id, full_name, role, created_at')
+    .select('id, full_name, role, created_at, avatar_url, phone_number, address, id_number')
     .eq('id', user.id)
     .single()
 
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+
   return (
-    <AdminLayout adminName={adminProfile?.full_name || 'Admin'}>
+    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Admin Profile</h2>
@@ -35,15 +38,34 @@ export default async function AdminProfilePage() {
 
         <Card variant="elevated" className="border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-6">
           <div className="flex items-center gap-4 pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
-            <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center font-bold text-xl">
-              {adminProfile?.full_name?.charAt(0).toUpperCase() || 'A'}
-            </div>
-            <div>
-              <h3 className="text-lg font-bold">{adminProfile?.full_name || 'Admin'}</h3>
-              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] uppercase tracking-wider mt-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                System Administrator
-              </span>
+            <ProfileAvatarZoom 
+              avatarUrl={adminProfile?.avatar_url} 
+              altText={adminProfile?.full_name || 'Admin'} 
+              fallbackInitials={adminProfile?.full_name?.charAt(0).toUpperCase() || 'A'} 
+            />
+            <div className="flex flex-col justify-center">
+              <h3 className="text-lg font-bold leading-tight">{adminProfile?.full_name || 'Admin'}</h3>
+              <div className="flex items-center flex-wrap gap-2 mt-1">
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] uppercase tracking-wider">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  System Administrator
+                </span>
+                {adminProfile?.id_number && (
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <span className="text-[var(--md-sys-color-on-surface-variant)]">•</span>
+                    <a 
+                      href={`/api/verify-redirect?idNumber=${adminProfile.id_number}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-mono font-medium text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1"
+                      title="Verify ID Card"
+                    >
+                      {adminProfile.id_number}
+                      <ShieldCheck className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -52,7 +74,7 @@ export default async function AdminProfilePage() {
               <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5" /> Email:
               </span>
-              <span className="font-semibold text-sm truncate">pavan@darion.in</span>
+              <span className="font-semibold text-sm truncate">{authUser?.email || 'Not provided'}</span>
             </div>
 
             <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1">
@@ -75,6 +97,20 @@ export default async function AdminProfilePage() {
                     })
                   : '—'}
               </span>
+            </div>
+
+            <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1">
+              <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5" /> Phone Number:
+              </span>
+              <span className="font-semibold text-sm">{adminProfile?.phone_number || 'Not provided'}</span>
+            </div>
+
+            <div className="p-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1">
+              <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" /> Address:
+              </span>
+              <span className="font-semibold text-sm">{adminProfile?.address || 'Not provided'}</span>
             </div>
           </div>
         </Card>

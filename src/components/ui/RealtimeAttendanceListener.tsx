@@ -11,7 +11,7 @@ export function RealtimeAttendanceListener() {
     const supabase = createClient()
     
     // Subscribe to any changes on the attendance table
-    const channel = supabase
+    const attendanceChannel = supabase
       .channel('attendance_changes')
       .on(
         'postgres_changes',
@@ -27,8 +27,25 @@ export function RealtimeAttendanceListener() {
       )
       .subscribe()
 
+    // Subscribe to any changes on the overshift_requests table
+    const overshiftChannel = supabase
+      .channel('overshift_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'overshift_requests',
+        },
+        () => {
+          router.refresh()
+        }
+      )
+      .subscribe()
+
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(attendanceChannel)
+      supabase.removeChannel(overshiftChannel)
     }
   }, [router])
 

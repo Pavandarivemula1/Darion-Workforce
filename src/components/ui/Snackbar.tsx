@@ -26,7 +26,7 @@ export const Snackbar: React.FC<SnackbarProps> = ({
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 min-w-[320px] max-w-[560px] animate-fade-in">
       <div
-        className={`flex items-center justify-between gap-4 px-4 py-3 rounded-[var(--md-sys-shape-corner-extra-small)] shadow-[var(--md-sys-elevation-3)] ${bgStyles[variant]}`}
+        className={`flex items-center justify-between gap-4 px-4 py-3 rounded-[var(--md-sys-shape-corner-extra-small)] ${bgStyles[variant]}`}
       >
         <span className="text-sm font-normal leading-5">{message}</span>
         <div className="flex items-center gap-2">

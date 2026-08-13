@@ -53,7 +53,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]">
       <div className="w-full max-w-md flex flex-col items-center gap-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">
@@ -197,7 +197,7 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="button"
-                    className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] shadow-sm text-[var(--md-sys-color-on-surface)]"
+                    className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   >
                     Magic Link
                   </button>
@@ -229,7 +229,7 @@ export default function LoginPage() {
               <div className="flex gap-2 p-1 bg-[var(--md-sys-color-surface-container-highest)] rounded-[var(--md-sys-shape-corner-medium)] mb-2">
                 <button
                   type="button"
-                  className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] shadow-sm text-[var(--md-sys-color-on-surface)]"
+                  className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                 >
                   Password
                 </button>

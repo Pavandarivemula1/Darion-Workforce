@@ -29,7 +29,7 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
   const [{ data: profile }, { data: records }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, role')
+      .select('id, full_name, role, avatar_url')
       .eq('id', user.id)
       .single(),
     supabase
@@ -40,7 +40,7 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
   ])
 
   return (
-    <CandidateLayout candidateName={profile?.full_name || 'Candidate'}>
+    <CandidateLayout candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
       <main className="max-w-5xl w-full mx-auto flex flex-col gap-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Attendance History</h2>

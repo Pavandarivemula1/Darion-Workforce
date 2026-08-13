@@ -273,7 +273,7 @@ export function MfaSetup() {
         ) : qrCode ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row gap-6 items-start">
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex-shrink-0 flex items-center justify-center">
+              <div className="bg-white p-4 rounded-lg border border-gray-100 flex-shrink-0 flex items-center justify-center">
                 <QRCode
                   value={qrCode}
                   size={160}

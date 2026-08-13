@@ -136,6 +136,95 @@ export async function updateCandidateHourlyRateAction(
   return { success: true }
 }
 
+export async function updateCandidateProfileAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const candidateId = formData.get('candidateId') as string
+  const fullName = formData.get('fullName') as string
+  const hourlyRateStr = formData.get('hourlyRate') as string
+  const phoneNumber = formData.get('phoneNumber') as string
+  const address = formData.get('address') as string
+  const idNumber = formData.get('idNumber') as string
+  const avatarFile = formData.get('avatarFile') as File | null
+  
+  if (!candidateId || !fullName) {
+    return { error: 'Candidate ID and Full Name are required.' }
+  }
+
+  const hourlyRate = parseFloat(hourlyRateStr)
+  
+  let avatarUrl: string | undefined = undefined
+
+  if (avatarFile && avatarFile.size > 0) {
+    const fileExt = avatarFile.name.split('.').pop()
+    const fileName = `${candidateId}-${Date.now()}.${fileExt}`
+    
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, avatarFile, { upsert: true })
+      
+    if (uploadError) {
+      return { error: 'Failed to upload avatar: ' + uploadError.message }
+    }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName)
+      
+    avatarUrl = publicUrlData.publicUrl
+  }
+
+  const updateData: any = {
+    full_name: fullName,
+    hourly_rate: isNaN(hourlyRate) ? 0 : Math.max(0, hourlyRate),
+    phone_number: phoneNumber || null,
+    address: address || null,
+    id_number: idNumber || null,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (avatarUrl !== undefined) {
+    updateData.avatar_url = avatarUrl
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(updateData)
+    .eq('id', candidateId)
+
+  if (error) {
+    return { error: error.message || 'Failed to update profile.' }
+  }
+
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin')
+  revalidatePath('/candidate')
+  return { success: true }
+}
+
 export async function approveShiftAction(
   prevState: AdminActionState,
   formData: FormData

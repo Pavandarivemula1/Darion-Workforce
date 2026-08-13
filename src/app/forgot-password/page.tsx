@@ -24,11 +24,11 @@ export default function ForgotPasswordPage() {
   const activeError = state?.error && state.error !== dismissedError ? state.error : null
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]">
       <div className="w-full max-w-md flex flex-col items-center gap-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shadow-[var(--md-sys-elevation-1)]">
+          <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
             <Clock className="w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
                   onClick={() => setResetMethod('admin')}
                   className={`flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors ${
                     resetMethod === 'admin' 
-                      ? 'bg-[var(--md-sys-color-surface)] shadow-sm text-[var(--md-sys-color-on-surface)]' 
+                      ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]' 
                       : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                   }`}
                 >
@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
                   onClick={() => setResetMethod('email_reset')}
                   className={`flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors ${
                     resetMethod === 'email_reset' 
-                      ? 'bg-[var(--md-sys-color-surface)] shadow-sm text-[var(--md-sys-color-on-surface)]' 
+                      ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]' 
                       : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                   }`}
                 >

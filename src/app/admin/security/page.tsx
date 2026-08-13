@@ -15,7 +15,7 @@ export default async function AdminSecurityPage() {
   // Fetch the admin profile name for the layout
   const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, avatar_url')
     .eq('id', user.id)
     .single()
 
@@ -28,7 +28,7 @@ export default async function AdminSecurityPage() {
   const safeRequests = error ? [] : (requests || [])
 
   return (
-    <AdminLayout adminName={adminProfile?.full_name || 'Admin'}>
+    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-6xl w-full mx-auto flex flex-col gap-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Security Requests</h2>

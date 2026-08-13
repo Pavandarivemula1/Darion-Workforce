@@ -66,7 +66,7 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({
   const isSelectedWeekSpecified = searchParams.has('week')
 
   return (
-    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 p-4 rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] shadow-[var(--md-sys-elevation-1)] print:hidden">
+    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 p-4 rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] print:hidden">
       {/* Week Navigation Controls */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center rounded-[var(--md-sys-shape-corner-full)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-0.5">

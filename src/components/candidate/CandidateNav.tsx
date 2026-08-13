@@ -23,7 +23,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
   return (
     <>
       {/* Top Navigation Header */}
-      <header className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shadow-[var(--md-sys-elevation-1)] sticky top-0 z-40">
+      <header className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           {/* Brand & User Info */}
           <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
                   prefetch={true}
                   className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-[var(--md-sys-shape-corner-full)] transition-all cursor-pointer whitespace-nowrap ${
                     isActive
-                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-xs'
+                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
                       : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                   }`}
                 >
@@ -76,7 +76,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
       </header>
 
       {/* Mobile Fixed Bottom Navigation Bar (< 640px) */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--md-sys-color-surface-container-low)] border-t border-[var(--md-sys-color-outline-variant)] shadow-[var(--md-sys-elevation-3)] px-2 py-1.5 flex items-center justify-around">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--md-sys-color-surface)] border-t border-[var(--md-sys-color-outline-variant)] px-2 py-1.5 flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href

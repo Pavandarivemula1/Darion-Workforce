@@ -14,8 +14,8 @@ export interface NavItem {
 
 export interface DynamicSidebarProps {
   navItems: NavItem[]
-  brandIcon?: React.ReactNode
   brandName?: string
+  brandIcon?: React.ReactNode
   subtitle?: string
 }
 
@@ -105,7 +105,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
     <aside
       ref={sidebarRef}
       style={{ width: `${sidebarWidth}px` }}
-      className={`hidden md:flex relative flex-col border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shrink-0 shadow-[var(--md-sys-elevation-1)] min-h-screen sticky top-0 h-screen ${isResizing ? 'transition-none select-none' : 'transition-[width] duration-300 ease-in-out'}`}
+      className={`hidden md:flex relative flex-col border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shrink-0 min-h-screen sticky top-0 h-screen ${isResizing ? 'transition-none select-none' : 'transition-[width] duration-300 ease-in-out'}`}
     >
       {/* Brand Header */}
       <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} py-4 h-20 border-b border-[var(--md-sys-color-outline-variant)] overflow-hidden transition-all whitespace-nowrap`}>
@@ -148,7 +148,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                 prefetch={true}
                 className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-4'} py-3 h-12 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold'
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
               >

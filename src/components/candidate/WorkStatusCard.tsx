@@ -96,6 +96,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   const [timeToNextShift, setTimeToNextShift] = useState<string | null>(null)
   const [isWithinRegularHours, setIsWithinRegularHours] = useState(true)
   const [liveTime, setLiveTime] = useState<string>('')
+  const [scheduledDate, setScheduledDate] = useState<string>('')
 
   useEffect(() => {
     const updateClock = () => {
@@ -275,19 +276,31 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
     })
   }
 
-  const handleRequestOvershift = async () => {
+  const handleRequestOvershift = async (type: 'now' | 'later') => {
     setOvershiftPending(true)
     setErrorMsg(null)
     setConfirmDialog(null)
     
-    const todayParts = new Date().toLocaleString('en-CA', { timeZone: 'Asia/Kolkata' }).split(',')[0].split(' ')[0]
-    const res = await requestOvershiftAction(todayParts)
+    let dateToRequest = ''
+    if (type === 'now') {
+      dateToRequest = new Date().toLocaleString('en-CA', { timeZone: 'Asia/Kolkata' }).split(',')[0].split(' ')[0]
+    } else {
+      if (!scheduledDate) {
+        setErrorMsg('Please select a date for the scheduled overshift.')
+        setOvershiftPending(false)
+        return
+      }
+      dateToRequest = scheduledDate
+    }
+
+    const res = await requestOvershiftAction(dateToRequest, type)
     setOvershiftPending(false)
     
     if (res?.error) setErrorMsg(res.error)
     else {
-      setSuccessMsg('Overshift requested successfully.')
+      setSuccessMsg(`Overshift requested successfully for ${dateToRequest}.`)
       setLocalOvershiftStatus('pending')
+      setScheduledDate('')
     }
   }
 
@@ -517,13 +530,54 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
 
       <Dialog
         isOpen={confirmDialog === 'requestOvershift'}
-        title="Request Overshift?"
-        description="You are trying to start work outside regular shift hours (or after completing a shift today). This requires an Admin's approval. Send request?"
-        confirmLabel={overshiftPending ? 'Requesting...' : 'Request Overshift'}
-        isLoading={overshiftPending}
-        onConfirm={handleRequestOvershift}
+        title="Request Overshift"
         onClose={() => setConfirmDialog(null)}
-      />
+      >
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] mb-4">
+          You can request to start working right now, or schedule an overshift for a future date. This requires an Admin's approval.
+        </p>
+
+        <div className="flex flex-col gap-4">
+          <div className="p-4 rounded-xl border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-3">
+            <h4 className="font-semibold text-sm">Overshift Now</h4>
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              Request to start working immediately today.
+            </p>
+            <Button
+              variant="filled"
+              size="md"
+              className="w-full"
+              isLoading={overshiftPending}
+              onClick={() => handleRequestOvershift('now')}
+            >
+              Request for Today
+            </Button>
+          </div>
+
+          <div className="p-4 rounded-xl border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-3">
+            <h4 className="font-semibold text-sm">Schedule for Later</h4>
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              Request an overshift for a future date.
+            </p>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              className="h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-sm focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+            />
+            <Button
+              variant="outlined"
+              size="md"
+              className="w-full"
+              isLoading={overshiftPending}
+              disabled={!scheduledDate}
+              onClick={() => handleRequestOvershift('later')}
+            >
+              Schedule Request
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       <Snackbar message={errorMsg} variant="error" onClose={() => setErrorMsg(null)} />
       <Snackbar message={successMsg} variant="success" onClose={() => setSuccessMsg(null)} />

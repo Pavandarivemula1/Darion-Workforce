@@ -34,7 +34,7 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
   const [{ data: adminProfile }, { data: candidates }, { data: records }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, role')
+      .select('id, full_name, role, avatar_url')
       .eq('id', user.id)
       .single(),
     supabase
@@ -53,7 +53,7 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
   const referenceDateIso = getKolkataDateKey(referenceDate.toISOString())
 
   return (
-    <AdminLayout adminName={adminProfile?.full_name || 'Admin'}>
+    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Weekly Timesheet</h2>

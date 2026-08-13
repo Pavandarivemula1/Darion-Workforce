@@ -19,9 +19,10 @@ import {
 export interface CandidateLayoutProps {
   children: React.ReactNode
   candidateName?: string
+  candidateAvatarUrl?: string
 }
 
-export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, candidateName }) => {
+export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, candidateName, candidateAvatarUrl }) => {
   const pathname = usePathname()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
@@ -32,7 +33,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
   ]
 
   return (
-    <div className="min-h-screen bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row">
       {/* Desktop Dynamic Sidebar Navigation Drawer */}
       <DynamicSidebar
         navItems={navItems}
@@ -42,7 +43,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
       />
 
       {/* Mobile Top Header (< 768px) */}
-      <header className="md:hidden border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-3 flex items-center justify-between shadow-[var(--md-sys-elevation-1)] sticky top-0 z-40">
+      <header className="md:hidden border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
             <Clock className="w-5 h-5" />
@@ -53,19 +54,24 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
           </div>
         </div>
 
-        <button
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="p-2 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
-          aria-label="Toggle navigation menu"
-        >
-          {isMobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          {candidateAvatarUrl && (
+            <img src={candidateAvatarUrl} alt={candidateName} className="w-8 h-8 rounded-full object-cover" />
+          )}
+          <button
+            onClick={() => setIsMobileOpen(!isMobileOpen)}
+            className="p-2 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+            aria-label="Toggle navigation menu"
+          >
+            {isMobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile Drawer Overlay */}
       {isMobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex flex-col justify-end animate-fade-in">
-          <div className="bg-[var(--md-sys-color-surface-container-low)] rounded-t-[var(--md-sys-shape-corner-extra-large)] p-6 flex flex-col gap-4 border-t border-[var(--md-sys-color-outline-variant)] shadow-[var(--md-sys-elevation-3)] max-h-[85vh] overflow-y-auto">
+          <div className="bg-[var(--md-sys-color-surface)] rounded-t-[var(--md-sys-shape-corner-extra-large)] p-6 flex flex-col gap-4 border-t border-[var(--md-sys-color-outline-variant)] max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
               <span className="text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
                 Candidate Navigation
@@ -117,7 +123,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
 
       {/* Main Content Container (Centered Max Width on Ultrawide Displays) */}
       <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
-        <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
+        <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1 relative">
           {children}
         </div>
       </div>

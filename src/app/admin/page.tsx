@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
   // Fetch only what's necessary for the Layout shell
   const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('id, full_name, role')
+    .select('id, full_name, role, avatar_url')
     .eq('id', user.id)
     .single()
 
@@ -28,7 +28,7 @@ export default async function AdminDashboardPage() {
   }
 
   return (
-    <AdminLayout adminName={adminProfile.full_name}>
+    <AdminLayout adminName={adminProfile.full_name} adminAvatarUrl={adminProfile.avatar_url}>
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
         {/* Header Title */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -40,7 +40,7 @@ export default async function AdminDashboardPage() {
           </div>
           <Link
             href="/admin/candidates"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:shadow-[var(--md-sys-elevation-1)] transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-full)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] transition-all cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
             <span>Manage Candidates</span>

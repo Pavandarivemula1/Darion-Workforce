@@ -76,7 +76,7 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
               return (
                 <div key={d.dateIso} className="flex-1 min-w-0 flex flex-col items-center gap-1.5 group h-full justify-end z-10">
                   {/* Tooltip on hover */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none shadow-xs">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none">
                     {d.formattedDuration}
                   </div>
 
@@ -86,8 +86,8 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
                       isZero
                         ? 'bg-[var(--md-sys-color-surface-container-high)] border-t border-[var(--md-sys-color-outline-variant)]'
                         : d.hoursNum >= 8
-                        ? 'bg-gradient-to-t from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-tertiary)] shadow-xs'
-                        : 'bg-gradient-to-t from-[var(--md-sys-color-secondary)] to-[var(--md-sys-color-primary)] shadow-xs'
+                        ? 'bg-gradient-to-t from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-tertiary)]'
+                        : 'bg-gradient-to-t from-[var(--md-sys-color-secondary)] to-[var(--md-sys-color-primary)]'
                     }`}
                     style={{ height: `${heightPercent}%` }}
                   >

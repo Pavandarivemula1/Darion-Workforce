@@ -124,7 +124,7 @@
   }
 
   body {
-    background-color: var(--md-sys-color-surface-container-low);
+    background-color: var(--md-sys-color-surface);
     color: var(--md-sys-color-on-surface);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Google Sans', 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     margin: 0;

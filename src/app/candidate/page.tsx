@@ -21,12 +21,12 @@ export default async function CandidateDashboardPage() {
   // Fetch only what's necessary for the Layout shell
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, role')
+    .select('id, full_name, role, avatar_url')
     .eq('id', user.id)
     .single()
 
   return (
-    <CandidateLayout candidateName={profile?.full_name || 'Candidate'}>
+    <CandidateLayout candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
       <main className="max-w-5xl w-full mx-auto flex flex-col gap-8">
         {/* Welcome Section */}
         <div>

@@ -59,20 +59,20 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
   }
 
   // Prepare Concurrent Queries
-  const adminProfilePromise = supabase
+  const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('id, full_name, role')
+    .select('id, full_name, role, avatar_url')
     .eq('id', user.id)
     .single()
 
   const candidatesPromise = supabase
     .from('profiles')
-    .select('id, full_name, hourly_rate')
+    .select('id, full_name, hourly_rate, avatar_url')
     .eq('role', 'candidate')
 
   let attendanceQuery = supabase
     .from('attendance')
-    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at, profiles(full_name)')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at, profiles(full_name, avatar_url)')
     .order('login_time', { ascending: false })
 
   if (candidateId !== 'all') {
@@ -86,13 +86,12 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
   }
 
   // Execute All Queries Concurrently (Promise.all)
-  const [{ data: adminProfile }, { data: candidates }, { data: attendanceData }, { data: overshiftsData }] = await Promise.all([
-    adminProfilePromise,
+  const [{ data: candidates }, { data: attendanceData }, { data: overshiftsData }] = await Promise.all([
     candidatesPromise,
     attendanceQuery,
     supabase
       .from('overshift_requests')
-      .select('id, user_id, request_date, status, created_at, profiles(full_name)')
+      .select('id, user_id, request_date, request_type, status, created_at, profiles(full_name)')
       .order('created_at', { ascending: false })
   ])
 
@@ -111,7 +110,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
     rejection_reason?: string | null
     payout_amount?: number | null
     created_at: string
-    profiles?: { full_name: string } | { full_name: string }[] | null
+    profiles?: { full_name: string; avatar_url?: string } | { full_name: string; avatar_url?: string }[] | null
   }) => {
     const profileObj = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
     return {
@@ -126,20 +125,26 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
       payout_amount: r.payout_amount || 0,
       created_at: r.created_at,
       candidateName: profileObj?.full_name || 'Unknown Candidate',
+      candidateAvatarUrl: profileObj?.avatar_url || null,
     }
   })
 
-  const overshiftRecords = (overshiftsData || []).map((r: any) => ({
-    id: r.id,
-    user_id: r.user_id,
-    request_date: r.request_date,
-    status: r.status,
-    created_at: r.created_at,
-    candidateName: (Array.isArray(r.profiles) ? r.profiles[0] : r.profiles)?.full_name || 'Unknown',
-  }))
+  const overshiftRecords = (overshiftsData || []).map((r: any) => {
+    const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+    return {
+      id: r.id,
+      user_id: r.user_id,
+      request_date: r.request_date,
+      request_type: r.request_type,
+      status: r.status,
+      created_at: r.created_at,
+      candidateName: profile?.full_name || 'Unknown',
+      candidateAvatarUrl: profile?.avatar_url || null,
+    }
+  })
 
   return (
-    <AdminLayout adminName={adminProfile.full_name}>
+    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6">
         <AdminAttendanceClient
           candidates={candidates || []}

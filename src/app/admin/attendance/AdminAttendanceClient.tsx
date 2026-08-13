@@ -39,15 +39,18 @@ export interface SystemAttendanceItem {
   payout_amount?: number | null
   created_at: string
   candidateName: string
+  candidateAvatarUrl?: string | null
 }
 
 export interface OvershiftRequestItem {
   id: string
   user_id: string
   request_date: string
+  request_type?: 'now' | 'later'
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
   candidateName: string
+  candidateAvatarUrl?: string | null
 }
 
 export interface AdminAttendanceClientProps {
@@ -289,8 +292,8 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     })
   }
 
-  const pendingOvershifts = overshiftRequests.filter((req) => {
-    if (req.status !== 'pending') return false
+  const activeOvershifts = overshiftRequests.filter((req) => {
+    if (req.status === 'rejected') return false
     if (selectedCandidate !== 'all' && req.user_id !== selectedCandidate) return false
     return true
   })
@@ -305,19 +308,40 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         </p>
       </div>
 
-      {pendingOvershifts.length > 0 && (
+      {activeOvershifts.length > 0 && (
         <Card variant="outlined" className="border-amber-500/50 p-4">
           <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" /> Pending Overshift Requests
+            <AlertTriangle className="w-5 h-5" /> Active Overshift Requests
           </h3>
           <div className="flex flex-col gap-3">
-            {pendingOvershifts.map((req) => (
+            {activeOvershifts.map((req) => (
               <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]">
-                <div>
-                  <p className="font-semibold">{req.candidateName}</p>
-                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                    Requested for: {req.request_date}
-                  </p>
+                <div className="flex items-center gap-3">
+                  {req.candidateAvatarUrl ? (
+                    <img src={req.candidateAvatarUrl} alt={req.candidateName} className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-xs font-bold">
+                      {req.candidateName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold flex items-center gap-2">
+                      {req.candidateName}
+                      {req.request_type === 'later' && (
+                        <span className="px-2 py-0.5 rounded-full bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] text-[10px] uppercase font-bold tracking-wider">
+                          Scheduled
+                        </span>
+                      )}
+                      {req.status === 'approved' && (
+                        <span className="px-2 py-0.5 rounded-full bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)] text-[10px] uppercase font-bold tracking-wider">
+                          Approved
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      Requested for: {req.request_date}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 mt-3 sm:mt-0">
                   <Button
@@ -326,17 +350,19 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                     onClick={() => handleRejectOvershift(req.id)}
                     isLoading={isRejectingOvershift}
                   >
-                    Reject
+                    {req.status === 'approved' ? 'Cancel / Reject' : 'Reject'}
                   </Button>
-                  <Button
-                    variant="filled"
-                    size="sm"
-                    className="bg-amber-600 text-white hover:bg-amber-700"
-                    onClick={() => handleApproveOvershift(req.id)}
-                    isLoading={isApprovingOvershift}
-                  >
-                    Approve Overshift
-                  </Button>
+                  {req.status === 'pending' && (
+                    <Button
+                      variant="filled"
+                      size="sm"
+                      className="bg-amber-600 text-white hover:bg-amber-700"
+                      onClick={() => handleApproveOvershift(req.id)}
+                      isLoading={isApprovingOvershift}
+                    >
+                      Approve Overshift
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -378,7 +404,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
               onClick={() => updateQueryParams('filter', f.id)}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === f.id
-                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-semibold'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold'
                   : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
               }`}
             >
@@ -426,9 +452,13 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
               >
                 <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-xs font-bold shrink-0">
-                      {item.candidateName.charAt(0).toUpperCase()}
-                    </div>
+                    {item.candidateAvatarUrl ? (
+                      <img src={item.candidateAvatarUrl} alt={item.candidateName} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-xs font-bold shrink-0">
+                        {item.candidateName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <h4 className="text-sm font-bold">{item.candidateName}</h4>
                       <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
@@ -675,7 +705,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       {/* Approve Shift Modal Dialog */}
       {approveItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
@@ -737,7 +767,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       {/* Reject Shift Modal Dialog */}
       {rejectItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 shadow-[var(--md-sys-elevation-3)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
+          <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
               <h3 className="text-lg font-bold flex items-center gap-2 text-[var(--md-sys-color-error)]">
                 <XCircle className="w-5 h-5" />

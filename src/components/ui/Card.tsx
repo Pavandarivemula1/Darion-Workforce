@@ -13,7 +13,7 @@ export const Card: React.FC<CardProps> = ({
   const baseStyles = 'rounded-[var(--md-sys-shape-corner-large)] p-6 transition-all duration-200'
 
   const variantStyles = {
-    elevated: 'bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] shadow-[var(--md-sys-elevation-1)]',
+    elevated: 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]',
     outlined: 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]',
     filled: 'bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]',
   }

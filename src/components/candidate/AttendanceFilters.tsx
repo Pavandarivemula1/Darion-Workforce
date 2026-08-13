@@ -55,7 +55,7 @@ export const AttendanceFilters: React.FC<AttendanceFiltersProps> = ({
   }
 
   return (
-    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
       {/* Preset Filters */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
         <Filter className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1" />
@@ -70,7 +70,7 @@ export const AttendanceFilters: React.FC<AttendanceFiltersProps> = ({
             onClick={() => handleFilterClick(f.id)}
             className={`px-3.5 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer whitespace-nowrap ${
               currentFilter === f.id
-                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-semibold'
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold'
                 : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
             }`}
           >

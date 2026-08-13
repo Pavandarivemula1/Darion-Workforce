@@ -6,8 +6,9 @@ import { Card } from '@/components/ui/Card'
 import { TextField } from '@/components/ui/TextField'
 import { Button } from '@/components/ui/Button'
 import { Snackbar } from '@/components/ui/Snackbar'
-import { User, Mail, ShieldCheck, Calendar, KeyRound, Lock, IndianRupee } from 'lucide-react'
+import { User, Mail, ShieldCheck, Calendar, KeyRound, Lock, IndianRupee, Phone, MapPin, FileText, IdCard } from 'lucide-react'
 import { MfaSetup } from './MfaSetup'
+import { ProfileAvatarZoom } from '@/components/ui/ProfileAvatarZoom'
 
 export interface CandidateProfileClientProps {
   profile: {
@@ -16,6 +17,10 @@ export interface CandidateProfileClientProps {
     role: string
     created_at: string
     hourly_rate?: number
+    avatar_url?: string
+    phone_number?: string
+    address?: string
+    id_number?: string
   }
   email: string
 }
@@ -58,22 +63,69 @@ export const CandidateProfileClient: React.FC<CandidateProfileClientProps> = ({
       {/* Account Info Card */}
       <Card variant="elevated" className="border border-[var(--md-sys-color-outline-variant)]">
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-            <div className="w-12 h-12 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-              <User className="w-6 h-6" />
+          <div className="flex items-center justify-between gap-4 pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
+            <div className="flex items-center gap-3">
+              <ProfileAvatarZoom 
+                avatarUrl={profile.avatar_url} 
+                altText={profile.full_name} 
+                fallbackInitials={profile.full_name.charAt(0).toUpperCase()} 
+              />
+              <div className="flex flex-col justify-center">
+                <h3 className="text-lg font-bold leading-tight">{profile.full_name}</h3>
+                <div className="flex items-center gap-2 mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  <span>Candidate Account</span>
+                  {profile.id_number && (
+                    <>
+                      <span className="text-[var(--md-sys-color-outline)]">•</span>
+                      <a 
+                        href={`/api/verify-redirect?idNumber=${profile.id_number}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono font-medium text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1"
+                        title="Verify ID Card"
+                      >
+                        {profile.id_number}
+                        <ShieldCheck className="w-3 h-3" />
+                      </a>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-bold">{profile.full_name}</h3>
-              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Candidate Account</p>
-            </div>
+
+            {profile.id_number && (
+              <a
+                href={`/api/verify-redirect?idNumber=${profile.id_number}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 hidden sm:inline-flex items-center justify-center gap-2 px-5 h-10 rounded-full text-sm font-semibold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90 transition-colors shadow-sm"
+              >
+                <IdCard className="w-4 h-4" />
+                View ID Card
+              </a>
+            )}
           </div>
+          
+          {profile.id_number && (
+            <div className="sm:hidden -mt-1 mb-2">
+              <a
+                href={`/api/verify-redirect?idNumber=${profile.id_number}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full gap-2 px-4 h-10 rounded-full text-sm font-semibold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90 transition-colors shadow-sm"
+              >
+                <IdCard className="w-4 h-4" />
+                View ID Card
+              </a>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)]">
               <Mail className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
               <div>
                 <p className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)]">Email Address</p>
-                <p className="text-xs font-bold font-mono">{email}</p>
+                <p className="text-xs font-bold font-mono">{email || 'Not provided'}</p>
               </div>
             </div>
 
@@ -100,6 +152,22 @@ export const CandidateProfileClient: React.FC<CandidateProfileClientProps> = ({
               <div>
                 <p className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)]">Member Since</p>
                 <p className="text-xs font-bold">{formattedDate}</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)]">
+              <Phone className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)]">Phone Number</p>
+                <p className="text-xs font-bold">{profile.phone_number || 'Not provided'}</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-3 border border-[var(--md-sys-color-outline-variant)]">
+              <MapPin className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)]">Address</p>
+                <p className="text-xs font-bold">{profile.address || 'Not provided'}</p>
               </div>
             </div>
           </div>

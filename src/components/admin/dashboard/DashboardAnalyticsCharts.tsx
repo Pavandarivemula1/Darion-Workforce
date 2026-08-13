@@ -77,7 +77,7 @@ export const DashboardAnalyticsCharts: React.FC<DashboardAnalyticsChartsProps> =
               return (
                 <div key={d.dateIso} className="flex-1 min-w-0 flex flex-col items-center gap-1.5 group h-full justify-end">
                   {/* Tooltip on hover */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none shadow-xs">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)] whitespace-nowrap pointer-events-none">
                     {d.formattedDuration}
                   </div>
 
@@ -86,7 +86,7 @@ export const DashboardAnalyticsCharts: React.FC<DashboardAnalyticsChartsProps> =
                     className={`w-full max-w-[28px] sm:max-w-[36px] rounded-t-md transition-all duration-500 relative ${
                       isZero
                         ? 'bg-[var(--md-sys-color-surface-container-high)] border-t border-[var(--md-sys-color-outline-variant)]'
-                        : 'bg-gradient-to-t from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-tertiary)] hover:brightness-110 shadow-xs'
+                        : 'bg-gradient-to-t from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-tertiary)] hover:brightness-110'
                     }`}
                     style={{ height: `${heightPercent}%` }}
                   >
@@ -165,7 +165,7 @@ export const DashboardAnalyticsCharts: React.FC<DashboardAnalyticsChartsProps> =
 
         {/* Visual Progress Stacked Segment Bar */}
         <div className="flex flex-col gap-4 py-2">
-          <div className="w-full h-4 rounded-full bg-[var(--md-sys-color-surface-container-highest)] overflow-hidden flex shadow-inner">
+          <div className="w-full h-4 rounded-full bg-[var(--md-sys-color-surface-container-highest)] overflow-hidden flex">
             <div
               className="h-full bg-emerald-500 transition-all duration-500"
               style={{ width: `${completedPercent}%` }}

@@ -78,7 +78,7 @@ export const WeeklySummaryCards: React.FC<WeeklySummaryCardsProps> = ({
       </div>
 
       {/* Candidate Hours Breakdown Bar */}
-      <Card variant="outlined" className="p-4 border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+      <Card variant="outlined" className="p-4 border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
             Weekly Breakdown ({weekLabel}):
