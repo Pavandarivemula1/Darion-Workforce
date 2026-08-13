@@ -54,12 +54,31 @@ export function MfaSetup() {
 
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Authenticator App'
+        friendlyName: 'Authenticator App',
+        issuer: 'Darion Workforce'
       })
       if (error) throw error
 
       setFactorId(data.id)
-      setQrCode(data.totp.uri)
+      
+      let uri = data.totp.uri
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        const email = user?.email
+        if (email && uri) {
+          const url = new URL(uri)
+          const secret = url.searchParams.get('secret')
+          if (secret) {
+            const encodedIssuer = encodeURIComponent('Darion Workforce')
+            const encodedEmail = encodeURIComponent(email)
+            uri = `otpauth://totp/${encodedIssuer}:${encodedEmail}?secret=${secret}&issuer=${encodedIssuer}`
+          }
+        }
+      } catch (e) {
+        console.error('Error formatting totp uri', e)
+      }
+
+      setQrCode(uri)
     } catch (err: any) {
       setError(err.message || 'Failed to enroll MFA')
     } finally {
