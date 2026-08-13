@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ArrowRight, History, Clock, Users } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { LiveTabTitle } from '@/components/ui/LiveTabTitle'
+import { RealtimeAttendanceListener } from '@/components/ui/RealtimeAttendanceListener'
 
 export default async function CandidateDashboardContent({ userId }: { userId: string }) {
   const supabase = await createClient()
@@ -117,6 +118,7 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
 
   return (
     <>
+      <RealtimeAttendanceListener />
       {!activeSession && <LiveTabTitle count={workingNowCount} />}
       
       <WorkStatusCard

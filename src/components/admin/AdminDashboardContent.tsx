@@ -13,6 +13,7 @@ import {
 import { getWeekBoundaries, getKolkataDateKey, formatDurationMs } from '@/lib/utils/timesheet'
 import { DashboardAnalyticsCharts } from '@/components/admin/dashboard/DashboardAnalyticsCharts'
 import { LiveTabTitle } from '@/components/ui/LiveTabTitle'
+import { RealtimeAttendanceListener } from '@/components/ui/RealtimeAttendanceListener'
 
 export default async function AdminDashboardContent() {
   const supabase = await createClient()
@@ -124,6 +125,7 @@ export default async function AdminDashboardContent() {
 
   return (
     <>
+      <RealtimeAttendanceListener />
       <LiveTabTitle count={workingNowCount} />
 
       {/* 4 MD3 Metric Cards */}
