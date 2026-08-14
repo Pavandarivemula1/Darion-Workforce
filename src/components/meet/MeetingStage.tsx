@@ -56,13 +56,23 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
   useEffect(() => {
     const video = videoRef.current
-    if (video && stream) {
-      if (video.srcObject !== stream) {
-        video.srcObject = stream
+    if (video) {
+      if (stream) {
+        if (isLocal) {
+          video.muted = true
+          video.defaultMuted = true
+        }
+        if (video.srcObject !== stream) {
+          video.srcObject = stream
+        }
+        video.play().catch((err) => {
+          console.warn('Video playback catch:', err)
+        })
+      } else {
+        video.srcObject = null
       }
-      video.play().catch(() => {})
     }
-  }, [stream, hasVideo, isScreenShare])
+  }, [stream, hasVideo, isScreenShare, isLocal])
 
   const isSpeaking = (audioLevel || 0) > 25 && hasAudio
   const canModerate = (userRole === 'host' || userRole === 'co-host') && !isLocal
@@ -86,6 +96,10 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           muted={isLocal}
           onLoadedMetadata={(e) => {
             const video = e.currentTarget
+            if (isLocal) {
+              video.muted = true
+              video.defaultMuted = true
+            }
             video.play().catch(() => {})
           }}
           className={`w-full h-full ${
@@ -210,7 +224,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
 export interface MeetingStageProps {
   localStream: MediaStream | null
-  localVideoRef: React.RefObject<HTMLVideoElement | null>
+  localVideoRef?: React.RefObject<HTMLVideoElement | null>
   userName: string
   userRole: 'host' | 'co-host' | 'participant'
   isAudioEnabled: boolean
