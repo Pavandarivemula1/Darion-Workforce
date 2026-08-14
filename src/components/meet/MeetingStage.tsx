@@ -84,6 +84,10 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           autoPlay
           playsInline
           muted={isLocal}
+          onLoadedMetadata={(e) => {
+            const video = e.currentTarget
+            video.play().catch(() => {})
+          }}
           className={`w-full h-full ${
             isScreenShare ? 'object-contain bg-black' : 'object-cover'
           } ${

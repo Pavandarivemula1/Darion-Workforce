@@ -771,19 +771,20 @@ export function useMeetRoom({
         let capturedScreenStream: MediaStream
         try {
           capturedScreenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: {
-              displaySurface: 'monitor',
-            },
+            video: true,
             audio: true,
           })
         } catch (audioErr) {
           console.warn('getDisplayMedia with audio failed, falling back to video only:', audioErr)
           capturedScreenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: {
-              displaySurface: 'monitor',
-            }
+            video: true,
           })
         }
+
+        // Ensure all video tracks are active and enabled
+        capturedScreenStream.getVideoTracks().forEach((t) => {
+          t.enabled = true
+        })
 
         screenStreamRef.current = capturedScreenStream
         setScreenStream(capturedScreenStream)
