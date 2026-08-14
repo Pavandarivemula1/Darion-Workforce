@@ -58,16 +58,24 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     const video = videoRef.current
     if (video) {
       if (stream) {
-        if (isLocal) {
-          video.muted = true
-          video.defaultMuted = true
-        }
+        const shouldMute = isLocal || isScreenShare
+        video.muted = shouldMute
+        video.defaultMuted = shouldMute
+        video.playsInline = true
+        video.autoplay = true
+
         if (video.srcObject !== stream) {
           video.srcObject = stream
         }
-        video.play().catch((err) => {
-          console.warn('Video playback catch:', err)
-        })
+
+        const p = video.play()
+        if (p !== undefined) {
+          p.catch(() => {
+            video.muted = true
+            video.defaultMuted = true
+            video.play().catch(() => {})
+          })
+        }
       } else {
         video.srcObject = null
       }
@@ -311,7 +319,7 @@ export const MeetingStage: React.FC<MeetingStageProps> = ({
               name={spotlightPeer.name}
               role={spotlightPeer.role}
               hasAudio={spotlightPeer.hasAudio}
-              hasVideo={spotlightPeer.hasVideo}
+              hasVideo={spotlightPeer.hasVideo || spotlightPeer.isScreenSharing}
               isScreenShare={spotlightPeer.isScreenSharing}
               isHandRaised={spotlightPeer.isHandRaised}
               audioLevel={spotlightPeer.audioLevel}

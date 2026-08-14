@@ -249,23 +249,9 @@ export function useMeetRoom({
             const next = new Map(prev)
             const existing = next.get(peerId)
 
-            let finalStream: MediaStream
-            if (existing && existing.stream) {
-              // Remove stale track of the same kind to prevent multi-track collisions in HTML5 video
-              existing.stream.getTracks().forEach((t) => {
-                if (t.kind === event.track.kind && t.id !== event.track.id) {
-                  existing.stream!.removeTrack(t)
-                }
-              })
-              const trackExists = existing.stream.getTracks().find((t) => t.id === event.track.id)
-              if (!trackExists) {
-                existing.stream.addTrack(event.track)
-              }
-              finalStream = new MediaStream(existing.stream.getTracks())
-            } else {
-              finalStream = event.streams[0]
-                ? new MediaStream(event.streams[0].getTracks())
-                : new MediaStream([event.track])
+            const finalStream = event.streams[0] || (existing?.stream ? existing.stream : new MediaStream([event.track]))
+            if (event.track && !finalStream.getTracks().some((t) => t.id === event.track.id)) {
+              finalStream.addTrack(event.track)
             }
 
             if (existing) {
