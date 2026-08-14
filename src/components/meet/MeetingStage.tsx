@@ -90,7 +90,25 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       {/* Video Element */}
       {stream && (hasVideo || isScreenShare) && (
         <video
-          ref={videoRef}
+          ref={(el) => {
+            videoRef.current = el
+            if (el && stream) {
+              if (isLocal) {
+                el.muted = true
+                el.defaultMuted = true
+              }
+              if (el.srcObject !== stream) {
+                el.srcObject = stream
+              }
+              const p = el.play()
+              if (p !== undefined) {
+                p.catch(() => {
+                  el.muted = true
+                  el.play().catch(() => {})
+                })
+              }
+            }
+          }}
           autoPlay
           playsInline
           muted={isLocal}
