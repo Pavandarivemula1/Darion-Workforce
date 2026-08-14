@@ -20,6 +20,8 @@ import {
   X,
   Clock,
   MessageSquare,
+  Palmtree,
+  Video,
 } from 'lucide-react'
 
 export interface AdminLayoutProps {
@@ -34,10 +36,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
 
   const navItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { label: 'Video Meets', href: '/admin/meets', icon: Video },
     { label: 'Candidates', href: '/admin/candidates', icon: Users },
     { label: 'Shifts', href: '/admin/shifts', icon: Clock },
     { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
     { label: 'Timesheet', href: '/admin/timesheet', icon: FileSpreadsheet },
+    { label: 'Leaves', href: '/admin/leaves', icon: Palmtree },
     { label: 'Payroll', href: '/admin/payroll', icon: Banknote },
     { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
     { label: 'Security', href: '/admin/security', icon: ShieldAlert },

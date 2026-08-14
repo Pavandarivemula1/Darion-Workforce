@@ -16,6 +16,8 @@ import {
   X,
   Banknote,
   MessageSquare,
+  Palmtree,
+  Video,
 } from 'lucide-react'
 import { FeedbackWidget } from './FeedbackWidget'
 
@@ -31,8 +33,10 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
 
   const navItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
+    { label: 'Video Meets', href: '/candidate/meets', icon: Video },
     { label: 'Attendance', href: '/candidate/attendance', icon: History },
     { label: 'Earnings', href: '/candidate/payroll', icon: Banknote },
+    { label: 'Leaves', href: '/candidate/leaves', icon: Palmtree },
     { label: 'Feedback', href: '/candidate/feedback', icon: MessageSquare },
     { label: 'Profile', href: '/candidate/profile', icon: User },
   ]

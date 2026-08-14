@@ -35,9 +35,9 @@ export function ResetPasswordClient() {
   const checkSession = async () => {
     setLoading(true)
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
       
-      if (sessionError || !session) {
+      if (userError || !user) {
         throw new Error('No active session found. The reset link may be invalid or expired.')
       }
 
