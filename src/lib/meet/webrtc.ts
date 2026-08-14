@@ -133,8 +133,9 @@ export async function replaceVideoTrack(
         newTrack.enabled = true
       }
       await videoSender.replaceTrack(newTrack)
-      // replaceTrack swaps the RTP stream in-place without SDP renegotiation
-      return { success: true, renegotiateNeeded: false }
+      // Switching between webcam and screen share requires SDP renegotiation
+      // so the browser re-negotiates encoder bitrate, resolution (1080p/4K), and frame rate.
+      return { success: true, renegotiateNeeded: true }
     }
 
     // No video sender at all — add track and require renegotiation

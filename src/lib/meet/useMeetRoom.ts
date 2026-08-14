@@ -249,33 +249,56 @@ export function useMeetRoom({
             const next = new Map(prev)
             const existing = next.get(peerId)
 
-            const finalStream = event.streams[0] || (existing?.stream ? existing.stream : new MediaStream([event.track]))
-            if (event.track && !finalStream.getTracks().some((t) => t.id === event.track.id)) {
-              finalStream.addTrack(event.track)
+            if (event.track) {
+              event.track.enabled = true
             }
 
+            let streamToUse: MediaStream
+            if (event.streams && event.streams[0]) {
+              streamToUse = event.streams[0]
+            } else if (existing?.stream) {
+              if (!existing.stream.getTracks().some((t) => t.id === event.track.id)) {
+                existing.stream.addTrack(event.track)
+              }
+              streamToUse = existing.stream
+            } else {
+              streamToUse = new MediaStream([event.track])
+            }
+
+            streamToUse.getTracks().forEach((t) => {
+              t.enabled = true
+            })
+
+            const hasAudioTrack = streamToUse.getAudioTracks().length > 0
+            const hasVideoTrack = streamToUse.getVideoTracks().length > 0
+
             if (existing) {
-              next.set(peerId, { ...existing, stream: finalStream })
+              next.set(peerId, {
+                ...existing,
+                stream: streamToUse,
+                hasAudio: hasAudioTrack || existing.hasAudio,
+                hasVideo: hasVideoTrack || existing.hasVideo,
+              })
             } else {
               next.set(peerId, {
                 id: peerId,
                 name: 'Participant',
                 role: 'participant',
-                hasAudio: true,
-                hasVideo: true,
+                hasAudio: hasAudioTrack,
+                hasVideo: hasVideoTrack,
                 isScreenSharing: false,
                 isHandRaised: false,
                 audioLevel: 0,
-                stream: finalStream,
+                stream: streamToUse,
               })
             }
 
             // Setup remote audio level detection if audio track exists
-            if (finalStream.getAudioTracks().length > 0) {
+            if (streamToUse.getAudioTracks().length > 0) {
               if (audioCleanupsRef.current.has(peerId)) {
                 audioCleanupsRef.current.get(peerId)! ()
               }
-              const cleanup = createAudioLevelDetector(finalStream, (level) => {
+              const cleanup = createAudioLevelDetector(streamToUse, (level) => {
                 setParticipants((p) => {
                   const current = p.get(peerId)
                   if (!current || current.audioLevel === level) return p
