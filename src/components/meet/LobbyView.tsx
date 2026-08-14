@@ -22,7 +22,14 @@ export interface LobbyViewProps {
   isWaitingRoom: boolean
   isLocked: boolean
   initialName?: string
-  onJoin: (name: string, muted: boolean, videoOff: boolean, audioId?: string, videoId?: string) => void
+  onJoin: (
+    name: string,
+    muted: boolean,
+    videoOff: boolean,
+    stream: MediaStream | null,
+    audioId?: string,
+    videoId?: string
+  ) => void
 }
 
 export const LobbyView: React.FC<LobbyViewProps> = ({
@@ -167,6 +174,8 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
     }
   }
 
+  const hasJoinedRef = useRef(false)
+
   // Initialize preview stream on mount
   useEffect(() => {
     let cleanupAudio: (() => void) | null = null
@@ -184,7 +193,8 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
 
     return () => {
       cleanupAudio?.()
-      if (streamRef.current) {
+      // Only stop local tracks if user is navigating away or changing devices, NOT when joining the room
+      if (!hasJoinedRef.current && streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop())
       }
     }
@@ -218,7 +228,8 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || isLocked) return
-    onJoin(name.trim(), isMuted, isVideoOff, selectedAudioId, selectedVideoId)
+    hasJoinedRef.current = true
+    onJoin(name.trim(), isMuted, isVideoOff, streamRef.current, selectedAudioId, selectedVideoId)
   }
 
   return (

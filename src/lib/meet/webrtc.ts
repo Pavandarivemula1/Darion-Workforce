@@ -104,14 +104,52 @@ export function createAudioLevelDetector(
 
 /**
  * Replace outgoing video track (e.g. switching between webcam and screen share)
+ * Returns true if track was replaced directly, or false if renegotiation (offer) is required.
  */
 export async function replaceVideoTrack(
   pc: RTCPeerConnection,
-  newTrack: MediaStreamTrack | null
-): Promise<void> {
-  const senders = pc.getSenders()
-  const videoSender = senders.find((s) => s.track && s.track.kind === 'video')
-  if (videoSender) {
-    await videoSender.replaceTrack(newTrack)
+  newTrack: MediaStreamTrack | null,
+  stream?: MediaStream | null
+): Promise<{ success: boolean; renegotiateNeeded: boolean }> {
+  try {
+    const senders = pc.getSenders()
+    
+    // 1. Try finding video sender by current track kind
+    let videoSender = senders.find((s) => s.track && s.track.kind === 'video')
+    
+    // 2. If track is null, check transceivers for video kind
+    if (!videoSender && typeof pc.getTransceivers === 'function') {
+      const transceivers = pc.getTransceivers()
+      const videoTransceiver = transceivers.find(
+        (t) =>
+          t.sender.track?.kind === 'video' ||
+          t.receiver.track?.kind === 'video' ||
+          (t as any).mid?.includes('video')
+      )
+      if (videoTransceiver) {
+        videoSender = videoTransceiver.sender
+      }
+    }
+
+    if (videoSender) {
+      await videoSender.replaceTrack(newTrack)
+      return { success: true, renegotiateNeeded: false }
+    }
+
+    // 3. No video sender existed previously, add track directly to peer connection
+    if (newTrack) {
+      if (stream) {
+        pc.addTrack(newTrack, stream)
+      } else {
+        pc.addTrack(newTrack)
+      }
+      return { success: true, renegotiateNeeded: true }
+    }
+
+    return { success: false, renegotiateNeeded: false }
+  } catch (err) {
+    console.warn('replaceVideoTrack failed:', err)
+    return { success: false, renegotiateNeeded: false }
   }
 }
+

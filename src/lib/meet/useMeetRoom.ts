@@ -67,6 +67,7 @@ export interface UseMeetRoomProps {
   userRole: 'host' | 'co-host' | 'participant'
   initialMuted?: boolean
   initialVideoOff?: boolean
+  initialStream?: MediaStream | null
   audioDeviceId?: string
   videoDeviceId?: string
 }
@@ -80,6 +81,7 @@ export function useMeetRoom({
   userRole,
   initialMuted = false,
   initialVideoOff = false,
+  initialStream,
   audioDeviceId,
   videoDeviceId,
 }: UseMeetRoomProps) {
@@ -140,12 +142,41 @@ export function useMeetRoom({
 
   // Initialize Local Media
   const initLocalMedia = useCallback(async () => {
-    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    if (typeof window === 'undefined') {
       const emptyStream = new MediaStream()
       localStreamRef.current = emptyStream
       return emptyStream
     }
 
+    // 1. If live initialStream was handed over directly from Lobby, adopt it immediately
+    if (initialStream && initialStream.getTracks().some((t) => t.readyState === 'live')) {
+      localStreamRef.current = initialStream
+
+      // Apply initial muted/video off states
+      initialStream.getAudioTracks().forEach((t) => {
+        t.enabled = !initialMuted
+      })
+      initialStream.getVideoTracks().forEach((t) => {
+        t.enabled = !initialVideoOff
+      })
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = initialStream
+        localVideoRef.current.play().catch(() => {})
+      }
+
+      // Local audio level detector
+      createAudioLevelDetector(initialStream, (level) => {
+        setLocalAudioLevel(level)
+        if (level > 25 && isAudioEnabledRef.current) {
+          setActiveSpeakerId('local')
+        }
+      })
+
+      return initialStream
+    }
+
+    // 2. Otherwise safely query getUserMedia with constraints
     try {
       let stream: MediaStream
       try {
@@ -208,7 +239,7 @@ export function useMeetRoom({
       localStreamRef.current = emptyStream
       return emptyStream
     }
-  }, [initialMuted, initialVideoOff, audioDeviceId, videoDeviceId])
+  }, [initialStream, initialMuted, initialVideoOff, audioDeviceId, videoDeviceId])
 
   // Setup Peer Connection
   const createPeer = useCallback(
@@ -657,7 +688,7 @@ export function useMeetRoom({
 
       const cameraTrack = localStreamRef.current?.getVideoTracks()[0] || null
       peersRef.current.forEach((pc) => {
-        replaceVideoTrack(pc, cameraTrack)
+        replaceVideoTrack(pc, cameraTrack, localStreamRef.current)
       })
 
       if (localVideoRef.current && localStreamRef.current) {
@@ -695,9 +726,13 @@ export function useMeetRoom({
         // When user clicks browser's native "Stop Sharing" floating button
         screenVideoTrack.onended = () => {
           setIsScreenSharing(false)
+          if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach((t) => t.stop())
+            screenStreamRef.current = null
+          }
           const camTrack = localStreamRef.current?.getVideoTracks()[0] || null
           peersRef.current.forEach((pc) => {
-            replaceVideoTrack(pc, camTrack)
+            replaceVideoTrack(pc, camTrack, localStreamRef.current)
           })
           if (localVideoRef.current && localStreamRef.current) {
             localVideoRef.current.srcObject = localStreamRef.current
@@ -709,8 +744,21 @@ export function useMeetRoom({
           })
         }
 
-        peersRef.current.forEach((pc) => {
-          replaceVideoTrack(pc, screenVideoTrack)
+        peersRef.current.forEach(async (pc, peerId) => {
+          const res = await replaceVideoTrack(pc, screenVideoTrack, screenStream)
+          if (res.renegotiateNeeded) {
+            try {
+              const offer = await pc.createOffer()
+              await pc.setLocalDescription(offer)
+              channelRef.current?.send({
+                type: 'broadcast',
+                event: 'offer',
+                payload: { from: userId, to: peerId, offer: pc.localDescription },
+              })
+            } catch (err) {
+              console.warn('Renegotiation failed on screenshare:', err)
+            }
+          }
         })
 
         if (localVideoRef.current) {

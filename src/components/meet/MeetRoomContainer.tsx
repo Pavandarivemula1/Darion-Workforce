@@ -30,22 +30,34 @@ export interface MeetRoomContainerProps {
   }
 }
 
-export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, initialUser }) => {
-  const router = useRouter()
+interface ActiveMeetingRoomProps {
+  room: MeetRoomContainerProps['room']
+  initialUser: MeetRoomContainerProps['initialUser']
+  userName: string
+  initialMuted: boolean
+  initialVideoOff: boolean
+  initialStream: MediaStream | null
+  audioDeviceId?: string
+  videoDeviceId?: string
+  onLeaveMeeting: () => void
+}
 
-  // Lobby vs Meeting State
-  const [hasJoined, setHasJoined] = useState(false)
-  const [userName, setUserName] = useState(initialUser.name)
-  const [initialMuted, setInitialMuted] = useState(false)
-  const [initialVideoOff, setInitialVideoOff] = useState(false)
-
+const ActiveMeetingRoom: React.FC<ActiveMeetingRoomProps> = ({
+  room,
+  initialUser,
+  userName,
+  initialMuted,
+  initialVideoOff,
+  initialStream,
+  audioDeviceId,
+  videoDeviceId,
+  onLeaveMeeting,
+}) => {
   // Sidebar & Host Modals
   const [activeSidebarTab, setActiveSidebarTab] = useState<'chat' | 'participants' | 'whiteboard' | 'info' | null>(null)
   const [isHostControlsOpen, setIsHostControlsOpen] = useState(false)
-  const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>()
-  const [videoDeviceId, setVideoDeviceId] = useState<string | undefined>()
 
-  // Join Meet Room Hook
+  // Join Meet Room Hook - strictly mounts after user joins from Lobby
   const {
     roomStatus,
     isLocked,
@@ -98,42 +110,10 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
     userRole: initialUser.role,
     initialMuted,
     initialVideoOff,
+    initialStream,
     audioDeviceId,
     videoDeviceId,
   })
-
-  // Handle joining from Lobby
-  const handleJoinFromLobby = (name: string, muted: boolean, videoOff: boolean, audioId?: string, videoId?: string) => {
-    setUserName(name)
-    setInitialMuted(muted)
-    setInitialVideoOff(videoOff)
-    setAudioDeviceId(audioId)
-    setVideoDeviceId(videoId)
-    setHasJoined(true)
-  }
-
-  // Handle leaving meeting
-  const handleLeaveMeeting = () => {
-    if (initialUser.role === 'host') {
-      router.push('/admin/meets')
-    } else {
-      router.push('/candidate/meets')
-    }
-  }
-
-  // Lobby Screen
-  if (!hasJoined) {
-    return (
-      <LobbyView
-        roomCode={room.room_code}
-        roomTitle={room.title}
-        isWaitingRoom={room.waiting_room_enabled}
-        isLocked={room.is_locked}
-        initialName={initialUser.name}
-        onJoin={handleJoinFromLobby}
-      />
-    )
-  }
 
   // Waiting Room Knock Screen for candidate
   if (roomStatus === 'waiting') {
@@ -146,7 +126,7 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
         <p className="text-sm text-slate-400 max-w-md mb-6">
           The host has been notified that you are waiting. Please hold on, you will join automatically once admitted.
         </p>
-        <Button onClick={handleLeaveMeeting} variant="outlined" className="text-slate-300">
+        <Button onClick={onLeaveMeeting} variant="outlined" className="text-slate-300">
           Leave Waiting Room
         </Button>
       </div>
@@ -164,7 +144,7 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
         <p className="text-sm text-slate-400 max-w-md mb-6">
           The host has removed you from this session or entry was denied.
         </p>
-        <Button onClick={handleLeaveMeeting} className="bg-blue-600 hover:bg-blue-500">
+        <Button onClick={onLeaveMeeting} className="bg-blue-600 hover:bg-blue-500">
           Return to Dashboard
         </Button>
       </div>
@@ -182,7 +162,7 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
         <p className="text-sm text-slate-400 max-w-md mb-6">
           The host has ended this meeting for all participants.
         </p>
-        <Button onClick={handleLeaveMeeting} className="bg-blue-600 hover:bg-blue-500">
+        <Button onClick={onLeaveMeeting} className="bg-blue-600 hover:bg-blue-500">
           Return to Dashboard
         </Button>
       </div>
@@ -269,7 +249,7 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
         onToggleRecording={isRecording ? stopRecording : startRecording}
         onToggleSidebarTab={(tab) => setActiveSidebarTab(activeSidebarTab === tab ? null : tab)}
         onOpenHostControls={() => setIsHostControlsOpen(true)}
-        onLeaveMeeting={handleLeaveMeeting}
+        onLeaveMeeting={onLeaveMeeting}
         onEndMeetingForAll={endMeetingForAll}
       />
 
@@ -315,3 +295,72 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
     </div>
   )
 }
+
+export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, initialUser }) => {
+  const router = useRouter()
+
+  // Lobby vs Meeting State
+  const [hasJoined, setHasJoined] = useState(false)
+  const [userName, setUserName] = useState(initialUser.name)
+  const [initialMuted, setInitialMuted] = useState(false)
+  const [initialVideoOff, setInitialVideoOff] = useState(false)
+  const [lobbyStream, setLobbyStream] = useState<MediaStream | null>(null)
+  const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>()
+  const [videoDeviceId, setVideoDeviceId] = useState<string | undefined>()
+
+  // Handle joining from Lobby
+  const handleJoinFromLobby = (
+    name: string,
+    muted: boolean,
+    videoOff: boolean,
+    stream: MediaStream | null,
+    audioId?: string,
+    videoId?: string
+  ) => {
+    setUserName(name)
+    setInitialMuted(muted)
+    setInitialVideoOff(videoOff)
+    setLobbyStream(stream)
+    setAudioDeviceId(audioId)
+    setVideoDeviceId(videoId)
+    setHasJoined(true)
+  }
+
+  // Handle leaving meeting
+  const handleLeaveMeeting = () => {
+    if (initialUser.role === 'host') {
+      router.push('/admin/meets')
+    } else {
+      router.push('/candidate/meets')
+    }
+  }
+
+  // Lobby Screen
+  if (!hasJoined) {
+    return (
+      <LobbyView
+        roomCode={room.room_code}
+        roomTitle={room.title}
+        isWaitingRoom={room.waiting_room_enabled}
+        isLocked={room.is_locked}
+        initialName={initialUser.name}
+        onJoin={handleJoinFromLobby}
+      />
+    )
+  }
+
+  return (
+    <ActiveMeetingRoom
+      room={room}
+      initialUser={initialUser}
+      userName={userName}
+      initialMuted={initialMuted}
+      initialVideoOff={initialVideoOff}
+      initialStream={lobbyStream}
+      audioDeviceId={audioDeviceId}
+      videoDeviceId={videoDeviceId}
+      onLeaveMeeting={handleLeaveMeeting}
+    />
+  )
+}
+
