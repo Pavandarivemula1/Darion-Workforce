@@ -132,6 +132,12 @@ export function useMeetRoom({
   // Supabase Channel Ref
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
+  // Use a ref for audio enabled state so initLocalMedia doesn't change reference on mute/unmute
+  const isAudioEnabledRef = useRef(isAudioEnabled)
+  useEffect(() => {
+    isAudioEnabledRef.current = isAudioEnabled
+  }, [isAudioEnabled])
+
   // Initialize Local Media
   const initLocalMedia = useCallback(async () => {
     if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -186,7 +192,7 @@ export function useMeetRoom({
       // Local audio level detector
       createAudioLevelDetector(stream, (level) => {
         setLocalAudioLevel(level)
-        if (level > 25 && isAudioEnabled) {
+        if (level > 25 && isAudioEnabledRef.current) {
           setActiveSpeakerId('local')
         }
       })
@@ -202,7 +208,7 @@ export function useMeetRoom({
       localStreamRef.current = emptyStream
       return emptyStream
     }
-  }, [initialMuted, initialVideoOff, isAudioEnabled])
+  }, [initialMuted, initialVideoOff, audioDeviceId, videoDeviceId])
 
   // Setup Peer Connection
   const createPeer = useCallback(
@@ -321,7 +327,7 @@ export function useMeetRoom({
 
       return pc
     },
-    [userId, isScreenSharing]
+    [userId]
   )
 
   const cleanup = useCallback(() => {
