@@ -201,7 +201,7 @@ const ActiveMeetingRoom: React.FC<ActiveMeetingRoomProps> = ({
       </header>
 
       {/* Main Video Stage */}
-      <main className="flex-1 relative overflow-hidden pb-20">
+      <main className="flex-1 relative min-h-0">
         <MeetingStage
           localStream={activeVideoStream}
           userName={userName}
