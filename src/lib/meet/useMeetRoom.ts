@@ -793,6 +793,9 @@ export function useMeetRoom({
         // Ensure all video tracks are active and enabled
         capturedScreenStream.getVideoTracks().forEach((t) => {
           t.enabled = true
+          if ('contentHint' in t) {
+            t.contentHint = 'detail'
+          }
         })
 
         screenStreamRef.current = capturedScreenStream

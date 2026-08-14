@@ -56,35 +56,29 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
   useEffect(() => {
     const video = videoRef.current
-    if (video) {
-      if (stream) {
-        const shouldMute = isLocal || isScreenShare
-        video.muted = shouldMute
-        video.defaultMuted = shouldMute
-        video.playsInline = true
-        video.autoplay = true
+    if (!video) return
 
-        if (video.srcObject !== stream) {
-          video.srcObject = stream
-        } else if (isScreenShare) {
-          // Force re-attach for Firefox when RTP stream changes via replaceTrack
-          video.srcObject = null
-          video.srcObject = stream
-        }
-
-        const p = video.play()
-        if (p !== undefined) {
-          p.catch(() => {
-            video.muted = true
-            video.defaultMuted = true
-            video.play().catch(() => {})
-          })
-        }
-      } else {
-        video.srcObject = null
+    if (stream) {
+      if (video.srcObject !== stream) {
+        video.srcObject = stream
       }
+      video.muted = isLocal
+      video.defaultMuted = isLocal
+      video.playsInline = true
+
+      const p = video.play()
+      if (p !== undefined) {
+        p.catch(() => {
+          if (!isLocal) {
+            video.muted = true
+            video.play().catch(() => {})
+          }
+        })
+      }
+    } else {
+      video.srcObject = null
     }
-  }, [stream, hasVideo, isScreenShare, isLocal])
+  }, [stream, isLocal])
 
   const isSpeaking = (audioLevel || 0) > 25 && hasAudio
   const canModerate = (userRole === 'host' || userRole === 'co-host') && !isLocal
@@ -102,32 +96,13 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       {/* Video Element */}
       {stream && (hasVideo || isScreenShare) && (
         <video
-          ref={(el) => {
-            videoRef.current = el
-            if (el && stream) {
-              const shouldMute = isLocal || isScreenShare
-              el.muted = shouldMute
-              el.defaultMuted = shouldMute
-              if (el.srcObject !== stream) {
-                el.srcObject = stream
-              }
-              const p = el.play()
-              if (p !== undefined) {
-                p.catch(() => {
-                  el.muted = true
-                  el.play().catch(() => {})
-                })
-              }
-            }
-          }}
+          ref={videoRef}
           autoPlay
           playsInline
-          muted={isLocal || isScreenShare}
+          muted={isLocal}
           onLoadedMetadata={(e) => {
             const video = e.currentTarget
-            const shouldMute = isLocal || isScreenShare
-            video.muted = shouldMute
-            video.defaultMuted = shouldMute
+            video.muted = isLocal
             video.play().catch(() => {})
           }}
           className={`w-full h-full ${
