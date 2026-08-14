@@ -54,31 +54,36 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [showMenu, setShowMenu] = React.useState(false)
 
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
+  // Attach and play stream reliably on video element
+  const attachStream = React.useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el
+    if (!el) return
+
+    el.defaultMuted = isLocal
+    el.muted = isLocal
+    el.playsInline = true
+    el.autoplay = true
 
     if (stream) {
-      if (video.srcObject !== stream) {
-        video.srcObject = stream
+      if (el.srcObject !== stream) {
+        el.srcObject = stream
       }
-      video.muted = isLocal
-      video.defaultMuted = isLocal
-      video.playsInline = true
-
-      const p = video.play()
+      const p = el.play()
       if (p !== undefined) {
         p.catch(() => {
-          if (!isLocal) {
-            video.muted = true
-            video.play().catch(() => {})
-          }
+          el.muted = true
+          el.defaultMuted = true
+          el.play().catch(() => {})
         })
       }
     } else {
-      video.srcObject = null
+      el.srcObject = null
     }
   }, [stream, isLocal])
+
+  useEffect(() => {
+    attachStream(videoRef.current)
+  }, [attachStream])
 
   const isSpeaking = (audioLevel || 0) > 25 && hasAudio
   const canModerate = (userRole === 'host' || userRole === 'co-host') && !isLocal
@@ -96,13 +101,17 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       {/* Video Element */}
       {stream && (hasVideo || isScreenShare) && (
         <video
-          ref={videoRef}
+          ref={attachStream}
           autoPlay
           playsInline
           muted={isLocal}
           onLoadedMetadata={(e) => {
             const video = e.currentTarget
             video.muted = isLocal
+            video.play().catch(() => {})
+          }}
+          onCanPlay={(e) => {
+            const video = e.currentTarget
             video.play().catch(() => {})
           }}
           className={`w-full h-full ${
