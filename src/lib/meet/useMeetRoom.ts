@@ -213,13 +213,23 @@ export function useMeetRoom({
 
       const pc = createPeerConnection(peerId, {
         onTrack: (event) => {
-          const remoteStream = event.streams[0] || new MediaStream([event.track])
-
           setParticipants((prev) => {
             const next = new Map(prev)
             const existing = next.get(peerId)
+
+            let finalStream: MediaStream
+            if (existing && existing.stream) {
+              finalStream = existing.stream
+              const trackExists = finalStream.getTracks().find((t) => t.id === event.track.id)
+              if (!trackExists) {
+                finalStream.addTrack(event.track)
+              }
+            } else {
+              finalStream = event.streams[0] || new MediaStream([event.track])
+            }
+
             if (existing) {
-              next.set(peerId, { ...existing, stream: remoteStream })
+              next.set(peerId, { ...existing, stream: finalStream })
             } else {
               next.set(peerId, {
                 id: peerId,
@@ -230,29 +240,32 @@ export function useMeetRoom({
                 isScreenSharing: false,
                 isHandRaised: false,
                 audioLevel: 0,
-                stream: remoteStream,
+                stream: finalStream,
               })
             }
+
+            // Setup remote audio level detection if audio track exists
+            if (finalStream.getAudioTracks().length > 0) {
+              if (audioCleanupsRef.current.has(peerId)) {
+                audioCleanupsRef.current.get(peerId)! ()
+              }
+              const cleanup = createAudioLevelDetector(finalStream, (level) => {
+                setParticipants((p) => {
+                  const current = p.get(peerId)
+                  if (!current || current.audioLevel === level) return p
+                  const updated = new Map(p)
+                  updated.set(peerId, { ...current, audioLevel: level })
+                  return updated
+                })
+                if (level > 25) {
+                  setActiveSpeakerId(peerId)
+                }
+              })
+              audioCleanupsRef.current.set(peerId, cleanup)
+            }
+
             return next
           })
-
-          // Setup remote audio level detection
-          if (audioCleanupsRef.current.has(peerId)) {
-            audioCleanupsRef.current.get(peerId)! ()
-          }
-          const cleanup = createAudioLevelDetector(remoteStream, (level) => {
-            setParticipants((prev) => {
-              const current = prev.get(peerId)
-              if (!current || current.audioLevel === level) return prev
-              const updated = new Map(prev)
-              updated.set(peerId, { ...current, audioLevel: level })
-              return updated
-            })
-            if (level > 25) {
-              setActiveSpeakerId(peerId)
-            }
-          })
-          audioCleanupsRef.current.set(peerId, cleanup)
         },
         onIceCandidate: (candidate) => {
           channelRef.current?.send({
