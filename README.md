@@ -5,7 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%20%7C%20Auth%20%7C%20Storage%20%7C%20Realtime-3ECF8E?logo=supabase)](https://supabase.com/)
 [![Tailwind CSS 4](https://img.shields.io/badge/Tailwind-CSS%204-38B2AC?logo=tailwindcss)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-Private-red)]()
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 
 An enterprise-grade, full-stack workforce and shift tracking platform built for high-reliability attendance monitoring, candidate roster administration, automated payroll calculation, and digital credential verification. Powered by Next.js 16 (App Router), React 19, Supabase (PostgreSQL with Row Level Security, Auth, Storage, and Realtime), and a Material Design 3 design system.
 
@@ -27,6 +27,7 @@ An enterprise-grade, full-stack workforce and shift tracking platform built for 
 - [Local Development & Testing](#-local-development--testing)
 - [Production Deployment (Vercel)](#-production-deployment-vercel)
 - [Security & Data Integrity Guarantees](#-security--data-integrity-guarantees)
+- [License & Commercial Use](#-license--commercial-use)
 
 ---
 
@@ -302,4 +303,19 @@ This project is optimized for zero-configuration deployment on Vercel:
 
 ---
 
-© 2026 Darion Workforce. All rights reserved.
+## 📄 License & Commercial Use
+
+This project is open-source and licensed under the **[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)**.
+
+### Why AGPLv3?
+- **Community Protection**: Anyone who uses, modifies, or hosts this software over a network is required to make their full source code open and accessible under the same license terms.
+- **Fair Contribution**: Prevents third parties or closed-source cloud providers from taking this platform, modifying it, and offering it as a proprietary hosted service without contributing back to the community.
+
+### 💼 Commercial & Enterprise Licensing
+If your organization requires a proprietary license without copyleft obligations (e.g. embedding in proprietary closed-source ecosystems, custom enterprise hosting, or dedicated commercial support agreements), custom commercial licensing terms are available. 
+
+Contact: **Darion Workforce** (`dkindustrial.finance@gmail.com`)
+
+---
+
+© 2026 **Darion Workforce**. Released under the [GNU Affero General Public License v3.0](LICENSE).

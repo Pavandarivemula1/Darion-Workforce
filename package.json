@@ -1,7 +1,9 @@
 {
   "name": "darion-workforce-app",
   "version": "0.1.0",
-  "private": true,
+  "description": "Enterprise-grade workforce time tracking, attendance, shift scheduling, and payroll system.",
+  "license": "AGPL-3.0-or-later",
+  "author": "Darion Workforce",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
