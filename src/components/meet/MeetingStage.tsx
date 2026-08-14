@@ -66,6 +66,10 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
         if (video.srcObject !== stream) {
           video.srcObject = stream
+        } else if (isScreenShare) {
+          // Force re-attach for Firefox when RTP stream changes via replaceTrack
+          video.srcObject = null
+          video.srcObject = stream
         }
 
         const p = video.play()

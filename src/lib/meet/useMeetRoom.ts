@@ -509,11 +509,18 @@ export function useMeetRoom({
 
         const pc = peersRef.current.get(from)
         if (pc && candidate) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate))
-          } catch (e) {
-            console.warn('Error adding ICE candidate:', e)
+          const addCandidate = async (retries = 10) => {
+            try {
+              if (pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate))
+              } else if (retries > 0) {
+                setTimeout(() => addCandidate(retries - 1), 100)
+              }
+            } catch (e) {
+              console.warn('Error adding ICE candidate:', e)
+            }
           }
+          addCandidate()
         }
       })
 
