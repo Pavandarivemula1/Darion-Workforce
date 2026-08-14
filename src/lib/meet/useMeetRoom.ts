@@ -326,23 +326,18 @@ export function useMeetRoom({
         },
       })
 
-      // Always add local camera/mic tracks to peer connection first
-      const streamToSend = localStreamRef.current || initialStream
-      if (streamToSend) {
-        streamToSend.getTracks().forEach((track) => {
-          pc.addTrack(track, streamToSend)
-        })
+      // Add local audio track
+      const audioStream = localStreamRef.current || initialStream
+      const audioTrack = audioStream?.getAudioTracks()[0]
+      if (audioTrack && audioStream) {
+        pc.addTrack(audioTrack, audioStream)
       }
 
-      // If screen sharing is active, immediately replace the video track for this new peer
-      if (isScreenSharing && screenStreamRef.current) {
-        const screenVideoTrack = screenStreamRef.current.getVideoTracks()[0]
-        if (screenVideoTrack) {
-          // Use setTimeout to ensure the sender is fully initialized before replacing
-          setTimeout(() => {
-            replaceVideoTrack(pc, screenVideoTrack, screenStreamRef.current)
-          }, 0)
-        }
+      // Add active video track (screen share if sharing, otherwise webcam)
+      const activeStream = isScreenSharing && screenStreamRef.current ? screenStreamRef.current : audioStream
+      const videoTrack = activeStream?.getVideoTracks()[0]
+      if (videoTrack && activeStream) {
+        pc.addTrack(videoTrack, activeStream)
       }
 
       peersRef.current.set(peerId, pc)

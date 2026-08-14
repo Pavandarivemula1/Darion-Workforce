@@ -133,7 +133,8 @@ export async function replaceVideoTrack(
 
     if (videoSender) {
       await videoSender.replaceTrack(newTrack)
-      return { success: true, renegotiateNeeded: false }
+      // Always trigger renegotiation so remote browsers (Firefox, Safari, Chrome) re-sync decoder parameters for screenshare
+      return { success: true, renegotiateNeeded: true }
     }
 
     // 3. No video sender existed previously, add track directly to peer connection
