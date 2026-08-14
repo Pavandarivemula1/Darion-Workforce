@@ -42,6 +42,8 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
   // Sidebar & Host Modals
   const [activeSidebarTab, setActiveSidebarTab] = useState<'chat' | 'participants' | 'whiteboard' | 'info' | null>(null)
   const [isHostControlsOpen, setIsHostControlsOpen] = useState(false)
+  const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>()
+  const [videoDeviceId, setVideoDeviceId] = useState<string | undefined>()
 
   // Join Meet Room Hook
   const {
@@ -95,13 +97,17 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
     userRole: initialUser.role,
     initialMuted,
     initialVideoOff,
+    audioDeviceId,
+    videoDeviceId,
   })
 
   // Handle joining from Lobby
-  const handleJoinFromLobby = (name: string, muted: boolean, videoOff: boolean) => {
+  const handleJoinFromLobby = (name: string, muted: boolean, videoOff: boolean, audioId?: string, videoId?: string) => {
     setUserName(name)
     setInitialMuted(muted)
     setInitialVideoOff(videoOff)
+    setAudioDeviceId(audioId)
+    setVideoDeviceId(videoId)
     setHasJoined(true)
   }
 

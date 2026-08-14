@@ -67,6 +67,8 @@ export interface UseMeetRoomProps {
   userRole: 'host' | 'co-host' | 'participant'
   initialMuted?: boolean
   initialVideoOff?: boolean
+  audioDeviceId?: string
+  videoDeviceId?: string
 }
 
 export function useMeetRoom({
@@ -78,6 +80,8 @@ export function useMeetRoom({
   userRole,
   initialMuted = false,
   initialVideoOff = false,
+  audioDeviceId,
+  videoDeviceId,
 }: UseMeetRoomProps) {
   const supabase = useMemo(() => createClient(), [])
 
@@ -139,13 +143,17 @@ export function useMeetRoom({
     try {
       let stream: MediaStream
       try {
+        const videoConstraints: MediaTrackConstraints = videoDeviceId
+          ? { deviceId: { exact: videoDeviceId } }
+          : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+          
+        const audioConstraints: MediaTrackConstraints | boolean = audioDeviceId
+          ? { deviceId: { exact: audioDeviceId } }
+          : true
+
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: 'user',
-          },
+          video: videoConstraints,
+          audio: audioConstraints,
         })
       } catch (firstErr) {
         console.warn('Ideal media constraints failed in room, trying basic:', firstErr)
@@ -265,12 +273,22 @@ export function useMeetRoom({
         },
       })
 
-      // Add local tracks to peer connection
-      const activeStream = isScreenSharing && screenStreamRef.current ? screenStreamRef.current : localStreamRef.current
-      if (activeStream) {
-        activeStream.getTracks().forEach((track) => {
-          pc.addTrack(track, activeStream)
+      // Always add local camera/mic tracks to peer connection first
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          pc.addTrack(track, localStreamRef.current!)
         })
+      }
+
+      // If screen sharing is active, immediately replace the video track for this new peer
+      if (isScreenSharing && screenStreamRef.current) {
+        const screenVideoTrack = screenStreamRef.current.getVideoTracks()[0]
+        if (screenVideoTrack) {
+          // Use setTimeout to ensure the sender is fully initialized before replacing
+          setTimeout(() => {
+            replaceVideoTrack(pc, screenVideoTrack)
+          }, 0)
+        }
       }
 
       peersRef.current.set(peerId, pc)
@@ -634,13 +652,22 @@ export function useMeetRoom({
       })
     } else {
       // Start Screen Share
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            displaySurface: 'monitor',
-          },
-          audio: true,
-        })
+        let screenStream: MediaStream
+        try {
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              displaySurface: 'monitor',
+            },
+            audio: true,
+          })
+        } catch (audioErr) {
+          console.warn('getDisplayMedia with audio failed, falling back to video only:', audioErr)
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              displaySurface: 'monitor',
+            }
+          })
+        }
 
         screenStreamRef.current = screenStream
         const screenVideoTrack = screenStream.getVideoTracks()[0]

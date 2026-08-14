@@ -22,7 +22,7 @@ export interface LobbyViewProps {
   isWaitingRoom: boolean
   isLocked: boolean
   initialName?: string
-  onJoin: (name: string, muted: boolean, videoOff: boolean) => void
+  onJoin: (name: string, muted: boolean, videoOff: boolean, audioId?: string, videoId?: string) => void
 }
 
 export const LobbyView: React.FC<LobbyViewProps> = ({
@@ -218,7 +218,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || isLocked) return
-    onJoin(name.trim(), isMuted, isVideoOff)
+    onJoin(name.trim(), isMuted, isVideoOff, selectedAudioId, selectedVideoId)
   }
 
   return (
