@@ -104,8 +104,8 @@ export function createAudioLevelDetector(
 
 /**
  * Replace outgoing video track (e.g. switching between webcam and screen share)
- * Uses replaceTrack() which doesn't require SDP renegotiation.
- * Falls back to addTransceiver() when no video transceiver exists yet.
+ * Uses sender.replaceTrack() for same-transceiver swaps (no renegotiation needed).
+ * Falls back to addTrack() when no video sender exists yet (renegotiation needed).
  */
 export async function replaceVideoTrack(
   pc: RTCPeerConnection,
@@ -113,34 +113,37 @@ export async function replaceVideoTrack(
   stream?: MediaStream | null
 ): Promise<{ success: boolean; renegotiateNeeded: boolean }> {
   try {
-    // Find existing video transceiver
-    const transceivers = typeof pc.getTransceivers === 'function' ? pc.getTransceivers() : []
-    const videoTransceiver = transceivers.find(
-      (t) =>
-        t.sender.track?.kind === 'video' ||
-        t.currentDirection === 'sendonly' ||
-        t.currentDirection === 'sendrecv' ||
-        (t.sender.track === null && t.direction.includes('send'))
-    ) || transceivers.find(
-      (t) => t.receiver.track?.kind === 'video'
-    )
+    const senders = pc.getSenders()
 
-    if (videoTransceiver) {
-      // Ensure transceiver is set to send
-      if (videoTransceiver.direction !== 'sendrecv' && videoTransceiver.direction !== 'sendonly') {
-        videoTransceiver.direction = 'sendrecv'
+    // Find existing video sender
+    let videoSender = senders.find((s) => s.track && s.track.kind === 'video')
+
+    // Also check for a null-track video sender (sendrecv transceiver with no active track)
+    if (!videoSender && typeof pc.getTransceivers === 'function') {
+      const transceivers = pc.getTransceivers()
+      const videoTransceiver = transceivers.find(
+        (t) =>
+          t.sender.track?.kind === 'video' ||
+          t.receiver.track?.kind === 'video'
+      )
+      if (videoTransceiver) {
+        videoSender = videoTransceiver.sender
       }
-      // replaceTrack swaps frames without SDP renegotiation - works when transceiver already exists
-      await videoTransceiver.sender.replaceTrack(newTrack)
+    }
+
+    if (videoSender) {
+      await videoSender.replaceTrack(newTrack)
+      // replaceTrack swaps the RTP stream in-place without SDP renegotiation
       return { success: true, renegotiateNeeded: false }
     }
 
-    // No video transceiver - need to add one and renegotiate
+    // No video sender at all — add track and require renegotiation
     if (newTrack) {
-      pc.addTransceiver(newTrack, {
-        direction: 'sendrecv',
-        streams: stream ? [stream] : [],
-      })
+      if (stream) {
+        pc.addTrack(newTrack, stream)
+      } else {
+        pc.addTrack(newTrack)
+      }
       return { success: true, renegotiateNeeded: true }
     }
 
