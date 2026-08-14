@@ -21,6 +21,9 @@ export default async function CandidateMeetsPage() {
 
   const supabase = await createClient()
 
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const email = authUser?.email
+
   const { data: candidateProfile } = await supabase
     .from('profiles')
     .select('id, full_name, role, avatar_url, is_beta_tester')
@@ -29,7 +32,7 @@ export default async function CandidateMeetsPage() {
 
   const betaAccess = checkUserMeetsBetaAccess({
     role: user.role,
-    email: user.email,
+    email: email,
     isBetaTester: candidateProfile?.is_beta_tester,
   })
 
@@ -56,7 +59,7 @@ export default async function CandidateMeetsPage() {
         ) : (
           <CandidateBetaGate
             candidateName={candidateProfile?.full_name || 'Candidate'}
-            candidateEmail={user.email}
+            candidateEmail={email}
           />
         )}
       </main>
