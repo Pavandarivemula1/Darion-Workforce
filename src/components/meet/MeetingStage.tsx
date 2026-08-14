@@ -88,7 +88,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       }`}
     >
       {/* Video Element */}
-      {stream && (
+      {stream && (hasVideo || isScreenShare) && (
         <video
           ref={videoRef}
           autoPlay
@@ -106,7 +106,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
             isScreenShare ? 'object-contain bg-black' : 'object-cover'
           } ${
             isLocal && !isScreenShare ? 'transform -scale-x-100' : ''
-          } ${hasVideo || isScreenShare ? 'opacity-100' : 'opacity-0'}`}
+          }`}
         />
       )}
 
