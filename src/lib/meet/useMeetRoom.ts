@@ -652,6 +652,7 @@ export function useMeetRoom({
       })
     } else {
       // Start Screen Share
+      try {
         let screenStream: MediaStream
         try {
           screenStream = await navigator.mediaDevices.getDisplayMedia({
