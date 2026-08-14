@@ -204,7 +204,6 @@ const ActiveMeetingRoom: React.FC<ActiveMeetingRoomProps> = ({
       <main className="flex-1 relative overflow-hidden pb-20">
         <MeetingStage
           localStream={activeVideoStream}
-          localVideoRef={localVideoRef}
           userName={userName}
           userRole={initialUser.role}
           isAudioEnabled={isAudioEnabled}
@@ -219,9 +218,6 @@ const ActiveMeetingRoom: React.FC<ActiveMeetingRoomProps> = ({
           onMuteUser={muteUser}
           onKickUser={kickUser}
         />
-
-        {/* Hidden video element for local stream attachment */}
-        <video ref={localVideoRef} autoPlay playsInline muted className="hidden" />
       </main>
 
       {/* Floating Reaction Animation Particles */}

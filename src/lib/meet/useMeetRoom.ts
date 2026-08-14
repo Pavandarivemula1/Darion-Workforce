@@ -163,11 +163,6 @@ export function useMeetRoom({
         t.enabled = !initialVideoOff
       })
 
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = initialStream
-        localVideoRef.current.play().catch(() => {})
-      }
-
       // Local audio level detector
       createAudioLevelDetector(initialStream, (level) => {
         setLocalAudioLevel(level)
@@ -218,11 +213,6 @@ export function useMeetRoom({
       stream.getVideoTracks().forEach((t) => {
         t.enabled = !initialVideoOff
       })
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-        localVideoRef.current.play().catch(() => {})
-      }
 
       // Local audio level detector
       createAudioLevelDetector(stream, (level) => {
@@ -756,10 +746,6 @@ export function useMeetRoom({
         replaceVideoTrack(pc, cameraTrack, localStreamRef.current)
       })
 
-      if (localVideoRef.current && localStreamRef.current) {
-        localVideoRef.current.srcObject = localStreamRef.current
-      }
-
       channelRef.current?.send({
         type: 'broadcast',
         event: 'peer-state',
@@ -772,12 +758,13 @@ export function useMeetRoom({
         try {
           capturedScreenStream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
-            audio: true,
           })
         } catch (audioErr) {
-          console.warn('getDisplayMedia with audio failed, falling back to video only:', audioErr)
+          console.warn('getDisplayMedia failed, falling back to minimal video constraints:', audioErr)
           capturedScreenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
+            video: {
+              frameRate: 30,
+            },
           })
         }
 
@@ -802,9 +789,6 @@ export function useMeetRoom({
           peersRef.current.forEach((pc) => {
             replaceVideoTrack(pc, camTrack, localStreamRef.current)
           })
-          if (localVideoRef.current && localStreamRef.current) {
-            localVideoRef.current.srcObject = localStreamRef.current
-          }
           channelRef.current?.send({
             type: 'broadcast',
             event: 'peer-state',
@@ -837,10 +821,6 @@ export function useMeetRoom({
             }
           }
         })
-
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = capturedScreenStream
-        }
 
         setIsScreenSharing(true)
 
