@@ -131,13 +131,15 @@ export async function replaceVideoTrack(
       }
     }
 
+    let didRemove = false
     if (videoSender) {
-      await videoSender.replaceTrack(newTrack)
-      // replaceTrack seamlessly swaps the RTP stream without changing SDP. Renegotiation breaks Firefox's decoder pipeline here.
-      return { success: true, renegotiateNeeded: false }
+      // replaceTrack is broken in Firefox when switching between getUserMedia and getDisplayMedia 
+      // because of codec/resolution mismatch without renegotiation.
+      // We must remove the track and add the new one to force a new transceiver and renegotiation.
+      pc.removeTrack(videoSender)
+      didRemove = true
     }
 
-    // 3. No video sender existed previously, add track directly to peer connection
     if (newTrack) {
       if (stream) {
         pc.addTrack(newTrack, stream)
@@ -147,7 +149,7 @@ export async function replaceVideoTrack(
       return { success: true, renegotiateNeeded: true }
     }
 
-    return { success: false, renegotiateNeeded: false }
+    return { success: didRemove, renegotiateNeeded: didRemove }
   } catch (err) {
     console.warn('replaceVideoTrack failed:', err)
     return { success: false, renegotiateNeeded: false }

@@ -835,7 +835,9 @@ export function useMeetRoom({
         }
 
         peersRef.current.forEach(async (pc, peerId) => {
-          const res = await replaceVideoTrack(pc, screenVideoTrack, capturedScreenStream)
+          // Bundle the screenshare track into the existing localStream so the remote browser 
+          // fires ontrack with the same event.streams[0] containing both audio and video.
+          const res = await replaceVideoTrack(pc, screenVideoTrack, localStreamRef.current)
           if (res.renegotiateNeeded) {
             try {
               const offer = await pc.createOffer()
