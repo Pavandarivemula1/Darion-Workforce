@@ -312,35 +312,29 @@ export function useMeetRoom({
         },
       })
 
-      // Add local audio track via transceiver (ensures sendrecv direction is set)
-      const audioStream = localStreamRef.current || initialStream
-      const audioTrack = audioStream?.getAudioTracks()[0]
-      if (audioTrack) {
-        pc.addTransceiver(audioTrack, {
-          direction: 'sendrecv',
-          streams: audioStream ? [audioStream] : [],
-        })
-      } else {
-        // Pre-create audio transceiver even when muted so remote can send audio back
-        pc.addTransceiver('audio', { direction: 'recvonly' })
-      }
-
-      // Add active video track via transceiver (screen share takes priority over webcam)
-      const activeStream = isScreenSharing && screenStreamRef.current ? screenStreamRef.current : audioStream
-      const videoTrack = activeStream?.getVideoTracks()[0]
-      if (videoTrack) {
-        pc.addTransceiver(videoTrack, {
-          direction: 'sendrecv',
-          streams: audioStream ? [audioStream] : [],
-        })
-      } else {
-        // Pre-create video transceiver so replaceTrack works without renegotiation later
-        pc.addTransceiver('video', { direction: 'recvonly' })
-      }
-
       peersRef.current.set(peerId, pc)
 
       if (initiator) {
+        // INITIATOR: Add local tracks as sendrecv transceivers, then create offer
+        const audioStream = localStreamRef.current || initialStream
+        const audioTrack = audioStream?.getAudioTracks()[0]
+        if (audioTrack) {
+          pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: audioStream ? [audioStream] : [] })
+        } else {
+          // Still create audio transceiver so remote can send audio to us
+          pc.addTransceiver('audio', { direction: 'sendrecv' })
+        }
+
+        // Add video transceiver - screen share if active, otherwise camera
+        const activeVideoStream = isScreenSharing && screenStreamRef.current ? screenStreamRef.current : audioStream
+        const videoTrack = activeVideoStream?.getVideoTracks()[0]
+        if (videoTrack) {
+          pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: audioStream ? [audioStream] : [] })
+        } else {
+          // Pre-create sendrecv video transceiver - allows replaceTrack without renegotiation
+          pc.addTransceiver('video', { direction: 'sendrecv' })
+        }
+
         pc.createOffer()
           .then((offer) => pc.setLocalDescription(offer))
           .then(() => {
@@ -361,6 +355,8 @@ export function useMeetRoom({
           })
           .catch((e) => console.error('Error creating offer:', e))
       }
+      // NON-INITIATOR: do NOT add transceivers here!
+      // Local tracks are added in the offer handler AFTER setRemoteDescription
 
       return pc
     },
@@ -463,8 +459,28 @@ export function useMeetRoom({
           })
         }
 
+        // Create bare peer connection (NO transceivers added yet - that would break SDP)
         const pc = createPeer(from, false)
         await pc.setRemoteDescription(new RTCSessionDescription(offer))
+
+        // Add local tracks AFTER setRemoteDescription so they match existing m-lines
+        const localAudio = localStreamRef.current || initialStream
+        const localAudioTrack = localAudio?.getAudioTracks()[0]
+        const audioTransceivers = pc.getTransceivers().filter(t => t.receiver.track?.kind === 'audio')
+        if (localAudioTrack && audioTransceivers[0]) {
+          audioTransceivers[0].direction = 'sendrecv'
+          await audioTransceivers[0].sender.replaceTrack(localAudioTrack)
+        }
+        const localVideoSrc = isScreenSharing && screenStreamRef.current ? screenStreamRef.current : localAudio
+        const localVideoTrack = localVideoSrc?.getVideoTracks()[0] || null
+        const videoTransceivers = pc.getTransceivers().filter(t => t.receiver.track?.kind === 'video')
+        if (videoTransceivers[0]) {
+          videoTransceivers[0].direction = 'sendrecv'
+          if (localVideoTrack) {
+            await videoTransceivers[0].sender.replaceTrack(localVideoTrack)
+          }
+        }
+
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
 
