@@ -1045,6 +1045,7 @@ export function useMeetRoom({
     isHandRaised,
     localAudioLevel,
     localStream: localStreamRef.current,
+    activeVideoStream: isScreenSharing && screenStreamRef.current ? screenStreamRef.current : localStreamRef.current,
     localVideoRef,
     // Remote participants
     participants,

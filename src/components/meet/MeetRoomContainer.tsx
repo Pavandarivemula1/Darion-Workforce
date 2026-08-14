@@ -57,6 +57,7 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
     isHandRaised,
     localAudioLevel,
     localStream,
+    activeVideoStream,
     localVideoRef,
     participants,
     waitingList,
@@ -222,7 +223,7 @@ export const MeetRoomContainer: React.FC<MeetRoomContainerProps> = ({ room, init
       {/* Main Video Stage */}
       <main className="flex-1 relative overflow-hidden pb-20">
         <MeetingStage
-          localStream={localStream}
+          localStream={activeVideoStream}
           localVideoRef={localVideoRef}
           userName={userName}
           userRole={initialUser.role}
