@@ -251,6 +251,12 @@ export function useMeetRoom({
 
             let finalStream: MediaStream
             if (existing && existing.stream) {
+              // Remove stale track of the same kind to prevent multi-track collisions in HTML5 video
+              existing.stream.getTracks().forEach((t) => {
+                if (t.kind === event.track.kind && t.id !== event.track.id) {
+                  existing.stream!.removeTrack(t)
+                }
+              })
               const trackExists = existing.stream.getTracks().find((t) => t.id === event.track.id)
               if (!trackExists) {
                 existing.stream.addTrack(event.track)
@@ -742,8 +748,30 @@ export function useMeetRoom({
       setIsScreenSharing(false)
 
       const cameraTrack = localStreamRef.current?.getVideoTracks()[0] || null
-      peersRef.current.forEach((pc) => {
-        replaceVideoTrack(pc, cameraTrack, localStreamRef.current)
+      peersRef.current.forEach(async (pc, peerId) => {
+        const res = await replaceVideoTrack(pc, cameraTrack, localStreamRef.current)
+        if (res.renegotiateNeeded) {
+          try {
+            const offer = await pc.createOffer()
+            await pc.setLocalDescription(offer)
+            channelRef.current?.send({
+              type: 'broadcast',
+              event: 'offer',
+              payload: {
+                from: userId,
+                to: peerId,
+                offer: pc.localDescription,
+                name: userName,
+                role: userRole,
+                hasAudio: isAudioEnabled,
+                hasVideo: isVideoEnabled,
+                isScreenShare: false,
+              },
+            })
+          } catch (err) {
+            console.warn('Renegotiation failed on stop screenshare:', err)
+          }
+        }
       })
 
       channelRef.current?.send({
@@ -786,8 +814,30 @@ export function useMeetRoom({
             screenStreamRef.current = null
           }
           const camTrack = localStreamRef.current?.getVideoTracks()[0] || null
-          peersRef.current.forEach((pc) => {
-            replaceVideoTrack(pc, camTrack, localStreamRef.current)
+          peersRef.current.forEach(async (pc, peerId) => {
+            const res = await replaceVideoTrack(pc, camTrack, localStreamRef.current)
+            if (res.renegotiateNeeded) {
+              try {
+                const offer = await pc.createOffer()
+                await pc.setLocalDescription(offer)
+                channelRef.current?.send({
+                  type: 'broadcast',
+                  event: 'offer',
+                  payload: {
+                    from: userId,
+                    to: peerId,
+                    offer: pc.localDescription,
+                    name: userName,
+                    role: userRole,
+                    hasAudio: isAudioEnabled,
+                    hasVideo: isVideoEnabled,
+                    isScreenShare: false,
+                  },
+                })
+              } catch (err) {
+                console.warn('Renegotiation failed on stop screenshare onended:', err)
+              }
+            }
           })
           channelRef.current?.send({
             type: 'broadcast',

@@ -93,10 +93,9 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           ref={(el) => {
             videoRef.current = el
             if (el && stream) {
-              if (isLocal) {
-                el.muted = true
-                el.defaultMuted = true
-              }
+              const shouldMute = isLocal || isScreenShare
+              el.muted = shouldMute
+              el.defaultMuted = shouldMute
               if (el.srcObject !== stream) {
                 el.srcObject = stream
               }
@@ -111,13 +110,12 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           }}
           autoPlay
           playsInline
-          muted={isLocal}
+          muted={isLocal || isScreenShare}
           onLoadedMetadata={(e) => {
             const video = e.currentTarget
-            if (isLocal) {
-              video.muted = true
-              video.defaultMuted = true
-            }
+            const shouldMute = isLocal || isScreenShare
+            video.muted = shouldMute
+            video.defaultMuted = shouldMute
             video.play().catch(() => {})
           }}
           className={`w-full h-full ${
