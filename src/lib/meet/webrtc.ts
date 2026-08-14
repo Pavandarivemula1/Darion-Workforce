@@ -104,7 +104,8 @@ export function createAudioLevelDetector(
 
 /**
  * Replace outgoing video track (e.g. switching between webcam and screen share)
- * Returns true if track was replaced directly, or false if renegotiation (offer) is required.
+ * Uses replaceTrack() which doesn't require SDP renegotiation.
+ * Falls back to addTransceiver() when no video transceiver exists yet.
  */
 export async function replaceVideoTrack(
   pc: RTCPeerConnection,
@@ -112,44 +113,38 @@ export async function replaceVideoTrack(
   stream?: MediaStream | null
 ): Promise<{ success: boolean; renegotiateNeeded: boolean }> {
   try {
-    const senders = pc.getSenders()
-    
-    // 1. Try finding video sender by current track kind
-    let videoSender = senders.find((s) => s.track && s.track.kind === 'video')
-    
-    // 2. If track is null, check transceivers for video kind
-    if (!videoSender && typeof pc.getTransceivers === 'function') {
-      const transceivers = pc.getTransceivers()
-      const videoTransceiver = transceivers.find(
-        (t) =>
-          t.sender.track?.kind === 'video' ||
-          t.receiver.track?.kind === 'video' ||
-          (t as any).mid?.includes('video')
-      )
-      if (videoTransceiver) {
-        videoSender = videoTransceiver.sender
+    // Find existing video transceiver
+    const transceivers = typeof pc.getTransceivers === 'function' ? pc.getTransceivers() : []
+    const videoTransceiver = transceivers.find(
+      (t) =>
+        t.sender.track?.kind === 'video' ||
+        t.currentDirection === 'sendonly' ||
+        t.currentDirection === 'sendrecv' ||
+        (t.sender.track === null && t.direction.includes('send'))
+    ) || transceivers.find(
+      (t) => t.receiver.track?.kind === 'video'
+    )
+
+    if (videoTransceiver) {
+      // Ensure transceiver is set to send
+      if (videoTransceiver.direction !== 'sendrecv' && videoTransceiver.direction !== 'sendonly') {
+        videoTransceiver.direction = 'sendrecv'
       }
+      // replaceTrack swaps frames without SDP renegotiation - works when transceiver already exists
+      await videoTransceiver.sender.replaceTrack(newTrack)
+      return { success: true, renegotiateNeeded: false }
     }
 
-    let didRemove = false
-    if (videoSender) {
-      // replaceTrack is broken in Firefox when switching between getUserMedia and getDisplayMedia 
-      // because of codec/resolution mismatch without renegotiation.
-      // We must remove the track and add the new one to force a new transceiver and renegotiation.
-      pc.removeTrack(videoSender)
-      didRemove = true
-    }
-
+    // No video transceiver - need to add one and renegotiate
     if (newTrack) {
-      if (stream) {
-        pc.addTrack(newTrack, stream)
-      } else {
-        pc.addTrack(newTrack)
-      }
+      pc.addTransceiver(newTrack, {
+        direction: 'sendrecv',
+        streams: stream ? [stream] : [],
+      })
       return { success: true, renegotiateNeeded: true }
     }
 
-    return { success: didRemove, renegotiateNeeded: didRemove }
+    return { success: false, renegotiateNeeded: false }
   } catch (err) {
     console.warn('replaceVideoTrack failed:', err)
     return { success: false, renegotiateNeeded: false }

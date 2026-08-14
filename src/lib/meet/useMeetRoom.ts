@@ -312,18 +312,30 @@ export function useMeetRoom({
         },
       })
 
-      // Add local audio track
+      // Add local audio track via transceiver (ensures sendrecv direction is set)
       const audioStream = localStreamRef.current || initialStream
       const audioTrack = audioStream?.getAudioTracks()[0]
-      if (audioTrack && audioStream) {
-        pc.addTrack(audioTrack, audioStream)
+      if (audioTrack) {
+        pc.addTransceiver(audioTrack, {
+          direction: 'sendrecv',
+          streams: audioStream ? [audioStream] : [],
+        })
+      } else {
+        // Pre-create audio transceiver even when muted so remote can send audio back
+        pc.addTransceiver('audio', { direction: 'recvonly' })
       }
 
-      // Add active video track (screen share if sharing, otherwise webcam)
+      // Add active video track via transceiver (screen share takes priority over webcam)
       const activeStream = isScreenSharing && screenStreamRef.current ? screenStreamRef.current : audioStream
       const videoTrack = activeStream?.getVideoTracks()[0]
-      if (videoTrack && activeStream) {
-        pc.addTrack(videoTrack, activeStream)
+      if (videoTrack) {
+        pc.addTransceiver(videoTrack, {
+          direction: 'sendrecv',
+          streams: audioStream ? [audioStream] : [],
+        })
+      } else {
+        // Pre-create video transceiver so replaceTrack works without renegotiation later
+        pc.addTransceiver('video', { direction: 'recvonly' })
       }
 
       peersRef.current.set(peerId, pc)
