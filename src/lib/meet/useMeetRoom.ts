@@ -105,8 +105,10 @@ export function useMeetRoom({
   const [isHandRaised, setIsHandRaised] = useState(false)
   const [localAudioLevel, setLocalAudioLevel] = useState(0)
 
-  // Local Streams & Refs
-  const localStreamRef = useRef<MediaStream | null>(null)
+  // Local Streams State & Refs
+  const [localStream, setLocalStream] = useState<MediaStream | null>(initialStream || null)
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(initialStream || null)
   const screenStreamRef = useRef<MediaStream | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
 
@@ -151,6 +153,7 @@ export function useMeetRoom({
     // 1. If live initialStream was handed over directly from Lobby, adopt it immediately
     if (initialStream && initialStream.getTracks().some((t) => t.readyState === 'live')) {
       localStreamRef.current = initialStream
+      setLocalStream(initialStream)
 
       // Apply initial muted/video off states
       initialStream.getAudioTracks().forEach((t) => {
@@ -206,6 +209,7 @@ export function useMeetRoom({
       }
 
       localStreamRef.current = stream
+      setLocalStream(stream)
 
       // Apply initial muted/video off states
       stream.getAudioTracks().forEach((t) => {
@@ -237,6 +241,7 @@ export function useMeetRoom({
       }
       const emptyStream = new MediaStream()
       localStreamRef.current = emptyStream
+      setLocalStream(emptyStream)
       return emptyStream
     }
   }, [initialStream, initialMuted, initialVideoOff, audioDeviceId, videoDeviceId])
@@ -256,13 +261,15 @@ export function useMeetRoom({
 
             let finalStream: MediaStream
             if (existing && existing.stream) {
-              finalStream = existing.stream
-              const trackExists = finalStream.getTracks().find((t) => t.id === event.track.id)
+              const trackExists = existing.stream.getTracks().find((t) => t.id === event.track.id)
               if (!trackExists) {
-                finalStream.addTrack(event.track)
+                existing.stream.addTrack(event.track)
               }
+              finalStream = new MediaStream(existing.stream.getTracks())
             } else {
-              finalStream = event.streams[0] || new MediaStream([event.track])
+              finalStream = event.streams[0]
+                ? new MediaStream(event.streams[0].getTracks())
+                : new MediaStream([event.track])
             }
 
             if (existing) {
@@ -324,9 +331,10 @@ export function useMeetRoom({
       })
 
       // Always add local camera/mic tracks to peer connection first
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          pc.addTrack(track, localStreamRef.current!)
+      const streamToSend = localStreamRef.current || initialStream
+      if (streamToSend) {
+        streamToSend.getTracks().forEach((track) => {
+          pc.addTrack(track, streamToSend)
         })
       }
 
@@ -336,7 +344,7 @@ export function useMeetRoom({
         if (screenVideoTrack) {
           // Use setTimeout to ensure the sender is fully initialized before replacing
           setTimeout(() => {
-            replaceVideoTrack(pc, screenVideoTrack)
+            replaceVideoTrack(pc, screenVideoTrack, screenStreamRef.current)
           }, 0)
         }
       }
@@ -350,7 +358,16 @@ export function useMeetRoom({
             channelRef.current?.send({
               type: 'broadcast',
               event: 'offer',
-              payload: { from: userId, to: peerId, offer: pc.localDescription },
+              payload: {
+                from: userId,
+                to: peerId,
+                offer: pc.localDescription,
+                name: userName,
+                role: userRole,
+                hasAudio: isAudioEnabled,
+                hasVideo: isVideoEnabled,
+                isScreenShare: isScreenSharing,
+              },
             })
           })
           .catch((e) => console.error('Error creating offer:', e))
@@ -358,7 +375,7 @@ export function useMeetRoom({
 
       return pc
     },
-    [userId]
+    [userId, userName, userRole, isAudioEnabled, isVideoEnabled, isScreenSharing, initialStream]
   )
 
   const cleanup = useCallback(() => {
@@ -435,8 +452,27 @@ export function useMeetRoom({
 
       // SDP Offer Received
       channel.on('broadcast', { event: 'offer' }, async (event) => {
-        const { from, to, offer } = event.payload
+        const { from, to, offer, name, role, hasAudio, hasVideo, isScreenShare } = event.payload
         if (to !== userId) return
+
+        if (name) {
+          setParticipants((prev) => {
+            const next = new Map(prev)
+            const existing = next.get(from)
+            next.set(from, {
+              id: from,
+              name: name || existing?.name || 'Participant',
+              role: role || existing?.role || 'participant',
+              hasAudio: hasAudio ?? existing?.hasAudio ?? true,
+              hasVideo: hasVideo ?? existing?.hasVideo ?? true,
+              isScreenSharing: isScreenShare ?? existing?.isScreenSharing ?? false,
+              isHandRaised: existing?.isHandRaised ?? false,
+              audioLevel: existing?.audioLevel ?? 0,
+              stream: existing?.stream,
+            })
+            return next
+          })
+        }
 
         const pc = createPeer(from, false)
         await pc.setRemoteDescription(new RTCSessionDescription(offer))
@@ -446,14 +482,42 @@ export function useMeetRoom({
         channel.send({
           type: 'broadcast',
           event: 'answer',
-          payload: { from: userId, to: from, answer },
+          payload: {
+            from: userId,
+            to: from,
+            answer,
+            name: userName,
+            role: userRole,
+            hasAudio: isAudioEnabled,
+            hasVideo: isVideoEnabled,
+            isScreenShare: isScreenSharing,
+          },
         })
       })
 
       // SDP Answer Received
       channel.on('broadcast', { event: 'answer' }, async (event) => {
-        const { from, to, answer } = event.payload
+        const { from, to, answer, name, role, hasAudio, hasVideo, isScreenShare } = event.payload
         if (to !== userId) return
+
+        if (name) {
+          setParticipants((prev) => {
+            const next = new Map(prev)
+            const existing = next.get(from)
+            next.set(from, {
+              id: from,
+              name: name || existing?.name || 'Participant',
+              role: role || existing?.role || 'participant',
+              hasAudio: hasAudio ?? existing?.hasAudio ?? true,
+              hasVideo: hasVideo ?? existing?.hasVideo ?? true,
+              isScreenSharing: isScreenShare ?? existing?.isScreenSharing ?? false,
+              isHandRaised: existing?.isHandRaised ?? false,
+              audioLevel: existing?.audioLevel ?? 0,
+              stream: existing?.stream,
+            })
+            return next
+          })
+        }
 
         const pc = peersRef.current.get(from)
         if (pc) {
@@ -684,6 +748,7 @@ export function useMeetRoom({
         screenStreamRef.current.getTracks().forEach((t) => t.stop())
         screenStreamRef.current = null
       }
+      setScreenStream(null)
       setIsScreenSharing(false)
 
       const cameraTrack = localStreamRef.current?.getVideoTracks()[0] || null
@@ -703,9 +768,9 @@ export function useMeetRoom({
     } else {
       // Start Screen Share
       try {
-        let screenStream: MediaStream
+        let capturedScreenStream: MediaStream
         try {
-          screenStream = await navigator.mediaDevices.getDisplayMedia({
+          capturedScreenStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
               displaySurface: 'monitor',
             },
@@ -713,19 +778,21 @@ export function useMeetRoom({
           })
         } catch (audioErr) {
           console.warn('getDisplayMedia with audio failed, falling back to video only:', audioErr)
-          screenStream = await navigator.mediaDevices.getDisplayMedia({
+          capturedScreenStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
               displaySurface: 'monitor',
             }
           })
         }
 
-        screenStreamRef.current = screenStream
-        const screenVideoTrack = screenStream.getVideoTracks()[0]
+        screenStreamRef.current = capturedScreenStream
+        setScreenStream(capturedScreenStream)
+        const screenVideoTrack = capturedScreenStream.getVideoTracks()[0]
 
         // When user clicks browser's native "Stop Sharing" floating button
         screenVideoTrack.onended = () => {
           setIsScreenSharing(false)
+          setScreenStream(null)
           if (screenStreamRef.current) {
             screenStreamRef.current.getTracks().forEach((t) => t.stop())
             screenStreamRef.current = null
@@ -745,7 +812,7 @@ export function useMeetRoom({
         }
 
         peersRef.current.forEach(async (pc, peerId) => {
-          const res = await replaceVideoTrack(pc, screenVideoTrack, screenStream)
+          const res = await replaceVideoTrack(pc, screenVideoTrack, capturedScreenStream)
           if (res.renegotiateNeeded) {
             try {
               const offer = await pc.createOffer()
@@ -753,7 +820,16 @@ export function useMeetRoom({
               channelRef.current?.send({
                 type: 'broadcast',
                 event: 'offer',
-                payload: { from: userId, to: peerId, offer: pc.localDescription },
+                payload: {
+                  from: userId,
+                  to: peerId,
+                  offer: pc.localDescription,
+                  name: userName,
+                  role: userRole,
+                  hasAudio: isAudioEnabled,
+                  hasVideo: isVideoEnabled,
+                  isScreenShare: true,
+                },
               })
             } catch (err) {
               console.warn('Renegotiation failed on screenshare:', err)
@@ -762,7 +838,7 @@ export function useMeetRoom({
         })
 
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = screenStream
+          localVideoRef.current.srcObject = capturedScreenStream
         }
 
         setIsScreenSharing(true)
@@ -776,7 +852,7 @@ export function useMeetRoom({
         console.warn('Screen share canceled or denied:', err)
       }
     }
-  }, [isScreenSharing, permissions.allowScreenShare, userRole, userId])
+  }, [isScreenSharing, permissions.allowScreenShare, userRole, userId, userName, isAudioEnabled, isVideoEnabled])
 
   // Toggle Hand Raise
   const toggleHandRaise = useCallback(() => {
@@ -1098,8 +1174,8 @@ export function useMeetRoom({
     isScreenSharing,
     isHandRaised,
     localAudioLevel,
-    localStream: localStreamRef.current,
-    activeVideoStream: isScreenSharing && screenStreamRef.current ? screenStreamRef.current : localStreamRef.current,
+    localStream,
+    activeVideoStream: isScreenSharing && (screenStream || screenStreamRef.current) ? (screenStream || screenStreamRef.current) : (localStream || localStreamRef.current),
     localVideoRef,
     // Remote participants
     participants,

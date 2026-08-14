@@ -55,10 +55,14 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   const [showMenu, setShowMenu] = React.useState(false)
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream
+    const video = videoRef.current
+    if (video && stream) {
+      if (video.srcObject !== stream) {
+        video.srcObject = stream
+      }
+      video.play().catch(() => {})
     }
-  }, [stream])
+  }, [stream, hasVideo, isScreenShare])
 
   const isSpeaking = (audioLevel || 0) > 25 && hasAudio
   const canModerate = (userRole === 'host' || userRole === 'co-host') && !isLocal
@@ -80,7 +84,9 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           autoPlay
           playsInline
           muted={isLocal}
-          className={`w-full h-full object-cover ${
+          className={`w-full h-full ${
+            isScreenShare ? 'object-contain bg-black' : 'object-cover'
+          } ${
             isLocal && !isScreenShare ? 'transform -scale-x-100' : ''
           } ${hasVideo || isScreenShare ? 'opacity-100' : 'opacity-0'}`}
         />
