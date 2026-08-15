@@ -46,30 +46,31 @@ export const DashboardAnalyticsCharts: React.FC<DashboardAnalyticsChartsProps> =
   const incompletePercent = totalSessions > 0 ? Math.round((incompleteCount / totalSessions) * 100) : 0
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5 sm:gap-6">
       {/* 1. Weekly Work Hours Bar Chart */}
-      <Card variant="outlined" className="lg:col-span-2 flex flex-col gap-4 border border-[var(--md-sys-color-outline-variant)]">
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-              <BarChart3 className="w-4 h-4" />
+      <Card variant="outlined" className="lg:col-span-2 flex flex-col gap-2.5 sm:gap-4 border border-[var(--md-sys-color-outline-variant)] p-2.5 sm:p-5">
+        <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
+              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Weekly Hours Breakdown</h3>
-              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              <h3 className="text-xs sm:text-base font-bold">Weekly Hours Breakdown</h3>
+              <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] hidden xs:block">
                 Daily cumulative candidate hours logged (Mon – Sun)
               </p>
             </div>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+          <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+            <TrendingUp className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
             This Week
           </span>
         </div>
 
-        {/* Bar Graph Visual Container */}
-        <div className="pt-2 pb-1 px-1 sm:px-2">
-          <div className="h-48 flex items-end justify-between gap-1 sm:gap-4 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
+        {/* Bar Graph Visual Container - Compact on Mobile */}
+        <div className="pt-1 pb-1 px-0.5 sm:px-2">
+          <div className="h-32 sm:h-48 flex items-end justify-between gap-1 sm:gap-4 border-b border-[var(--md-sys-color-outline-variant)] pb-1.5">
+
             {dailyData.map((d) => {
               const heightPercent = Math.min(100, Math.max(8, (d.hoursNum / maxHours) * 100))
               const isZero = d.hoursNum === 0

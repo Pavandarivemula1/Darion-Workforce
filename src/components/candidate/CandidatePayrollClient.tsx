@@ -322,13 +322,63 @@ export const CandidatePayrollClient: React.FC<CandidatePayrollClientProps> = ({
         </Button>
       </Card>
 
-      {/* Itemized Shift Earnings Table */}
-      <div className="flex flex-col gap-3">
-        <h3 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
+      {/* Itemized Shift Earnings - Mobile Expandable List + Desktop Table */}
+      <div className="flex flex-col gap-2.5 sm:gap-3">
+        <h3 className="text-xs sm:text-base font-bold text-[var(--md-sys-color-on-surface)]">
           Itemized Shift Payouts ({candidateSummary.records.length})
         </h3>
 
-        <div className="overflow-x-auto border border-[var(--md-sys-color-outline-variant)] rounded-2xl bg-[var(--md-sys-color-surface)] shadow-2xs">
+        {/* Mobile Master-Detail List (< 640px) */}
+        <div className="flex flex-col divide-y divide-[var(--md-sys-color-outline-variant)] rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] overflow-hidden sm:hidden shadow-2xs">
+          {candidateSummary.records.length === 0 ? (
+            <div className="py-6 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              No shifts logged in this period.
+            </div>
+          ) : (
+            candidateSummary.records.map((r) => {
+              const netMs = calculateNetShiftMs(r.login_time, r.logout_time, r.break_duration_seconds)
+              const hours = netMs / (1000 * 60 * 60)
+              const payout = typeof r.payout_amount === 'number' && r.payout_amount >= 0
+                ? r.payout_amount
+                : Math.round(hours * candidateSummary.hourlyRate * 100) / 100
+              const loginD = new Date(r.login_time)
+              const logoutD = r.logout_time ? new Date(r.logout_time) : null
+
+              return (
+                <div key={r.id} className="py-2.5 px-3 flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
+                      {loginD.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                      {loginD.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} → {logoutD ? logoutD.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Active'} • {formatDurationMs(netMs)}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="font-bold font-mono text-xs text-emerald-700 dark:text-emerald-400 block">
+                      {formatINR(payout)}
+                    </span>
+                    <span
+                      className={`text-[9px] font-semibold uppercase px-1.5 py-0.2 rounded ${
+                        r.payment_status === 'paid'
+                          ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                          : r.approval_status === 'approved'
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                          : 'bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)]'
+                      }`}
+                    >
+                      {r.payment_status === 'paid' ? 'Paid' : r.approval_status === 'approved' ? 'Due' : r.approval_status}
+                    </span>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Desktop Table (>= 640px) */}
+        <div className="hidden sm:block overflow-x-auto border border-[var(--md-sys-color-outline-variant)] rounded-2xl bg-[var(--md-sys-color-surface)] shadow-2xs">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[var(--md-sys-color-surface-container-low)] border-b border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] font-semibold uppercase tracking-wider text-[11px]">
@@ -433,6 +483,7 @@ export const CandidatePayrollClient: React.FC<CandidatePayrollClientProps> = ({
           </table>
         </div>
       </div>
+
 
       {/* Payslip Modal */}
       <PayslipModal

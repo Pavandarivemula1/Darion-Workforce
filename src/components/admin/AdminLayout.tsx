@@ -84,28 +84,26 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
         subtitle={adminName || 'System Admin'}
       />
 
-      {/* Compact MNC Mobile Top Header (< 768px) */}
-      <header className="md:hidden border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]/90 backdrop-blur-md px-3.5 py-2.5 flex items-center justify-between sticky top-0 z-30 pt-safe">
-        <Link href="/admin" className="flex items-center gap-2.5 active:scale-95 transition-all">
-          <div className="w-7 h-7 rounded-lg bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center font-bold">
-            <ShieldCheck className="w-4 h-4" />
+      {/* MNC Sticky Mobile Top Header (< 768px) */}
+      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-3 h-11 bg-[var(--md-sys-color-surface)]/90 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] pt-safe">
+        <Link href="/admin" className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-[var(--md-sys-color-primary)] text-white flex items-center justify-center font-black text-xs">
+            D
           </div>
-          <div>
-            <h1 className="text-xs font-bold leading-tight tracking-tight">Darion Workforce Admin</h1>
-            <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] leading-none truncate max-w-[150px]">
-              {adminName || 'System Admin'}
-            </p>
-          </div>
+          <span className="font-bold text-xs tracking-tight">Darion</span>
+          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold uppercase">
+            Admin
+          </span>
         </Link>
 
         <Link
           href="/admin/profile"
-          className="flex items-center gap-1.5 p-1 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"
+          className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"
         >
           {adminAvatarUrl ? (
-            <img src={adminAvatarUrl} alt={adminName} className="w-7 h-7 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
+            <img src={adminAvatarUrl} alt={adminName} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
           ) : (
-            <div className="w-7 h-7 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-[11px] font-bold flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-[10px] font-bold flex items-center justify-center">
               {adminName?.charAt(0).toUpperCase() || 'A'}
             </div>
           )}
@@ -114,7 +112,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
 
       {/* Main Content Container */}
       <main className="flex-1 flex flex-col min-w-0 transition-all duration-300">
-        <div className="max-w-7xl w-full mx-auto p-3 sm:p-5 lg:p-8 flex-1 pb-24 md:pb-8 relative">
+        <div className="max-w-7xl w-full mx-auto px-2 py-2 sm:p-5 lg:p-8 flex-1 pb-20 md:pb-8 relative">
           {children}
         </div>
       </main>

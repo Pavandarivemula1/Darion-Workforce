@@ -22,62 +22,62 @@ export const WeeklyMatrixTable: React.FC<WeeklyMatrixTableProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2.5 sm:gap-4">
       {/* 1. Mobile Candidate Summary Cards (< 768px) */}
-      <div className="flex flex-col gap-4 md:hidden print:hidden">
+      <div className="flex flex-col gap-2 md:hidden print:hidden">
         {timesheetRows.map((row) => (
           <Card
             key={row.candidate.id}
             variant="outlined"
-            className="border border-[var(--md-sys-color-outline-variant)] p-4 flex flex-col gap-3"
+            className="border border-[var(--md-sys-color-outline-variant)] p-2.5 flex flex-col gap-2 shadow-2xs"
           >
-            <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-xs font-bold shrink-0">
+            <div className="flex items-center justify-between pb-1.5 border-b border-[var(--md-sys-color-outline-variant)]">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-[10px] font-bold shrink-0">
                   {row.candidate.full_name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold">{row.candidate.full_name}</h4>
-                  <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Weekly Breakdown</p>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold truncate">{row.candidate.full_name}</h4>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-semibold text-[var(--md-sys-color-on-surface-variant)] block">Total</span>
-                <span className="text-sm font-bold font-mono text-[var(--md-sys-color-primary)]">
+              <div className="text-right shrink-0">
+                <span className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)]">
                   {row.formattedWeeklyTotal}
                 </span>
               </div>
             </div>
 
-            {/* Daily Grid Stack for Mobile */}
-            <div className="grid grid-cols-2 xs:grid-cols-4 gap-2 text-xs">
-              {row.days.map((dayCell) => (
-                <div
-                  key={dayCell.dateIso}
-                  className="p-2 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex flex-col items-center justify-center gap-1 text-center"
-                >
-                  <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)]">
-                    {dayCell.dayName}
-                  </span>
-                  {dayCell.totalMs > 0 ? (
-                    <span className="font-mono font-bold text-xs text-[var(--md-sys-color-on-surface)]">
-                      {dayCell.formattedDuration}
+            {/* 7-Day Mini Horizontal Pill Strip */}
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {row.days.map((dayCell) => {
+                const hasHours = dayCell.totalMs > 0
+                const hoursNum = Math.round((dayCell.totalMs / (1000 * 60 * 60)) * 10) / 10
+
+                return (
+                  <div
+                    key={dayCell.dateIso}
+                    className={`py-1 px-0.5 rounded-md flex flex-col items-center justify-center text-[10px] border ${
+                      hasHours
+                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border-[var(--md-sys-color-primary)] font-bold font-mono'
+                        : dayCell.hasWorkingSession
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 font-semibold'
+                        : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] border-[var(--md-sys-color-outline-variant)] opacity-70'
+                    }`}
+                  >
+                    <span className="text-[8px] font-sans font-semibold uppercase opacity-80">
+                      {dayCell.dayName.substring(0, 1)}
                     </span>
-                  ) : dayCell.hasWorkingSession ? (
-                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      Working
+                    <span className="text-[10px] leading-tight truncate">
+                      {hasHours ? `${hoursNum}h` : dayCell.hasWorkingSession ? '●' : '—'}
                     </span>
-                  ) : (
-                    <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] opacity-40">
-                      --
-                    </span>
-                  )}
-                </div>
-              ))}
+                  </div>
+                )
+              })}
             </div>
           </Card>
         ))}
       </div>
+
 
       {/* 2. Desktop Matrix Table (>= 768px & Print View) */}
       <Card variant="outlined" className="hidden md:block print:block p-0 border border-[var(--md-sys-color-outline-variant)] overflow-hidden">

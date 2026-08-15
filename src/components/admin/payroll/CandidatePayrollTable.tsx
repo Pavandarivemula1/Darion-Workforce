@@ -329,33 +329,33 @@ export const CandidatePayrollTable: React.FC<CandidatePayrollTableProps> = ({
               <Card
                 key={c.candidateId}
                 variant="elevated"
-                className="flex flex-col gap-3 p-4 border border-[var(--md-sys-color-outline-variant)] rounded-2xl bg-[var(--md-sys-color-surface)]"
+                className="flex flex-col gap-2 p-2.5 sm:p-4 border border-[var(--md-sys-color-outline-variant)] rounded-2xl bg-[var(--md-sys-color-surface)] shadow-2xs"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center font-bold text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center font-bold text-[11px] shrink-0">
                       {c.avatarUrl ? (
                         <img src={c.avatarUrl} alt={c.fullName} className="w-full h-full object-cover rounded-full" />
                       ) : (
                         c.fullName.charAt(0).toUpperCase()
                       )}
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-sm text-[var(--md-sys-color-on-surface)]">{c.fullName}</h4>
-                      <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-xs sm:text-sm text-[var(--md-sys-color-on-surface)] truncate">{c.fullName}</h4>
+                      <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] truncate">
                         {formatINR(c.hourlyRate)}/hr • {c.totalApprovedHours.toFixed(1)} hrs
                       </p>
                     </div>
                   </div>
 
-                  <div>
+                  <div className="shrink-0">
                     {hasDue ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
                         {formatINR(c.totalDueAmount)}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
                         Settled
                       </span>
                     )}
@@ -363,46 +363,47 @@ export const CandidatePayrollTable: React.FC<CandidatePayrollTableProps> = ({
                 </div>
 
                 {/* Info Grid */}
-                <div className="grid grid-cols-2 gap-2 text-xs p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]">
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] p-2 rounded-xl bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]">
                   <div>
-                    <span className="text-[var(--md-sys-color-on-surface-variant)] text-[10px] uppercase font-semibold block">Total Payable</span>
-                    <span className="font-semibold font-mono">{formatINR(c.totalGrossPayable)}</span>
+                    <span className="text-[var(--md-sys-color-on-surface-variant)] text-[9px] uppercase font-semibold block">Total Payable</span>
+                    <span className="font-bold font-mono text-xs">{formatINR(c.totalGrossPayable)}</span>
                   </div>
                   <div>
-                    <span className="text-[var(--md-sys-color-on-surface-variant)] text-[10px] uppercase font-semibold block">Destination</span>
-                    <span className="font-medium truncate block">{c.bankName || c.upiId || 'Not Configured'}</span>
+                    <span className="text-[var(--md-sys-color-on-surface-variant)] text-[9px] uppercase font-semibold block">Bank / UPI</span>
+                    <span className="font-medium truncate block">{c.bankName || c.upiId || 'Not Set'}</span>
                   </div>
                 </div>
 
                 {/* Mobile Actions */}
-                <div className="flex items-center gap-2 pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
+                <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
                   {hasDue ? (
                     <Button
                       variant="filled"
-                      size="sm"
-                      className="flex-1"
+                      size="xs"
+                      className="flex-1 text-[11px] h-7"
                       onClick={() => onOpenSettle(c)}
-                      icon={<CreditCard className="w-3.5 h-3.5" />}
+                      icon={<CreditCard className="w-3 h-3" />}
                     >
-                      Settle Pay
+                      Settle
                     </Button>
                   ) : null}
 
                   <Button
                     variant="tonal"
-                    size="sm"
-                    className="flex-1"
+                    size="xs"
+                    className="flex-1 text-[11px] h-7"
                     onClick={() => onOpenPayslip(c)}
-                    icon={<FileText className="w-3.5 h-3.5" />}
+                    icon={<FileText className="w-3 h-3" />}
                   >
                     Payslip
                   </Button>
 
                   <Button
                     variant="outlined"
-                    size="sm"
+                    size="xs"
+                    className="text-[11px] h-7 px-2"
                     onClick={() => onOpenShifts(c)}
-                    icon={<Clock className="w-3.5 h-3.5" />}
+                    icon={<Clock className="w-3 h-3" />}
                   >
                     Shifts
                   </Button>
@@ -410,6 +411,7 @@ export const CandidatePayrollTable: React.FC<CandidatePayrollTableProps> = ({
               </Card>
             )
           })
+
         )}
       </div>
     </div>

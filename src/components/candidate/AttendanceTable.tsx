@@ -1,6 +1,8 @@
-import React from 'react'
+'use client'
+
+import React, { useState } from 'react'
 import { Card } from '@/components/ui/Card'
-import { CheckCircle2, Clock, AlertTriangle, FileSpreadsheet } from 'lucide-react'
+import { CheckCircle2, Clock, AlertTriangle, FileSpreadsheet, ChevronDown } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 
 export interface AttendanceItem {
@@ -21,15 +23,17 @@ export interface AttendanceTableProps {
 }
 
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
   if (!records || records.length === 0) {
     return (
-      <Card variant="outlined" className="w-full py-12 flex flex-col items-center justify-center gap-3 text-center border border-[var(--md-sys-color-outline-variant)]">
-        <div className="w-12 h-12 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-center">
-          <FileSpreadsheet className="w-6 h-6" />
+      <Card variant="outlined" className="w-full py-8 flex flex-col items-center justify-center gap-2 text-center border border-[var(--md-sys-color-outline-variant)]">
+        <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-center">
+          <FileSpreadsheet className="w-5 h-5" />
         </div>
-        <h3 className="text-base font-semibold">No Attendance Records</h3>
-        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] max-w-sm">
-          No work sessions match the selected filter criteria.
+        <h3 className="text-sm font-semibold">No Attendance Records</h3>
+        <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] max-w-xs">
+          No work sessions match the selected criteria.
         </p>
       </Card>
     )
@@ -61,12 +65,11 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
       weekday: 'short',
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
     })
   }
 
-  const calculateNetTotal = (loginIso: string, logoutIso: string | null, breakSecs = 0) => {
-    if (!logoutIso) return '--'
+  const calculateNetTotal = (loginIso: string, logoutIso: string | null, breakSecs: number = 0) => {
+    if (!logoutIso) return 'Running...'
     const start = new Date(loginIso).getTime()
     const end = new Date(logoutIso).getTime()
     const grossMs = Math.max(0, end - start)
@@ -75,9 +78,9 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
   }
 
   return (
-    <div className="w-full flex flex-col gap-4">
-      {/* 1. Mobile Shift Cards (< 640px) */}
-      <div className="flex flex-col gap-3 sm:hidden">
+    <div className="w-full flex flex-col gap-2.5">
+      {/* 1. Mobile Expandable Master-Detail Rows (< 640px) */}
+      <div className="flex flex-col divide-y divide-[var(--md-sys-color-outline-variant)] rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] overflow-hidden sm:hidden shadow-2xs">
         {records.map((item) => {
           const hasLogout = !!item.logout_time
           const today = isToday(item.login_time)
@@ -86,56 +89,87 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
           const breakSecs = item.break_duration_seconds || 0
           const status = item.approval_status || 'pending'
           const payout = item.payout_amount || 0
+          const isExpanded = expandedId === item.id
+          const netDuration = calculateNetTotal(item.login_time, item.logout_time, breakSecs)
 
           return (
-            <Card
-              key={item.id}
-              variant="outlined"
-              className="p-3.5 flex flex-col gap-2.5 border border-[var(--md-sys-color-outline-variant)] text-xs"
-            >
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)] font-bold">
-                <span>{formatDate(item.login_time)}</span>
-                {isOnBreak ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)]">
-                    <Clock className="w-3 h-3" /> On Break
-                  </span>
-                ) : isWorking ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
-                    <Clock className="w-3 h-3" /> Working
-                  </span>
-                ) : status === 'approved' ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
-                    <CheckCircle2 className="w-3 h-3" /> Approved (₹{payout.toFixed(2)})
-                  </span>
-                ) : status === 'rejected' ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
-                    <AlertTriangle className="w-3 h-3" /> Rejected
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)]">
-                    <Clock className="w-3 h-3" /> Pending
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
-                <div className="p-2 rounded bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
-                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block font-sans">Shift Hours</span>
-                  <span>In: {formatTime(item.login_time)}</span>
-                  <span className="block text-[var(--md-sys-color-on-surface-variant)]">Out: {formatTime(item.logout_time)}</span>
+            <div key={item.id} className="flex flex-col transition-colors">
+              {/* Collapsed Master Row */}
+              <button
+                type="button"
+                onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                className="w-full py-2.5 px-3 flex items-center justify-between text-left active:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-[var(--md-sys-color-on-surface)] truncate">
+                      {formatDate(item.login_time)}
+                    </span>
+                    {isOnBreak ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                    ) : isWorking ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                    ) : null}
+                  </div>
+                  <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                    {formatTime(item.login_time)} – {formatTime(item.logout_time)}
+                  </p>
                 </div>
 
-                <div className="p-2 rounded bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
-                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block font-sans">Net Work & Break</span>
-                  <span className="font-bold text-[var(--md-sys-color-primary)]">
-                    Net: {calculateNetTotal(item.login_time, item.logout_time, breakSecs)}
-                  </span>
-                  <span className="block text-amber-600 dark:text-amber-400">
-                    Break: {formatBreakDuration(breakSecs)}
-                  </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right">
+                    <span className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)] block">
+                      {netDuration}
+                    </span>
+                    <span
+                      className={`text-[9px] font-semibold uppercase px-1.5 py-0.2 rounded ${
+                        status === 'approved'
+                          ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                          : status === 'rejected'
+                          ? 'bg-red-500/15 text-red-700 dark:text-red-300'
+                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                      }`}
+                    >
+                      {status === 'approved' ? `₹${Math.round(payout)}` : status}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] transition-transform duration-200 ${
+                      isExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
                 </div>
-              </div>
-            </Card>
+              </button>
+
+              {/* Expanded Detail Drawer */}
+              {isExpanded && (
+                <div className="px-3 pb-2.5 pt-1 bg-[var(--md-sys-color-surface-container-low)] border-t border-[var(--md-sys-color-outline-variant)] text-[11px] grid grid-cols-2 gap-2 animate-fade-in">
+                  <div className="p-1.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] font-mono">
+                    <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)] uppercase block font-sans">
+                      Break Time
+                    </span>
+                    <span className="font-bold text-amber-700 dark:text-amber-400">
+                      {formatBreakDuration(breakSecs)}
+                    </span>
+                  </div>
+
+                  <div className="p-1.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] font-mono">
+                    <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)] uppercase block font-sans">
+                      Session Payout
+                    </span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      ₹{payout.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {item.rejection_reason && (
+                    <div className="col-span-2 p-1.5 rounded-lg bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20 text-[10px]">
+                      <strong>Reason:</strong> {item.rejection_reason}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )
         })}
       </div>

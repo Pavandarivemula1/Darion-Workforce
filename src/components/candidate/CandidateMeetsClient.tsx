@@ -76,26 +76,26 @@ export const CandidateMeetsClient: React.FC<CandidateMeetsClientProps> = ({
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Top Banner Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Top Banner Cards - Fluid Mobile Height */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4">
         {/* Card 1: Join with a Code */}
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-lg shadow-blue-600/10 flex flex-col justify-between h-[230px] transition-all hover:shadow-xl hover:shadow-blue-600/15">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-md flex flex-col justify-between gap-3 transition-all">
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center">
-              <LogIn className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center">
+              <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full border border-white/20">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full border border-white/20">
               Quick Join
             </span>
           </div>
           <div>
-            <h3 className="text-base font-bold tracking-tight">Join a Meeting</h3>
-            <p className="text-xs text-blue-100/85 mt-1 leading-relaxed line-clamp-2">
-              Enter the room code or link provided by your supervisor or interviewer.
+            <h3 className="text-sm sm:text-base font-bold tracking-tight">Join a Meeting</h3>
+            <p className="text-[11px] sm:text-xs text-blue-100/85 mt-0.5 leading-relaxed line-clamp-2">
+              Enter room code or link provided by your team.
             </p>
           </div>
           <form onSubmit={handleJoinByCode} className="w-full">
-            <div className="flex items-stretch h-11 rounded-xl border border-white/25 bg-white/15 focus-within:border-white focus-within:ring-2 focus-within:ring-white/30 overflow-hidden transition-all shadow-sm">
+            <div className="flex items-stretch h-9 sm:h-11 rounded-xl border border-white/25 bg-white/15 focus-within:border-white focus-within:ring-2 focus-within:ring-white/30 overflow-hidden transition-all shadow-xs">
               <input
                 type="text"
                 placeholder="e.g. abc-def-ghi"
@@ -106,41 +106,42 @@ export const CandidateMeetsClient: React.FC<CandidateMeetsClientProps> = ({
               <button
                 type="submit"
                 disabled={!joinCode.trim()}
-                className="px-4 text-xs font-bold bg-white text-blue-700 hover:bg-blue-50 active:scale-[0.99] disabled:opacity-40 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                className="px-3 sm:px-4 text-xs font-bold bg-white text-blue-700 hover:bg-blue-50 active:scale-[0.99] disabled:opacity-40 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
               >
-                Join Call
+                Join
               </button>
             </div>
           </form>
         </div>
 
         {/* Card 2: Start Instant Meet Card */}
-        <div className="p-6 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex flex-col justify-between h-[230px] shadow-xs transition-all hover:border-blue-500/40 hover:shadow-md">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex flex-col justify-between gap-3 shadow-2xs transition-all">
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-              <Video className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+              <Video className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] bg-[var(--md-sys-color-surface-container-high)] px-2.5 py-1 rounded-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] bg-[var(--md-sys-color-surface-container-high)] px-2 py-0.5 rounded-full">
               Instant
             </span>
           </div>
           <div>
-            <h3 className="text-base font-bold text-[var(--md-sys-color-on-surface)] tracking-tight">Start Quick Meeting</h3>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 leading-relaxed line-clamp-2">
-              Launch a live video call with screen share, in-meeting chat, and recording.
+            <h3 className="text-sm sm:text-base font-bold text-[var(--md-sys-color-on-surface)] tracking-tight">Start Quick Meeting</h3>
+            <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 leading-relaxed line-clamp-2">
+              Launch a live video call with screen share & chat.
             </p>
           </div>
           <button
             type="button"
             onClick={handleStartInstantMeet}
             disabled={isStartingInstant}
-            className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full h-9 sm:h-11 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            <Video className="w-4 h-4" />
-            <span>{isStartingInstant ? 'Launching Room...' : 'Start Instant Meet'}</span>
+            <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>{isStartingInstant ? 'Launching...' : 'Start Instant Meet'}</span>
           </button>
         </div>
       </div>
+
 
       {/* Upcoming & Live Meetings */}
       <div className="flex flex-col gap-4">
