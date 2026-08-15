@@ -347,13 +347,14 @@ export const CandidatePayrollClient: React.FC<CandidatePayrollClientProps> = ({
               return (
                 <div key={r.id} className="py-2.5 px-3 flex items-center justify-between text-xs">
                   <div>
-                    <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
+                    <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]" suppressHydrationWarning>
                       {loginD.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
                     </div>
-                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono" suppressHydrationWarning>
                       {loginD.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} → {logoutD ? logoutD.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Active'} • {formatDurationMs(netMs)}
                     </div>
                   </div>
+
 
                   <div className="text-right">
                     <span className="font-bold font-mono text-xs text-emerald-700 dark:text-emerald-400 block">

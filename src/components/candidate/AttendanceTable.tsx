@@ -102,7 +102,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-xs text-[var(--md-sys-color-on-surface)] truncate">
+                    <span className="font-bold text-xs text-[var(--md-sys-color-on-surface)] truncate" suppressHydrationWarning>
                       {formatDate(item.login_time)}
                     </span>
                     {isOnBreak ? (
@@ -111,10 +111,11 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
                     ) : null}
                   </div>
-                  <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                  <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono" suppressHydrationWarning>
                     {formatTime(item.login_time)} – {formatTime(item.logout_time)}
                   </p>
                 </div>
+
 
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right">
