@@ -42,25 +42,26 @@ export const CandidateAnalyticsCharts: React.FC<CandidateAnalyticsChartsProps> =
   const maxHours = Math.max(...dailyData.map((d) => d.hoursNum), 9)
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 mt-3 sm:mt-4">
       {/* 1. Candidate Weekly Hours & Daily Pay Bar Graph */}
-      <Card variant="outlined" className="lg:col-span-2 flex flex-col gap-4 border border-[var(--md-sys-color-outline-variant)]">
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-              <BarChart3 className="w-4 h-4" />
+      <Card variant="outlined" className="lg:col-span-2 flex flex-col gap-3 sm:gap-4 border border-[var(--md-sys-color-outline-variant)] p-3.5 sm:p-5">
+        <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
+              <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-bold">Your Weekly Work & Daily Pay</h3>
-              <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                Daily shift duration & automated wage count for the current week
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-base font-bold truncate">Weekly Work & Daily Pay</h3>
+              <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] truncate">
+                Shift duration & wage count for current week
               </p>
             </div>
           </div>
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 shrink-0 font-mono">
-            Week Pay: {formatINR(weeklyPay)}
+          <span className="text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 shrink-0 font-mono">
+            {formatINR(weeklyPay)}
           </span>
         </div>
+
 
         {/* Visual Bar Graph Container */}
         <div className="pt-2 pb-1 px-1 sm:px-2">

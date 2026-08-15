@@ -172,75 +172,73 @@ export const AdminShiftsClient: React.FC<AdminShiftsClientProps> = ({
         </div>
       </div>
 
-      {/* Summary Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)]">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-              <Sliders className="w-5 h-5" />
+      {/* Summary Stat Cards - High-Density 2-Column Mobile Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
+              <Sliders className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-                Total Shift Presets
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
+                Shift Presets
               </span>
-              <p className="text-xl font-bold font-mono leading-tight mt-0.5">
+              <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
                 {initialShifts.length}
               </p>
             </div>
           </div>
         </Card>
 
-        <Card variant="outlined" className="border border-emerald-500/30 bg-emerald-500/5">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <Star className="w-5 h-5 fill-current" />
+        <Card variant="outlined" className="border border-emerald-500/30 bg-emerald-500/5 p-3 sm:p-4 shadow-2xs">
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
             </div>
-            <div className="overflow-hidden">
-              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+            <div className="overflow-hidden min-w-0">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider block truncate">
                 Default Shift
               </span>
-              <p className="text-sm font-bold truncate leading-tight mt-0.5" title={defaultShift.name}>
+              <p className="text-xs sm:text-sm font-bold truncate leading-tight mt-0.5" title={defaultShift.name}>
                 {defaultShift.name}
-              </p>
-              <p className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                {formatShiftTime(defaultShift.start_time)} – {formatShiftTime(defaultShift.end_time)}
               </p>
             </div>
           </div>
         </Card>
 
-        <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)]">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5" />
+        <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-                Assigned Candidates
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
+                Assigned Staff
               </span>
-              <p className="text-xl font-bold font-mono leading-tight mt-0.5">
+              <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
                 {totalAssignedCandidates} / {candidates.length}
               </p>
             </div>
           </div>
         </Card>
 
-        <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)]">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-              <Moon className="w-5 h-5" />
+        <Card variant="outlined" className="border border-indigo-500/30 bg-indigo-500/5 p-3 sm:p-4 shadow-2xs">
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block truncate">
                 Overnight Shifts
               </span>
-              <p className="text-xl font-bold font-mono leading-tight mt-0.5">
+              <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
                 {initialShifts.filter((s) => s.is_overnight).length}
               </p>
             </div>
           </div>
         </Card>
       </div>
+
 
       {/* 1. Shift Templates Grid */}
       <div className="flex flex-col gap-4">

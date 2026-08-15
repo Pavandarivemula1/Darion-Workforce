@@ -204,27 +204,27 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
         monthPay={Math.round(monthPay * 100) / 100}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
+        <div className="flex flex-col gap-3 sm:gap-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold flex items-center gap-2">
+            <h3 className="text-sm sm:text-base font-bold flex items-center gap-2">
               <History className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
               Recent Shift Activity
             </h3>
             <Link
               href="/candidate/attendance"
-              className="text-xs font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-xs font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 cursor-pointer active:scale-95"
             >
-              View Full History <ArrowRight className="w-3.5 h-3.5" />
+              View Full <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           <AttendanceTable records={recentRecords || []} />
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:gap-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold flex items-center gap-2">
+            <h3 className="text-sm sm:text-base font-bold flex items-center gap-2">
               <Users className="w-4 h-4 text-emerald-500" />
               Who&apos;s Working Now
             </h3>
@@ -233,37 +233,37 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
             </span>
           </div>
 
-          <Card variant="outlined" className="flex flex-col border border-[var(--md-sys-color-outline-variant)] h-full">
+          <Card variant="outlined" className="flex flex-col border border-[var(--md-sys-color-outline-variant)] h-full p-3 sm:p-4">
             {allActiveSessions && allActiveSessions.length > 0 ? (
-              <div className="flex flex-col divide-y divide-[var(--md-sys-color-outline-variant)] max-h-[400px] overflow-y-auto px-4">
+              <div className="flex flex-col divide-y divide-[var(--md-sys-color-outline-variant)] max-h-[320px] sm:max-h-[400px] overflow-y-auto pr-1">
                 {allActiveSessions.map((session) => {
                   const profileObj = Array.isArray(session.profiles) ? session.profiles[0] : session.profiles
                   const isMe = session.user_id === userId
                   const isOnBreak = !!session.break_start_time
                   
                   return (
-                    <div key={session.id} className="py-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold flex items-center gap-2">
-                          {profileObj?.full_name || 'Candidate'}
+                    <div key={session.id} className="py-2.5 sm:py-3 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-semibold flex items-center gap-1.5 truncate">
+                          <span className="truncate">{profileObj?.full_name || 'Candidate'}</span>
                           {isMe && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold uppercase tracking-wider">
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold uppercase tracking-wider shrink-0">
                               You
                             </span>
                           )}
                         </p>
-                        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]" suppressHydrationWarning>
-                          Login: {new Date(session.login_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}
+                        <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]" suppressHydrationWarning>
+                          In: {new Date(session.login_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}
                         </p>
                       </div>
                       {isOnBreak ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-1 shrink-0">
                           <Clock className="w-3 h-3" />
                           On Break
                         </span>
                       ) : (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                           Working
                         </span>
                       )}

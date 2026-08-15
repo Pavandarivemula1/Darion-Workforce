@@ -93,10 +93,10 @@ export const CandidatePayrollTable: React.FC<CandidatePayrollTableProps> = ({
         </div>
 
         {/* Clean Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 text-xs font-medium">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs font-medium no-scrollbar">
           <button
             onClick={() => setStatusFilter('all')}
-            className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap cursor-pointer transition-all ${
+            className={`px-3 py-1.5 rounded-xl whitespace-nowrap cursor-pointer transition-all active:scale-95 ${
               statusFilter === 'all'
                 ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold shadow-2xs'
                 : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]'
@@ -106,13 +106,13 @@ export const CandidatePayrollTable: React.FC<CandidatePayrollTableProps> = ({
           </button>
           <button
             onClick={() => setStatusFilter('due')}
-            className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap cursor-pointer transition-all ${
+            className={`px-3 py-1.5 rounded-xl whitespace-nowrap cursor-pointer transition-all active:scale-95 ${
               statusFilter === 'due'
-                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold shadow-2xs'
-                : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]'
+                ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                : 'text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 bg-amber-500/5 border border-amber-500/30'
             }`}
           >
-            Payment Due ({candidates.filter((c) => c.totalDueAmount > 0).length})
+            Has Unpaid Dues ({candidates.filter((c) => c.totalDueAmount > 0).length})
           </button>
           <button
             onClick={() => setStatusFilter('settled')}

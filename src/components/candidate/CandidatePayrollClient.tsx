@@ -170,15 +170,15 @@ export const CandidatePayrollClient: React.FC<CandidatePayrollClientProps> = ({
         </div>
       </div>
 
-      {/* Period Selector Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs">
+      {/* Period Selector Tabs Ribbon */}
+      <div className="flex items-center gap-1 overflow-x-auto p-1 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs no-scrollbar">
         {periodTabs.map((tab) => {
           const isActive = filter === tab.key
           return (
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-all active:scale-95 ${
                 isActive
                   ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-2xs'
                   : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
@@ -190,104 +190,104 @@ export const CandidatePayrollClient: React.FC<CandidatePayrollClientProps> = ({
         })}
       </div>
 
-      {/* KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* KPI Metric Cards - High-Density 2-Column Mobile Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
         {/* Today's Pay */}
-        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
+        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-3 sm:p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+            <span className="text-[10px] sm:text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
               Today&apos;s Pay
             </span>
-            <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
-              <IndianRupee className="w-5 h-5" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
+              <IndianRupee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
+          <div className="mt-2 sm:mt-3">
+            <span className="text-base sm:text-2xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
               {formatINR(candidateSummary.todayPay)}
             </span>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 truncate">
-              {candidateSummary.todayHours} hrs logged today
+            <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 truncate">
+              {candidateSummary.todayHours} hrs today
             </p>
           </div>
         </Card>
 
         {/* Total Gross in Period */}
-        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
+        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-3 sm:p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+            <span className="text-[10px] sm:text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
               Gross Value
             </span>
-            <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
-              <IndianRupee className="w-5 h-5" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
+              <IndianRupee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
+          <div className="mt-2 sm:mt-3">
+            <span className="text-base sm:text-2xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
               {formatINR(candidateSummary.totalGrossPayable)}
             </span>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 truncate">
-              Rate: {formatINR(candidateSummary.hourlyRate)}/hr
+            <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 truncate">
+              {formatINR(candidateSummary.hourlyRate)}/hr
             </p>
           </div>
         </Card>
 
         {/* Pending Due Payout */}
-        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
+        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-3 sm:p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-              Awaiting Payout
+            <span className="text-[10px] sm:text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+              Due Payout
             </span>
-            <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
+          <div className="mt-2 sm:mt-3">
+            <span className="text-base sm:text-2xl font-extrabold text-amber-600 dark:text-amber-400 font-mono">
               {formatINR(candidateSummary.totalDueAmount)}
             </span>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 truncate">
-              Unpaid approved balance
+            <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 truncate">
+              Unpaid balance
             </p>
           </div>
         </Card>
 
         {/* Settled / Disbursed */}
-        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
+        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-3 sm:p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+            <span className="text-[10px] sm:text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
               Settled / Paid
             </span>
-            <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
+          <div className="mt-2 sm:mt-3">
+            <span className="text-base sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
               {formatINR(candidateSummary.totalPaidAmount)}
             </span>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 truncate">
-              Paid to account
+            <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 truncate">
+              Disbursed
             </p>
           </div>
         </Card>
 
         {/* Approved Hours */}
-        <Card variant="elevated" className="flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
+        <Card variant="elevated" className="col-span-2 sm:col-span-1 flex flex-col justify-between border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-3 sm:p-5 bg-[var(--md-sys-color-surface)] shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+            <span className="text-[10px] sm:text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
               Approved Hours
             </span>
-            <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
-              <Clock className="w-5 h-5" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
-              {candidateSummary.totalApprovedHours.toFixed(1)} <span className="text-sm font-medium font-sans">hrs</span>
+          <div className="mt-2 sm:mt-3">
+            <span className="text-base sm:text-2xl font-extrabold text-[var(--md-sys-color-on-surface)] font-mono">
+              {candidateSummary.totalApprovedHours.toFixed(1)} hrs
             </span>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 truncate">
-              {candidateSummary.approvedShifts} of {candidateSummary.totalShifts} shifts
+            <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 truncate">
+              {candidateSummary.approvedShifts} shift(s) approved
             </p>
           </div>
         </Card>

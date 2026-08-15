@@ -28,7 +28,7 @@ export const TextField: React.FC<TextFieldProps> = ({
   const hasRightElement = endIcon || isPassword
 
   return (
-    <div className="flex flex-col gap-1.5 w-full">
+    <div className="flex flex-col gap-1 w-full">
       {label && (
         <label
           htmlFor={inputId}
@@ -43,23 +43,23 @@ export const TextField: React.FC<TextFieldProps> = ({
       )}
       <div className="relative flex items-center">
         {startIcon && (
-          <span className="absolute left-3 text-[var(--md-sys-color-on-surface-variant)] pointer-events-none">
+          <span className="absolute left-3 text-[var(--md-sys-color-on-surface-variant)] pointer-events-none flex items-center">
             {startIcon}
           </span>
         )}
         <input
           id={inputId}
-          className={`w-full h-11 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface)] border px-3.5 ${
-            startIcon ? 'pl-10' : ''
-          } ${hasRightElement ? (endIcon && isPassword ? 'pr-16' : 'pr-10') : ''} text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/50 transition-all duration-200 focus:outline-none ${
+          className={`w-full h-10 sm:h-11 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface)] border px-3.5 ${
+            startIcon ? 'pl-9 sm:pl-10' : ''
+          } ${hasRightElement ? (endIcon && isPassword ? 'pr-16' : 'pr-10') : ''} text-base sm:text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/50 transition-all duration-150 focus:outline-none ${
             error
               ? 'border-[var(--md-sys-color-error)] text-[var(--md-sys-color-error)] focus:border-[var(--md-sys-color-error)]'
-              : 'border-[var(--md-sys-color-outline-variant)] focus:border-[var(--md-sys-color-primary)]'
+              : 'border-[var(--md-sys-color-outline-variant)] focus:border-[var(--md-sys-color-primary)] shadow-2xs'
           } ${className}`}
           {...props}
           type={inputType}
         />
-        <div className="absolute right-3 flex items-center gap-1 text-[var(--md-sys-color-on-surface-variant)]">
+        <div className="absolute right-2.5 sm:right-3 flex items-center gap-1 text-[var(--md-sys-color-on-surface-variant)]">
           {endIcon && <span>{endIcon}</span>}
           {isPassword && (
             <button
@@ -75,7 +75,7 @@ export const TextField: React.FC<TextFieldProps> = ({
       </div>
       {(error || supportingText) && (
         <span
-          className={`text-xs px-1 ${
+          className={`text-[11px] px-1 ${
             error
               ? 'text-[var(--md-sys-color-error)]'
               : 'text-[var(--md-sys-color-on-surface-variant)]'
@@ -87,3 +87,4 @@ export const TextField: React.FC<TextFieldProps> = ({
     </div>
   )
 }
+

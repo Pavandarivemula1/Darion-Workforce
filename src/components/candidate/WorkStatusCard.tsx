@@ -359,123 +359,122 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   const canStartWork = !requiresOvershift || localOvershiftStatus === 'approved'
 
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <Card variant="elevated" className="border border-[var(--md-sys-color-outline-variant)]">
-        <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3 sm:gap-4 w-full">
+      <Card variant="elevated" className="border border-[var(--md-sys-color-outline-variant)] shadow-xs">
+        <div className="flex flex-col gap-4 sm:gap-6">
           {/* Header Status Row */}
-          <div className="flex items-center justify-between gap-4 flex-wrap pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
-                <span className="text-sm font-medium" suppressHydrationWarning>
+          <div className="flex items-start sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[var(--md-sys-color-on-surface)]">
+                <Calendar className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+                <span className="truncate" suppressHydrationWarning>
                   {new Date().toLocaleDateString('en-US', {
                     timeZone: 'Asia/Kolkata',
-                    weekday: 'long',
+                    weekday: 'short',
                     month: 'short',
                     day: 'numeric',
-                    year: 'numeric',
                   })}
                 </span>
-              </div>
-              <div className="flex items-center gap-3 pl-8">
-                <span className="text-lg font-bold font-mono text-[var(--md-sys-color-primary)] tracking-wide" suppressHydrationWarning>
+                <span className="text-[var(--md-sys-color-outline-variant)]">•</span>
+                <span className="font-bold font-mono text-[var(--md-sys-color-primary)] text-sm sm:text-base tracking-tight" suppressHydrationWarning>
                   {liveTime}
                 </span>
               </div>
 
               {/* Assigned Shift Pill */}
-              <div className="flex items-center gap-2 pl-8 pt-0.5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <span className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] truncate max-w-full">
                   {assignedShift.is_overnight ? (
-                    <Moon className="w-3 h-3 text-indigo-500" />
+                    <Moon className="w-3 h-3 text-indigo-500 shrink-0" />
                   ) : (
-                    <Sun className="w-3 h-3 text-amber-500" />
+                    <Sun className="w-3 h-3 text-amber-500 shrink-0" />
                   )}
-                  <span>
-                    Shift: <strong>{assignedShift.name}</strong> ({formatShiftTime(assignedShift.start_time)} – {formatShiftTime(assignedShift.end_time)})
+                  <span className="truncate">
+                    <strong>{assignedShift.name}</strong> ({formatShiftTime(assignedShift.start_time)} – {formatShiftTime(assignedShift.end_time)})
                   </span>
                 </span>
               </div>
             </div>
 
             {/* Status Badges */}
-            <div className="flex flex-col sm:items-end gap-1.5">
+            <div className="flex flex-col items-end gap-1 shrink-0">
               {isOnBreak ? (
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
-                  <Coffee className="w-4 h-4" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
+                  <Coffee className="w-3.5 h-3.5" />
                   On Break
                 </span>
               ) : isWorking ? (
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] animate-pulse">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--md-sys-color-primary)]" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-[var(--md-sys-color-primary)]" />
                   Working
                 </span>
               ) : isCompletedToday ? (
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
+                <span className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Shift Completed
+                  Completed
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]">
+                <span className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]">
                   <AlertCircle className="w-3.5 h-3.5" />
                   Not Started
                 </span>
               )}
 
               {!isWorking && !isCompletedToday && timeToNextShift && (
-                <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
-                  Shift begins in <strong className="text-[var(--md-sys-color-primary)]">{timeToNextShift}</strong>
+                <span className="text-[10px] sm:text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[var(--md-sys-color-primary)] shrink-0" />
+                  In <strong className="text-[var(--md-sys-color-primary)]">{timeToNextShift}</strong>
                 </span>
               )}
             </div>
           </div>
 
-          {/* Time & Duration Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-semibold">
+          {/* Time & Duration Grid - High Density Responsive Matrix */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-semibold">
                 Started
               </span>
-              <span className="text-base sm:text-lg font-bold">
+              <span className="text-sm sm:text-base font-bold font-mono">
                 {formatTime(activeSession?.login_time || todaySession?.login_time)}
               </span>
             </div>
 
-            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-semibold">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-semibold">
                 Ended
               </span>
-              <span className="text-base sm:text-lg font-bold">
+              <span className="text-sm sm:text-base font-bold font-mono">
                 {formatTime(activeSession ? null : todaySession?.logout_time)}
               </span>
             </div>
 
-            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold flex items-center gap-1">
-                <Coffee className="w-3.5 h-3.5" /> Break Taken
+            <div className="p-2.5 sm:p-3 rounded-xl bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[10px] opacity-90 uppercase tracking-wider font-semibold flex items-center gap-1">
+                <Coffee className="w-3 h-3" /> Break
               </span>
-              <span className="text-base sm:text-lg font-bold font-mono">
+              <span className="text-sm sm:text-base font-bold font-mono">
                 {breakDurationText}
               </span>
             </div>
 
-            <div className="p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex flex-col gap-1 border border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-[11px] opacity-80 uppercase tracking-wider font-semibold flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Net Work Time
+            <div className="p-2.5 sm:p-3 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[10px] opacity-80 uppercase tracking-wider font-semibold flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Net Work
               </span>
-              <span className="text-base sm:text-lg font-bold font-mono">{workDuration}</span>
+              <span className="text-sm sm:text-base font-bold font-mono truncate">{workDuration}</span>
             </div>
 
-            <div className="col-span-2 sm:col-span-1 p-3.5 rounded-[var(--md-sys-shape-corner-medium)] bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 flex flex-col gap-1 border border-emerald-500/30">
-              <span className="text-[11px] opacity-90 uppercase tracking-wider font-bold flex items-center gap-1">
-                <IndianRupee className="w-3.5 h-3.5" /> Today&apos;s Pay
+            <div className="col-span-2 sm:col-span-1 p-2.5 sm:p-3 rounded-xl bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 flex flex-col gap-0.5 border border-emerald-500/30">
+              <span className="text-[10px] opacity-90 uppercase tracking-wider font-bold flex items-center gap-1">
+                <IndianRupee className="w-3 h-3" /> Today&apos;s Pay
               </span>
-              <span className="text-base sm:text-lg font-black font-mono">
+              <span className="text-sm sm:text-base font-black font-mono">
                 {formatINR(liveDailyPay)}
               </span>
             </div>
           </div>
+
 
           {/* Action Buttons Row */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3">

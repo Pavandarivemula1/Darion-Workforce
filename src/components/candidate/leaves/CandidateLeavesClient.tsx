@@ -92,17 +92,17 @@ export const CandidateLeavesClient: React.FC<CandidateLeavesClientProps> = ({
     .reduce((sum, l) => sum + Number(l.total_days || 0), 0)
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full pb-16">
+    <div className="flex flex-col gap-4 sm:gap-6 max-w-5xl mx-auto w-full pb-8">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] p-6 rounded-3xl">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] flex items-center justify-center shrink-0 shadow-sm">
-            <Palmtree className="w-6 h-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] flex items-center justify-center shrink-0 shadow-xs">
+            <Palmtree className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Leave & Time-Off</h1>
-            <p className="text-xs opacity-85 mt-0.5">
-              Plan and request time-off, track your annual leave balances, and review manager approvals.
+            <h1 className="text-base sm:text-xl font-bold">Leave & Time-Off</h1>
+            <p className="text-[11px] sm:text-xs opacity-85 mt-0.5">
+              Plan and request time-off, track leave balances, and review approvals.
             </p>
           </div>
         </div>
@@ -111,11 +111,12 @@ export const CandidateLeavesClient: React.FC<CandidateLeavesClientProps> = ({
           size="md"
           icon={<Plus className="w-4 h-4" />}
           onClick={() => setModalOpen(true)}
-          className="shrink-0 bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90"
+          className="shrink-0 bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 w-full sm:w-auto"
         >
           Apply for Leave
         </Button>
       </div>
+
 
       {/* Balance Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
