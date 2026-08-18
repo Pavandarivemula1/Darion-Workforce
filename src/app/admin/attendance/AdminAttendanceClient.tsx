@@ -20,6 +20,8 @@ import {
   X,
 } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
+import { MobileAdminAttendance } from '@/components/admin/attendance/MobileAdminAttendance'
+
 
 export interface CandidateItem {
   id: string
@@ -299,14 +301,42 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   })
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl sm:text-2xl font-bold">Attendance & Shift Payment Approvals</h2>
-        <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-          Review completed work shifts, approve hourly payouts, or reject with feedback
-        </p>
+    <div className="flex flex-col gap-2.5 sm:gap-6 max-w-7xl mx-auto w-full">
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminAttendance
+          candidates={candidates}
+          records={records}
+          overshiftRequests={activeOvershifts}
+          selectedCandidate={selectedCandidate}
+          selectedFilter={selectedFilter}
+          onCandidateChange={(val) => {
+            setSelectedCandidate(val)
+            updateQueryParams('candidateId', val)
+          }}
+          onFilterChange={(val) => {
+            setSelectedFilter(val)
+            updateQueryParams('filter', val)
+          }}
+          onOpenApprove={openApproveModal}
+          onOpenReject={openRejectModal}
+          onApproveOvershift={handleApproveOvershift}
+          onRejectOvershift={handleRejectOvershift}
+          isApprovingOvershift={isApprovingOvershift}
+          isRejectingOvershift={isRejectingOvershift}
+        />
       </div>
+
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold">Attendance & Shift Payment Approvals</h2>
+          <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+            Review completed work shifts, approve hourly payouts, or reject with feedback
+          </p>
+        </div>
+
 
       {activeOvershifts.length > 0 && (
         <Card variant="outlined" className="border-amber-500/50 p-4">
@@ -701,8 +731,10 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
           </table>
         </div>
       </Card>
+    </div>
 
       {/* Approve Shift Modal Dialog */}
+
       {approveItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">

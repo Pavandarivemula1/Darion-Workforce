@@ -35,6 +35,8 @@ import {
   Search,
   UserCheck,
 } from 'lucide-react'
+import { MobileAdminShifts } from './MobileAdminShifts'
+
 
 export interface CandidateShiftUser {
   id: string
@@ -141,382 +143,407 @@ export const AdminShiftsClient: React.FC<AdminShiftsClientProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full">
-      {/* Header Row */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
-              <Clock className="w-5 h-5" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold">Shift Timing Management</h2>
-          </div>
-          <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-1">
-            Configure preferred work shifts, automated auto-logout rules, and assign schedules to candidates
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-          <Button
-            variant="filled"
-            size="md"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => {
-              setCreateStartTime('09:00')
-              setCreateEndTime('17:00')
-              setIsCreateOpen(true)
-            }}
-          >
-            Create New Shift
-          </Button>
-        </div>
+    <div className="flex flex-col gap-2.5 sm:gap-8 max-w-7xl mx-auto w-full">
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminShifts
+          shifts={initialShifts}
+          candidates={candidates}
+          defaultShift={defaultShift}
+          totalAssignedCandidates={totalAssignedCandidates}
+          isSettingDefault={isSettingDefault}
+          isAssigning={isAssigning}
+          onOpenCreate={() => {
+            setCreateStartTime('09:00')
+            setCreateEndTime('17:00')
+            setIsCreateOpen(true)
+          }}
+          onOpenEdit={handleOpenEdit}
+          onOpenDelete={(shift) => setDeleteShift(shift)}
+          setDefaultFormAction={setDefaultFormAction}
+          assignFormAction={assignFormAction}
+        />
       </div>
 
-      {/* Summary Stat Cards - High-Density 2-Column Mobile Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-              <Sliders className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
-                Shift Presets
-              </span>
-              <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
-                {initialShifts.length}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card variant="outlined" className="border border-emerald-500/30 bg-emerald-500/5 p-3 sm:p-4 shadow-2xs">
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-            </div>
-            <div className="overflow-hidden min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider block truncate">
-                Default Shift
-              </span>
-              <p className="text-xs sm:text-sm font-bold truncate leading-tight mt-0.5" title={defaultShift.name}>
-                {defaultShift.name}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
-                Assigned Staff
-              </span>
-              <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
-                {totalAssignedCandidates} / {candidates.length}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card variant="outlined" className="border border-indigo-500/30 bg-indigo-500/5 p-3 sm:p-4 shadow-2xs">
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-              <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block truncate">
-                Overnight Shifts
-              </span>
-              <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
-                {initialShifts.filter((s) => s.is_overnight).length}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-
-      {/* 1. Shift Templates Grid */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-            Configured Shift Presets
-          </h3>
-          <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-medium">
-            Candidates start within shift hours + grace period
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {initialShifts.map((shift) => {
-            const duration = calculateShiftDurationHours(shift.start_time, shift.end_time, shift.is_overnight)
-            const isDefault = shift.is_default
-
-            return (
-              <Card
-                key={shift.id}
-                variant="outlined"
-                className={`flex flex-col justify-between relative overflow-hidden transition-all border ${
-                  isDefault
-                    ? 'border-emerald-500/50 shadow-sm bg-[var(--md-sys-color-surface-container)]/40'
-                    : 'border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/40'
-                }`}
-              >
-                {/* Default Banner */}
-                {isDefault && (
-                  <div className="absolute top-0 right-0">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 text-[10px] font-bold bg-emerald-500 text-white rounded-bl-xl uppercase tracking-wider shadow-xs">
-                      <Star className="w-3 h-3 fill-current" />
-                      Default Shift
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-4">
-                  {/* Title & Type */}
-                  <div className="flex flex-col gap-1 pr-16">
-                    <h4 className="text-base font-bold flex items-center gap-2">
-                      {shift.is_overnight ? (
-                        <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
-                      ) : (
-                        <Sun className="w-4 h-4 text-amber-500 shrink-0" />
-                      )}
-                      <span className="truncate">{shift.name}</span>
-                    </h4>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] font-semibold">
-                        {duration} Hours
-                      </span>
-                      {shift.is_overnight && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-semibold">
-                          Overnight
-                        </span>
-                      )}
-                      {shift.auto_logout_enabled ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold">
-                          Auto-Logout On
-                        </span>
-                      ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold">
-                          Manual Logout
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Timing Box */}
-                  <div className="p-3.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5 font-medium">
-                        <Clock className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                        Shift Hours:
-                      </span>
-                      <span className="font-mono font-bold text-sm text-[var(--md-sys-color-primary)]">
-                        {formatShiftTime(shift.start_time)} – {formatShiftTime(shift.end_time)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-[var(--md-sys-color-on-surface-variant)] pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <span>Early Clock-in Grace:</span>
-                      <span className="font-semibold">{shift.grace_period_mins || 15} mins before</span>
-                    </div>
-                  </div>
-
-                  {/* Candidate Count */}
-                  <div className="flex items-center justify-between text-xs py-1">
-                    <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" /> Assigned Candidates:
-                    </span>
-                    <span className="font-bold px-2.5 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container-highest)] font-mono text-xs">
-                      {shift.candidate_count || 0}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Card Actions Footer */}
-                <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                  <div>
-                    {!isDefault ? (
-                      <form action={setDefaultFormAction}>
-                        <input type="hidden" name="shiftId" value={shift.id} />
-                        <button
-                          type="submit"
-                          disabled={isSettingDefault}
-                          className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          <Star className="w-3.5 h-3.5" /> Set as Default
-                        </button>
-                      </form>
-                    ) : (
-                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <Check className="w-3.5 h-3.5" /> Active Default
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handleOpenEdit(shift)}
-                      className="p-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-                      title="Edit Shift"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    {!isDefault && (
-                      <button
-                        onClick={() => setDeleteShift(shift)}
-                        className="p-2 rounded-lg hover:bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-error)] transition-colors cursor-pointer"
-                        title="Delete Shift"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* 2. Candidate Shift Assignment Table */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-8">
+        {/* Header Row */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-              Candidate Shift Allocation
-            </h3>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-              Assign or change the designated shift for each candidate
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold">Shift Timing Management</h2>
+            </div>
+            <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-1">
+              Configure preferred work shifts, automated auto-logout rules, and assign schedules to candidates
             </p>
           </div>
 
-          <div className="w-full sm:w-64 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--md-sys-color-on-surface-variant)]" />
-            <input
-              type="text"
-              placeholder="Search candidate..."
-              value={candidateSearch}
-              onChange={(e) => setCandidateSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 rounded-full text-xs bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] focus:outline-none focus:border-[var(--md-sys-color-primary)]"
-            />
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <Button
+              variant="filled"
+              size="md"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => {
+                setCreateStartTime('09:00')
+                setCreateEndTime('17:00')
+                setIsCreateOpen(true)
+              }}
+            >
+              Create New Shift
+            </Button>
           </div>
         </div>
 
-        <Card variant="outlined" className="p-0 overflow-hidden border border-[var(--md-sys-color-outline-variant)]">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-semibold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4 sm:px-6">Candidate</th>
-                  <th className="py-3 px-4">Hourly Rate</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Assigned Shift</th>
-                  <th className="py-3 px-4 sm:px-6 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
-                {filteredCandidates.length > 0 ? (
-                  filteredCandidates.map((cand) => {
-                    const assignedShift = initialShifts.find((s) => s.id === cand.shift_id) || defaultShift
-                    const isCustomAssigned = !!cand.shift_id
+        {/* Summary Stat Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
+            <div className="flex items-center gap-2.5 sm:gap-3.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center shrink-0">
+                <Sliders className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
+                  Shift Presets
+                </span>
+                <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
+                  {initialShifts.length}
+                </p>
+              </div>
+            </div>
+          </Card>
 
-                    return (
-                      <tr
-                        key={cand.id}
-                        className="hover:bg-[var(--md-sys-color-surface-container-highest)]/40 transition-colors"
-                      >
-                        <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold flex items-center justify-center shrink-0">
-                              {cand.full_name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-sm leading-tight">{cand.full_name}</p>
-                              <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
-                                {cand.email || 'No email'}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+          <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
+            <div className="flex items-center gap-2.5 sm:gap-3.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center shrink-0">
+                <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+              </div>
+              <div className="overflow-hidden min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
+                  Default Shift
+                </span>
+                <p className="text-xs sm:text-sm font-bold truncate leading-tight mt-0.5" title={defaultShift.name}>
+                  {defaultShift.name}
+                </p>
+              </div>
+            </div>
+          </Card>
 
-                        <td className="py-3.5 px-4 whitespace-nowrap font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          ₹{(cand.hourly_rate || 0).toFixed(2)}/hr
-                        </td>
+          <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
+            <div className="flex items-center gap-2.5 sm:gap-3.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center shrink-0">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
+                  Assigned Staff
+                </span>
+                <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
+                  {totalAssignedCandidates} / {candidates.length}
+                </p>
+              </div>
+            </div>
+          </Card>
 
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {cand.isWorking ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                              Working
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
-                              Off Shift
-                            </span>
-                          )}
-                        </td>
+          <Card variant="outlined" className="border border-[var(--md-sys-color-outline-variant)] p-3 sm:p-4 shadow-2xs">
+            <div className="flex items-center gap-2.5 sm:gap-3.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center shrink-0">
+                <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider block truncate">
+                  Overnight Shifts
+                </span>
+                <p className="text-base sm:text-xl font-bold font-mono leading-tight mt-0.5">
+                  {initialShifts.filter((s) => s.is_overnight).length}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
 
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-semibold text-xs flex items-center gap-1.5">
-                              {assignedShift.name}
-                              {!isCustomAssigned && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-gray-500/15 text-[var(--md-sys-color-on-surface-variant)] font-bold uppercase">
-                                  Default
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                              {formatShiftTime(assignedShift.start_time)} – {formatShiftTime(assignedShift.end_time)}
-                            </span>
-                          </div>
-                        </td>
 
-                        <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap text-right">
-                          <form action={assignFormAction} className="inline-flex items-center gap-2">
-                            <input type="hidden" name="candidateId" value={cand.id} />
-                            <select
-                              name="shiftId"
-                              defaultValue={cand.shift_id || 'none'}
-                              onChange={(e) => {
-                                e.target.form?.requestSubmit()
-                              }}
-                              disabled={isAssigning}
-                              className="h-8 px-2.5 rounded-lg text-xs bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
-                            >
-                              <option value="none">Use Default ({defaultShift.name})</option>
-                              {initialShifts.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name} ({formatShiftTime(s.start_time)} - {formatShiftTime(s.end_time)})
-                                </option>
-                              ))}
-                            </select>
-                          </form>
-                        </td>
-                      </tr>
-                    )
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                      No candidates found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        {/* 1. Shift Templates Grid */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              Configured Shift Presets
+            </h3>
+            <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-medium">
+              Candidates start within shift hours + grace period
+            </span>
           </div>
-        </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {initialShifts.map((shift) => {
+              const duration = calculateShiftDurationHours(shift.start_time, shift.end_time, shift.is_overnight)
+              const isDefault = shift.is_default
+
+              return (
+                <Card
+                  key={shift.id}
+                  variant="outlined"
+                  className={`flex flex-col justify-between relative overflow-hidden transition-all border ${
+                    isDefault
+                      ? 'border-emerald-500/50 shadow-sm bg-[var(--md-sys-color-surface-container)]/40'
+                      : 'border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/40'
+                  }`}
+                >
+                  {/* Default Banner */}
+                  {isDefault && (
+                    <div className="absolute top-0 right-0">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 text-[10px] font-bold bg-emerald-500 text-white rounded-bl-xl uppercase tracking-wider shadow-xs">
+                        <Star className="w-3 h-3 fill-current" />
+                        Default Shift
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-4">
+                    {/* Title & Type */}
+                    <div className="flex flex-col gap-1 pr-16">
+                      <h4 className="text-base font-bold flex items-center gap-2">
+                        {shift.is_overnight ? (
+                          <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
+                        ) : (
+                          <Sun className="w-4 h-4 text-amber-500 shrink-0" />
+                        )}
+                        <span className="truncate">{shift.name}</span>
+                      </h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] font-semibold">
+                          {duration} Hours
+                        </span>
+                        {shift.is_overnight && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-semibold">
+                            Overnight
+                          </span>
+                        )}
+                        {shift.auto_logout_enabled ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold">
+                            Auto-Logout On
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold">
+                            Manual Logout
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Timing Box */}
+                    <div className="p-3.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5 font-medium">
+                          <Clock className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                          Shift Hours:
+                        </span>
+                        <span className="font-mono font-bold text-sm text-[var(--md-sys-color-primary)]">
+                          {formatShiftTime(shift.start_time)} – {formatShiftTime(shift.end_time)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-[var(--md-sys-color-on-surface-variant)] pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
+                        <span>Early Clock-in Grace:</span>
+                        <span className="font-semibold">{shift.grace_period_mins || 15} mins before</span>
+                      </div>
+                    </div>
+
+                    {/* Candidate Count */}
+                    <div className="flex items-center justify-between text-xs py-1">
+                      <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" /> Assigned Candidates:
+                      </span>
+                      <span className="font-bold px-2.5 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container-highest)] font-mono text-xs">
+                        {shift.candidate_count || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Actions Footer */}
+                  <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+                    <div>
+                      {!isDefault ? (
+                        <form action={setDefaultFormAction}>
+                          <input type="hidden" name="shiftId" value={shift.id} />
+                          <button
+                            type="submit"
+                            disabled={isSettingDefault}
+                            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <Star className="w-3.5 h-3.5" /> Set as Default
+                          </button>
+                        </form>
+                      ) : (
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> Active Default
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenEdit(shift)}
+                        className="p-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+                        title="Edit Shift"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      {!isDefault && (
+                        <button
+                          onClick={() => setDeleteShift(shift)}
+                          className="p-2 rounded-lg hover:bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-error)] transition-colors cursor-pointer"
+                          title="Delete Shift"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* 2. Candidate Shift Assignment Table */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                Candidate Shift Allocation
+              </h3>
+              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                Assign or change the designated shift for each candidate
+              </p>
+            </div>
+
+            <div className="w-full sm:w-64 relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--md-sys-color-on-surface-variant)]" />
+              <input
+                type="text"
+                placeholder="Search candidate..."
+                value={candidateSearch}
+                onChange={(e) => setCandidateSearch(e.target.value)}
+                className="w-full h-9 pl-9 pr-3 rounded-full text-xs bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] focus:outline-none focus:border-[var(--md-sys-color-primary)]"
+              />
+            </div>
+          </div>
+
+          <Card variant="outlined" className="p-0 overflow-hidden border border-[var(--md-sys-color-outline-variant)]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-semibold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4 sm:px-6">Candidate</th>
+                    <th className="py-3 px-4">Hourly Rate</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Assigned Shift</th>
+                    <th className="py-3 px-4 sm:px-6 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
+                  {filteredCandidates.length > 0 ? (
+                    filteredCandidates.map((cand) => {
+                      const assignedShift = initialShifts.find((s) => s.id === cand.shift_id) || defaultShift
+                      const isCustomAssigned = !!cand.shift_id
+
+                      return (
+                        <tr
+                          key={cand.id}
+                          className="hover:bg-[var(--md-sys-color-surface-container-highest)]/40 transition-colors"
+                        >
+                          <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold flex items-center justify-center shrink-0">
+                                {cand.full_name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-sm leading-tight">{cand.full_name}</p>
+                                <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                                  {cand.email || 'No email'}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 whitespace-nowrap font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            ₹{(cand.hourly_rate || 0).toFixed(2)}/hr
+                          </td>
+
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {cand.isWorking ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                Working
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
+                                Off Shift
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-xs flex items-center gap-1.5">
+                                {assignedShift.name}
+                                {!isCustomAssigned && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-gray-500/15 text-[var(--md-sys-color-on-surface-variant)] font-bold uppercase">
+                                    Default
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                                {formatShiftTime(assignedShift.start_time)} – {formatShiftTime(assignedShift.end_time)}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 sm:px-6 whitespace-nowrap text-right">
+                            <form action={assignFormAction} className="inline-flex items-center gap-2">
+                              <input type="hidden" name="candidateId" value={cand.id} />
+                              <select
+                                name="shiftId"
+                                defaultValue={cand.shift_id || 'none'}
+                                onChange={(e) => {
+                                  e.target.form?.requestSubmit()
+                                }}
+                                disabled={isAssigning}
+                                className="h-8 px-2.5 rounded-lg text-xs bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+                              >
+                                <option value="none">Use Default ({defaultShift.name})</option>
+                                {initialShifts.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name} ({formatShiftTime(s.start_time)} - {formatShiftTime(s.end_time)})
+                                  </option>
+                                ))}
+                              </select>
+                            </form>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                        No candidates found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* Modal: Create Shift Dialog */}
+
       {isCreateOpen && !createState?.success && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto shadow-2xl">

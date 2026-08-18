@@ -203,6 +203,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
 
             <form action={logoutAction} className="pt-2">
               <Button
+                type="submit"
                 variant="outlined"
                 size="md"
                 className="w-full text-xs"
@@ -214,6 +215,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
           </div>
         </div>
       )}
+
 
       {/* Floating Feedback Widget */}
       <FeedbackWidget />

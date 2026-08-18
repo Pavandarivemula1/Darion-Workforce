@@ -17,8 +17,9 @@ export async function requestPasswordResetAction(
   const supabase = await createClient()
 
   if (method === 'email_reset') {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.NODE_ENV === 'production' ? 'https://workforce.darion.in' : 'http://localhost:3000')
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`,
+      redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
     })
     
     if (error) {

@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { createInstantMeetingAction, scheduleMeetingAction, deleteMeetingAction } from '@/app/actions/meet'
+import { MobileAdminMeets } from './meets/MobileAdminMeets'
+
 
 export interface AdminMeetsClientProps {
   initialUpcoming: any[]
@@ -110,9 +112,27 @@ export const AdminMeetsClient: React.FC<AdminMeetsClientProps> = ({
   )
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Top Banner with Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="flex flex-col gap-2.5 sm:gap-8">
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminMeets
+          upcoming={upcoming}
+          past={past}
+          isStartingInstant={isStartingInstant}
+          onStartInstantMeet={handleStartInstantMeet}
+          onOpenSchedule={() => setShowScheduleModal(true)}
+          onDeleteMeeting={handleDeleteMeeting}
+          onCopyLink={handleCopyLink}
+          copiedCode={copiedCode}
+          onPlayRecording={(rec) => setPlayingRecording(rec)}
+        />
+      </div>
+
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-8">
+        {/* Top Banner with Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
         {/* Card 1: Start Instant Meeting */}
         <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-lg shadow-blue-600/10 flex flex-col justify-between h-[230px] transition-all hover:shadow-xl hover:shadow-blue-600/15">
           <div className="flex items-center justify-between">
@@ -415,8 +435,10 @@ export const AdminMeetsClient: React.FC<AdminMeetsClientProps> = ({
           </div>
         )}
       </div>
+    </div>
 
       {/* Schedule Meeting Modal */}
+
       {showScheduleModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">

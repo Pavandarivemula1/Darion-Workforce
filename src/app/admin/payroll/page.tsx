@@ -107,7 +107,7 @@ export default async function AdminPayrollPage({ searchParams }: PageProps) {
 
   return (
     <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
-      <main className="max-w-6xl w-full mx-auto p-4 sm:p-6">
+      <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6">
         <AdminPayrollClient
           candidates={safeCandidates}
           records={safeRecords}
@@ -116,4 +116,5 @@ export default async function AdminPayrollPage({ searchParams }: PageProps) {
       </main>
     </AdminLayout>
   )
+
 }

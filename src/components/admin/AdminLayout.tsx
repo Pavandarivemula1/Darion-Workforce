@@ -217,6 +217,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
 
             <form action={logoutAction} className="pt-2">
               <Button
+                type="submit"
                 variant="outlined"
                 size="md"
                 className="w-full text-xs"
@@ -228,6 +229,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
           </div>
         </div>
       )}
+
     </div>
   )
 }

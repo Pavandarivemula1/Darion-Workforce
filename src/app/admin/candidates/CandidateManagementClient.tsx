@@ -34,6 +34,8 @@ import {
   Clock,
 } from 'lucide-react'
 import { type ShiftConfig, formatShiftTime, DEFAULT_FALLBACK_SHIFT } from '@/lib/utils/shift'
+import { MobileAdminCandidates } from '@/components/admin/candidates/MobileAdminCandidates'
+
 
 export interface CandidateUser {
   id: string
@@ -119,173 +121,48 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold">Candidate Roster</h2>
-          <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-            Manage system candidates, hourly payment rates (₹/hr), and account security
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
-            {candidates.length} Candidate{candidates.length === 1 ? '' : 's'}
-          </span>
-
-          <Button
-            variant="filled"
-            size="md"
-            icon={<UserPlus className="w-4 h-4" />}
-            onClick={() => setIsCreateOpen(true)}
-          >
-            Create Candidate
-          </Button>
-        </div>
+    <div className="flex flex-col gap-2.5 sm:gap-6 max-w-7xl mx-auto w-full">
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminCandidates
+          candidates={candidates}
+          shifts={shifts}
+          onOpenCreate={() => setIsCreateOpen(true)}
+          onOpenEdit={(c) => setEditCandidate(c)}
+          onOpenDelete={(c) => setDeleteCandidate(c)}
+          onOpenResetPassword={(email) => setResetEmail(email)}
+        />
       </div>
 
-      {/* 1. Mobile Candidate Cards (< 768px) */}
-      <div className="flex flex-col gap-4 md:hidden">
-        {candidates.length > 0 ? (
-          candidates.map((c) => {
-            const rate = c.hourly_rate || 0
-            return (
-              <Card
-                key={c.id}
-                variant="outlined"
-                className="p-4 flex flex-col gap-3 border border-[var(--md-sys-color-outline-variant)]"
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
-                  <div className="flex items-center gap-3">
-                    {c.avatar_url ? (
-                      <img src={c.avatar_url} alt={c.full_name} className="w-10 h-10 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-sm font-bold shrink-0">
-                        {c.full_name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <h4 className="text-base font-bold">{c.full_name}</h4>
-                      {c.email && (
-                        <p className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                          {c.email}
-                        </p>
-                      )}
-                      {c.id_number && (
-                        <a 
-                          href={`/api/verify-redirect?idNumber=${c.id_number}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] font-mono font-medium text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 mt-0.5 w-fit"
-                          title="Verify ID Card"
-                        >
-                          <IdCard className="w-3 h-3" />
-                          {c.id_number}
-                          <ShieldCheck className="w-2.5 h-2.5" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold">Candidate Roster</h2>
+            <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              Manage system candidates, hourly payment rates (₹/hr), and account security
+            </p>
+          </div>
 
-                  {c.isWorking ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      Working
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
-                      Off Shift
-                    </span>
-                  )}
-                </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+              {candidates.length} Candidate{candidates.length === 1 ? '' : 's'}
+            </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  <div className="p-2.5 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
-                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase font-semibold">
-                      Hourly Rate
-                    </span>
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                        ₹{rate.toFixed(2)}/hr
-                      </span>
-                      <button
-                        onClick={() => setEditCandidate(c)}
-                        className="p-1 rounded hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] transition-colors cursor-pointer"
-                        title="Edit Profile"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+            <Button
+              variant="filled"
+              size="md"
+              icon={<UserPlus className="w-4 h-4" />}
+              onClick={() => setIsCreateOpen(true)}
+            >
+              Create Candidate
+            </Button>
+          </div>
+        </div>
 
-                  <div className="p-2.5 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
-                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase font-semibold flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-[var(--md-sys-color-primary)]" /> Assigned Shift
-                    </span>
-                    {(() => {
-                      const assignedShift = shifts.find((s) => s.id === c.shift_id) || defaultShift
-                      return (
-                        <span className="font-semibold text-xs text-[var(--md-sys-color-on-surface)] truncate" title={assignedShift.name}>
-                          {assignedShift.name} ({formatShiftTime(assignedShift.start_time)})
-                        </span>
-                      )
-                    })()}
-                  </div>
-
-                  <div className="p-2.5 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container)] flex flex-col gap-0.5 border border-[var(--md-sys-color-outline-variant)]">
-                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase font-semibold flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> Registered
-                    </span>
-                    <span className="font-mono text-xs text-[var(--md-sys-color-on-surface)]">
-                      {new Date(c.created_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-                  <Link
-                    href={`/admin/attendance?candidateId=${c.id}`}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-semibold"
-                  >
-                    <History className="w-3.5 h-3.5" />
-                    <span>View Attendance</span>
-                  </Link>
-
-                  {c.email && (
-                    <button
-                      onClick={() => setResetEmail(c.email || null)}
-                      className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)]"
-                      title="Reset Password"
-                    >
-                      <KeyRound className="w-4 h-4" />
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setDeleteCandidate(c)}
-                    className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-error)]"
-                    title="Delete Candidate"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </Card>
-            )
-          })
-        ) : (
-          <Card variant="outlined" className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
-            No candidates registered yet. Click &quot;Create Candidate&quot; to add one.
-          </Card>
-        )}
-      </div>
-
-      {/* 2. Desktop Candidate Table (>= 768px) */}
-      <Card variant="outlined" className="hidden md:block p-0 border border-[var(--md-sys-color-outline-variant)] overflow-hidden">
+        {/* 2. Desktop Candidate Table */}
+        <Card variant="outlined" className="p-0 border border-[var(--md-sys-color-outline-variant)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
@@ -428,8 +305,10 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
           </table>
         </div>
       </Card>
+    </div>
 
       {/* Create Candidate Modal Dialog */}
+
       {isCreateOpen && !createState?.success && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">

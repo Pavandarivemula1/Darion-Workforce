@@ -21,10 +21,11 @@ export const Card: React.FC<CardProps> = ({
   const baseStyles = 'transition-all duration-200 shadow-2xs'
 
   const variantStyles = {
-    elevated: 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]',
-    outlined: 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]',
-    filled: 'bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]',
+    elevated: 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs',
+    outlined: 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]',
+    filled: 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]',
   }
+
 
   return (
     <div className={`${baseStyles} ${densityStyles[density]} ${variantStyles[variant]} ${className}`} {...props}>

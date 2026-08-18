@@ -29,12 +29,33 @@ export function ResetPasswordClient() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
   useEffect(() => {
+    // 1. Listen for auth state change (PASSWORD_RECOVERY or SIGNED_IN)
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        await checkSession()
+      }
+    })
+
+    // 2. Initial session check (including code param exchange if needed)
     checkSession()
+
+    return () => {
+      authListener?.subscription.unsubscribe()
+    }
   }, [])
 
   const checkSession = async () => {
     setLoading(true)
     try {
+      // Exchange code if landed directly with ?code=
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search)
+        const code = searchParams.get('code')
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code)
+        }
+      }
+
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       
       if (userError || !user) {

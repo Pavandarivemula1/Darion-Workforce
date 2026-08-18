@@ -29,13 +29,14 @@ export default async function AdminSecurityPage() {
 
   return (
     <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
-      <main className="max-w-6xl w-full mx-auto flex flex-col gap-6">
-        <div>
+      <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
+        <div className="hidden md:block">
           <h2 className="text-xl sm:text-2xl font-bold">Security Requests</h2>
           <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
             Manage Multi-Factor Authentication (MFA) reset requests for users who lost their authenticator app.
           </p>
         </div>
+
         
         {error && (
           <div className="p-4 bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] rounded-md text-sm border border-[var(--md-sys-color-error)]">

@@ -19,11 +19,13 @@ import { PayslipModal } from './PayslipModal'
 import { ShiftBreakdownModal } from './ShiftBreakdownModal'
 import { CandidateBankDetailsModal } from './CandidateBankDetailsModal'
 import { BatchPayrollModal } from './BatchPayrollModal'
+import { MobileAdminPayroll } from './MobileAdminPayroll'
 import {
   Download,
   Calendar,
   CreditCard,
 } from 'lucide-react'
+
 
 export interface AdminPayrollClientProps {
   candidates: CandidatePayrollProfile[]
@@ -184,7 +186,7 @@ export const AdminPayrollClient: React.FC<AdminPayrollClientProps> = ({
   ]
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-2.5 sm:gap-6">
       {/* Toast Notification */}
       {toast && (
         <Snackbar
@@ -194,108 +196,136 @@ export const AdminPayrollClient: React.FC<AdminPayrollClientProps> = ({
         />
       )}
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
-            Payroll & Disbursements
-          </h2>
-          <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-            Daily shift wages, automated disbursements, and candidate payment summaries
-          </p>
-        </div>
-
-        {/* Global Actions */}
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outlined"
-            size="md"
-            onClick={handleExportCsv}
-            icon={<Download className="w-4 h-4" />}
-          >
-            Export CSV
-          </Button>
-
-          <Button
-            variant="filled"
-            size="md"
-            onClick={() => setIsBatchModalOpen(true)}
-            disabled={payeesWithDueCount === 0}
-            icon={<CreditCard className="w-4 h-4" />}
-          >
-            Batch Payout ({payeesWithDueCount})
-          </Button>
-        </div>
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminPayroll
+          candidates={candidateSummaries}
+          totalTodayPay={totalTodayPay}
+          todayShiftsCount={todayShiftsCount}
+          totalDue={totalDue}
+          totalPaid={totalPaid}
+          totalPendingApproval={totalPendingApproval}
+          totalCandidates={candidates.length}
+          totalApprovedHours={totalApprovedHours}
+          payeesWithDueCount={payeesWithDueCount}
+          filter={filter}
+          periodLabel={periodLabel}
+          onFilterChange={(newFilter) => setFilter(newFilter)}
+          onExportCsv={handleExportCsv}
+          onOpenBatch={() => setIsBatchModalOpen(true)}
+          onOpenSettle={(c) => setSettleCandidate(c)}
+          onOpenPayslip={(c) => setPayslipCandidate(c)}
+          onOpenShifts={(c) => setShiftsCandidate(c)}
+          onOpenBankDetails={(c) => setBankCandidate(c)}
+        />
       </div>
 
-      {/* Period Filter Tabs & Date Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2 rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs">
-        {/* Presets */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {periodTabs.map((tab) => {
-            const isActive = filter === tab.key
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-all ${
-                  isActive
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-2xs'
-                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Custom Range Inputs */}
-        {filter === 'custom' && (
-          <div className="flex items-center gap-2 text-xs">
-            <input
-              type="date"
-              value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-            />
-            <span className="text-[var(--md-sys-color-on-surface-variant)]">to</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-            />
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
+              Payroll & Disbursements
+            </h2>
+            <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              Daily shift wages, automated disbursements, and candidate payment summaries
+            </p>
           </div>
-        )}
 
-        {/* Active Period Badge */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-[var(--md-sys-color-on-surface-variant)] font-medium pr-2">
-          <Calendar className="w-3.5 h-3.5" />
-          <span>{periodLabel}</span>
+          {/* Global Actions */}
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="outlined"
+              size="md"
+              onClick={handleExportCsv}
+              icon={<Download className="w-4 h-4" />}
+            >
+              Export CSV
+            </Button>
+
+            <Button
+              variant="filled"
+              size="md"
+              onClick={() => setIsBatchModalOpen(true)}
+              disabled={payeesWithDueCount === 0}
+              icon={<CreditCard className="w-4 h-4" />}
+            >
+              Batch Payout ({payeesWithDueCount})
+            </Button>
+          </div>
         </div>
+
+        {/* Period Filter Tabs & Date Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2 rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs">
+          {/* Presets */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {periodTabs.map((tab) => {
+              const isActive = filter === tab.key
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilter(tab.key)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-all ${
+                    isActive
+                      ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-2xs'
+                      : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Custom Range Inputs */}
+          {filter === 'custom' && (
+            <div className="flex items-center gap-2 text-xs">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+              />
+              <span className="text-[var(--md-sys-color-on-surface-variant)]">to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+              />
+            </div>
+          )}
+
+          {/* Active Period Badge */}
+          <div className="hidden lg:flex items-center gap-1.5 text-xs text-[var(--md-sys-color-on-surface-variant)] font-medium pr-2">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{periodLabel}</span>
+          </div>
+        </div>
+
+        {/* KPI Financial Metric Summary Cards */}
+        <PayrollSummaryCards
+          totalTodayPay={totalTodayPay}
+          todayShiftsCount={todayShiftsCount}
+          totalDue={totalDue}
+          totalPaid={totalPaid}
+          totalPendingApproval={totalPendingApproval}
+          totalCandidates={candidates.length}
+          totalApprovedHours={totalApprovedHours}
+          payeesWithDueCount={payeesWithDueCount}
+        />
+
+        {/* Candidate Payroll Table */}
+        <CandidatePayrollTable
+          candidates={candidateSummaries}
+          onOpenSettle={(c) => setSettleCandidate(c)}
+          onOpenPayslip={(c) => setPayslipCandidate(c)}
+          onOpenShifts={(c) => setShiftsCandidate(c)}
+          onOpenBankDetails={(c) => setBankCandidate(c)}
+        />
       </div>
 
-      {/* KPI Financial Metric Summary Cards */}
-      <PayrollSummaryCards
-        totalTodayPay={totalTodayPay}
-        todayShiftsCount={todayShiftsCount}
-        totalDue={totalDue}
-        totalPaid={totalPaid}
-        totalPendingApproval={totalPendingApproval}
-        totalCandidates={candidates.length}
-        totalApprovedHours={totalApprovedHours}
-        payeesWithDueCount={payeesWithDueCount}
-      />
-
-      {/* Candidate Payroll Table */}
-      <CandidatePayrollTable
-        candidates={candidateSummaries}
-        onOpenSettle={(c) => setSettleCandidate(c)}
-        onOpenPayslip={(c) => setPayslipCandidate(c)}
-        onOpenShifts={(c) => setShiftsCandidate(c)}
-        onOpenBankDetails={(c) => setBankCandidate(c)}
-      />
 
       {/* Settlement Modal */}
       <SettlePaymentModal

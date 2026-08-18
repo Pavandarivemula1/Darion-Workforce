@@ -11,6 +11,7 @@ import { exportAttendanceToCsv } from '@/lib/utils/exportCsv'
 import { WeekSelector } from '@/components/admin/timesheet/WeekSelector'
 import { WeeklySummaryCards } from '@/components/admin/timesheet/WeeklySummaryCards'
 import { WeeklyMatrixTable } from '@/components/admin/timesheet/WeeklyMatrixTable'
+import { MobileAdminTimesheet } from '@/components/admin/timesheet/MobileAdminTimesheet'
 import { Snackbar } from '@/components/ui/Snackbar'
 
 export interface TimesheetClientViewProps {
@@ -36,19 +37,33 @@ export const TimesheetClientView: React.FC<TimesheetClientViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Week Navigation Header */}
-      <WeekSelector
-        weekLabel={weekLabel}
-        currentDateIso={referenceDateIso}
-        onExportCsv={handleExportCsv}
-      />
+    <div className="flex flex-col gap-2.5 sm:gap-6">
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminTimesheet
+          timesheetRows={timesheetRows}
+          daysHeader={daysHeader}
+          weekLabel={weekLabel}
+          currentDateIso={referenceDateIso}
+          onExportCsv={handleExportCsv}
+        />
+      </div>
 
-      {/* Summary Metric Cards */}
-      <WeeklySummaryCards timesheetRows={timesheetRows} weekLabel={weekLabel} />
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-6">
+        {/* Week Navigation Header */}
+        <WeekSelector
+          weekLabel={weekLabel}
+          currentDateIso={referenceDateIso}
+          onExportCsv={handleExportCsv}
+        />
 
-      {/* Weekly Matrix Table */}
-      <WeeklyMatrixTable timesheetRows={timesheetRows} daysHeader={daysHeader} />
+        {/* Summary Metric Cards */}
+        <WeeklySummaryCards timesheetRows={timesheetRows} weekLabel={weekLabel} />
+
+        {/* Weekly Matrix Table */}
+        <WeeklyMatrixTable timesheetRows={timesheetRows} daysHeader={daysHeader} />
+      </div>
 
       {/* Export Snackbar Notification */}
       <Snackbar

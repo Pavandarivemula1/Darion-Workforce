@@ -54,13 +54,14 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
 
   return (
     <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
-      <main className="max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
-        <div>
+      <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
+        <div className="hidden md:block">
           <h2 className="text-xl sm:text-2xl font-bold">Weekly Timesheet</h2>
           <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
             Weekly working duration matrix per candidate formatted in Asia/Kolkata timezone
           </p>
         </div>
+
 
         <TimesheetClientView
           candidates={candidates || []}

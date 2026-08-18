@@ -28,6 +28,8 @@ import {
   CalendarCheck2,
   CalendarOff,
 } from 'lucide-react'
+import { MobileAdminLeaves } from './MobileAdminLeaves'
+
 
 export interface AdminLeaveRecord {
   id: string
@@ -161,18 +163,31 @@ export const AdminLeavesClient: React.FC<AdminLeavesClientProps> = ({ leaves }) 
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-16">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
-            Leave & Time-Off Management
-          </h1>
-          <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-            Review time-off requests, monitor daily absenteeism, and manage workforce availability.
-          </p>
-        </div>
+    <div className="flex flex-col gap-2.5 sm:gap-6 w-full pb-16">
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminLeaves
+          leaves={leaves}
+          onOpenApprove={(l) => setApproveDialogItem(l)}
+          onOpenReject={(l) => setRejectDialogItem(l)}
+          onDeleteConfirm={(id) => setDeleteConfirmId(id)}
+        />
       </div>
+
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-6">
+        {/* Top Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
+              Leave & Time-Off Management
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              Review time-off requests, monitor daily absenteeism, and manage workforce availability.
+            </p>
+          </div>
+        </div>
+
 
       {/* KPI Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -448,8 +463,10 @@ export const AdminLeavesClient: React.FC<AdminLeavesClientProps> = ({ leaves }) 
           })}
         </div>
       )}
+    </div>
 
       {/* Approve Dialog */}
+
       {approveDialogItem && (
         <Dialog
           isOpen={!!approveDialogItem}

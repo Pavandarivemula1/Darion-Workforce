@@ -30,6 +30,8 @@ import {
   HelpCircle,
   ExternalLink,
 } from 'lucide-react'
+import { MobileAdminFeedback } from './MobileAdminFeedback'
+
 
 export interface FeedbackWithCandidate {
   id: string
@@ -169,18 +171,30 @@ export const AdminFeedbackClient: React.FC<AdminFeedbackClientProps> = ({ feedba
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-16">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
-            Worker Feedback & Sentiments
-          </h1>
-          <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-            Monitor shift satisfaction, address candidate suggestions, and resolve workplace concerns.
-          </p>
-        </div>
+    <div className="flex flex-col gap-2.5 sm:gap-6 w-full pb-16">
+      {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
+      <div className="md:hidden">
+        <MobileAdminFeedback
+          feedbacks={feedbacks}
+          onOpenReview={(f) => openReviewModal(f)}
+          onDeleteConfirm={(id) => setDeleteConfirmId(id)}
+        />
       </div>
+
+      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      <div className="hidden md:flex flex-col gap-6">
+        {/* Top Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
+              Worker Feedback & Sentiments
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              Monitor shift satisfaction, address candidate suggestions, and resolve workplace concerns.
+            </p>
+          </div>
+        </div>
+
 
       {/* KPI Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -470,8 +484,10 @@ export const AdminFeedbackClient: React.FC<AdminFeedbackClientProps> = ({ feedba
           })}
         </div>
       )}
+    </div>
 
       {/* Review & Reply Modal */}
+
       {selectedFeedback && (
         <Dialog
           isOpen={!!selectedFeedback}

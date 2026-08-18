@@ -145,7 +145,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
 
   return (
     <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
-      <main className="max-w-6xl w-full mx-auto p-4 sm:p-6">
+      <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6">
         <AdminAttendanceClient
           candidates={candidates || []}
           records={systemRecords}
@@ -154,4 +154,5 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
       </main>
     </AdminLayout>
   )
+
 }

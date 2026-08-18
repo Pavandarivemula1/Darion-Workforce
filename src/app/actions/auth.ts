@@ -183,10 +183,11 @@ export async function magicLinkLoginAction(
 
   const supabase = await createClient()
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.NODE_ENV === 'production' ? 'https://workforce.darion.in' : 'http://localhost:3000')
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/login`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=/login`,
     }
   })
 
