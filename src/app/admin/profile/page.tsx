@@ -28,7 +28,7 @@ export default async function AdminProfilePage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
 
   return (
-    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-4xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
         {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
         <div className="md:hidden">

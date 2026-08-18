@@ -14,6 +14,10 @@ export default async function AdminDashboardPage() {
     redirect('/login')
   }
 
+  if (user.role !== 'admin') {
+    redirect('/candidate')
+  }
+
   const supabase = await createClient()
 
   // Fetch only what's necessary for the Layout shell
@@ -21,14 +25,10 @@ export default async function AdminDashboardPage() {
     .from('profiles')
     .select('id, full_name, role, avatar_url')
     .eq('id', user.id)
-    .single()
-
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    redirect('/candidate')
-  }
+    .maybeSingle()
 
   return (
-    <AdminLayout adminName={adminProfile.full_name} adminAvatarUrl={adminProfile.avatar_url}>
+    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'System Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
         {/* Desktop Header Title (>= 768px) */}
         <div className="hidden md:flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useTransition, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   X,
   CheckCheck,
@@ -8,7 +8,6 @@ import {
   Bell,
   CheckCircle2,
   XCircle,
-  Clock,
   PlayCircle,
   Square,
   CalendarPlus,
@@ -20,23 +19,18 @@ import {
   BellRing,
   Volume2,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { NotificationItem, NotificationType } from '@/lib/utils/notifications'
-import {
-  markNotificationAsReadAction,
-  markAllNotificationsAsReadAction,
-  deleteNotificationAction,
-  clearAllReadNotificationsAction,
-} from '@/app/actions/notifications'
 import { useRouter } from 'next/navigation'
 
 interface NotificationDrawerProps {
   isOpen: boolean
   onClose: () => void
-  userId?: string
-  initialNotifications?: NotificationItem[]
+  notifications: NotificationItem[]
   unreadCount: number
-  onUnreadCountChange: (count: number) => void
+  onMarkAsRead: (id: string) => void
+  onMarkAllAsRead: () => void
+  onDelete: (id: string) => void
+  onClearRead: () => void
 }
 
 function getNotificationIcon(type: NotificationType) {
@@ -83,106 +77,22 @@ function formatRelativeTime(dateStr: string): string {
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   isOpen,
   onClose,
-  userId,
-  initialNotifications = [],
+  notifications,
   unreadCount,
-  onUnreadCountChange,
+  onMarkAsRead,
+  onMarkAllAsRead,
+  onDelete,
+  onClearRead,
 }) => {
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
-  const [isPending, startTransition] = useTransition()
   const [desktopAlertsEnabled, setDesktopAlertsEnabled] = useState(false)
   const router = useRouter()
 
-  // Check desktop notification permission on mount
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setDesktopAlertsEnabled(Notification.permission === 'granted')
     }
   }, [])
-
-  // Sync initial notifications if props change
-  useEffect(() => {
-    if (initialNotifications && initialNotifications.length > 0) {
-      setNotifications(initialNotifications)
-    }
-  }, [initialNotifications])
-
-  // Supabase Realtime Subscription
-  useEffect(() => {
-    if (!userId) return
-
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`user-notifications-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as NotificationItem
-          setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)])
-          onUnreadCountChange(unreadCount + 1)
-
-          // Native Desktop Notification if granted
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            try {
-              new Notification(newNotif.title, {
-                body: newNotif.message,
-                icon: '/favicon.ico',
-              })
-            } catch (err) {
-              console.warn('[Desktop notification error]:', err)
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const updated = payload.new as NotificationItem
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === updated.id ? updated : n))
-          )
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const deletedId = (payload.old as any)?.id
-          if (deletedId) {
-            setNotifications((prev) => prev.filter((n) => n.id !== deletedId))
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [userId, unreadCount, onUnreadCountChange])
-
-  // Recalculate unread count
-  useEffect(() => {
-    const count = notifications.filter((n) => !n.read).length
-    onUnreadCountChange(count)
-  }, [notifications, onUnreadCountChange])
 
   const filteredNotifications = useMemo(() => {
     if (filter === 'unread') {
@@ -198,41 +108,9 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     }
   }
 
-  const handleMarkAsRead = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation()
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    )
-    startTransition(async () => {
-      await markNotificationAsReadAction(id)
-    })
-  }
-
-  const handleMarkAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-    startTransition(async () => {
-      await markAllNotificationsAsReadAction()
-    })
-  }
-
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
-    startTransition(async () => {
-      await deleteNotificationAction(id)
-    })
-  }
-
-  const handleClearRead = () => {
-    setNotifications((prev) => prev.filter((n) => !n.read))
-    startTransition(async () => {
-      await clearAllReadNotificationsAction()
-    })
-  }
-
   const handleNotificationClick = (item: NotificationItem) => {
     if (!item.read) {
-      handleMarkAsRead(item.id)
+      onMarkAsRead(item.id)
     }
     if (item.link) {
       onClose()
@@ -335,8 +213,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               {unreadCount > 0 && (
                 <button
                   type="button"
-                  onClick={handleMarkAllAsRead}
-                  disabled={isPending}
+                  onClick={onMarkAllAsRead}
                   className="text-[11px] font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 cursor-pointer"
                   title="Mark all as read"
                 >
@@ -347,8 +224,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               {notifications.some((n) => n.read) && (
                 <button
                   type="button"
-                  onClick={handleClearRead}
-                  disabled={isPending}
+                  onClick={onClearRead}
                   className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] hover:text-red-500 transition-colors flex items-center gap-1 cursor-pointer"
                   title="Clear all read notifications"
                 >
@@ -431,7 +307,10 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                       {!item.read && (
                         <button
                           type="button"
-                          onClick={(e) => handleMarkAsRead(item.id, e)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onMarkAsRead(item.id)
+                          }}
                           className="p-1 rounded-md text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
                           title="Mark as read"
                         >
@@ -440,7 +319,10 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                       )}
                       <button
                         type="button"
-                        onClick={(e) => handleDelete(item.id, e)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(item.id)
+                        }}
                         className="p-1 rounded-md text-[var(--md-sys-color-on-surface-variant)] hover:text-red-500 hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
                         title="Dismiss notification"
                       >

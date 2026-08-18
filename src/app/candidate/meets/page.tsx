@@ -28,7 +28,7 @@ export default async function CandidateMeetsPage() {
     .from('profiles')
     .select('id, full_name, role, avatar_url, is_beta_tester')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   const betaAccess = checkUserMeetsBetaAccess({
     role: user.role,
@@ -40,7 +40,7 @@ export default async function CandidateMeetsPage() {
   const pastMeetings = await getPastMeetingsWithRecordings()
 
   return (
-    <CandidateLayout candidateName={candidateProfile?.full_name || 'Candidate'} candidateAvatarUrl={candidateProfile?.avatar_url}>
+    <CandidateLayout candidateId={user.id} candidateName={candidateProfile?.full_name || 'Candidate'} candidateAvatarUrl={candidateProfile?.avatar_url}>
       <main className="max-w-5xl w-full mx-auto flex flex-col gap-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Video Meets & Sessions</h2>

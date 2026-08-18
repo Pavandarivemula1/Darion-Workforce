@@ -20,12 +20,12 @@ export default async function CandidateProfilePage() {
     .from('profiles')
     .select('id, full_name, role, hourly_rate, created_at, avatar_url, phone_number, address, id_number')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   const { data: { user: authUser } } = await supabase.auth.getUser()
 
   return (
-    <CandidateLayout candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
+    <CandidateLayout candidateId={user.id} candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
       <main className="max-w-5xl w-full mx-auto flex flex-col gap-6">
         <CandidateProfileClient
           profile={

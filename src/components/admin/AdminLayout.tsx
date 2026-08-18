@@ -30,11 +30,12 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 export interface AdminLayoutProps {
   children: React.ReactNode
+  adminId?: string
   adminName?: string
   adminAvatarUrl?: string
 }
 
-export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, adminAvatarUrl }) => {
+export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminId, adminName, adminAvatarUrl }) => {
   const pathname = usePathname()
   const [isMoreOpen, setIsMoreOpen] = useState(false)
 
@@ -84,7 +85,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
         brandIcon={<ShieldCheck className="w-6 h-6" />}
         brandName="Darion Workforce"
         subtitle={adminName || 'System Admin'}
-        headerAction={<NotificationBell />}
+        headerAction={<NotificationBell userId={adminId} />}
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
@@ -100,7 +101,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
         </Link>
 
         <div className="flex items-center gap-1">
-          <NotificationBell />
+          <NotificationBell userId={adminId} />
           <Link
             href="/admin/profile"
             className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"

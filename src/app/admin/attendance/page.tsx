@@ -107,10 +107,6 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
       .order('created_at', { ascending: false })
   ])
 
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    redirect('/candidate')
-  }
-
   const mapRecord = (r: any) => {
     const profileObj = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
     return {
@@ -150,7 +146,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
   })
 
   return (
-    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6">
         <AdminAttendanceClient
           candidates={candidates || []}

@@ -21,7 +21,7 @@ export default async function CandidateFeedbackPage() {
     .from('profiles')
     .select('full_name, avatar_url')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   // Fetch candidate feedbacks
   const { data: feedbacks } = await supabase
@@ -32,6 +32,7 @@ export default async function CandidateFeedbackPage() {
 
   return (
     <CandidateLayout
+      candidateId={user.id}
       candidateName={profile?.full_name || 'Candidate'}
       candidateAvatarUrl={profile?.avatar_url || undefined}
     >

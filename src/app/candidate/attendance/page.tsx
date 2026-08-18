@@ -42,7 +42,7 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
   const assignedShift = Array.isArray(profile?.shifts) ? profile?.shifts[0] : (profile?.shifts || undefined)
 
   return (
-    <CandidateLayout candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
+    <CandidateLayout candidateId={user.id} candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
       <main className="max-w-5xl w-full mx-auto flex flex-col gap-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Attendance History</h2>

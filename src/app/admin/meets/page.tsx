@@ -13,23 +13,23 @@ export default async function AdminMeetsPage() {
     redirect('/login')
   }
 
+  if (user.role !== 'admin') {
+    redirect('/candidate')
+  }
+
   const supabase = await createClient()
 
   const { data: adminProfile } = await supabase
     .from('profiles')
     .select('id, full_name, role, avatar_url')
     .eq('id', user.id)
-    .single()
-
-  if (!adminProfile || adminProfile.role !== 'admin') {
-    redirect('/candidate')
-  }
+    .maybeSingle()
 
   const upcomingMeetings = await getUpcomingMeetings()
   const pastMeetings = await getPastMeetingsWithRecordings()
 
   return (
-    <AdminLayout adminName={adminProfile.full_name} adminAvatarUrl={adminProfile.avatar_url}>
+    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
         <div className="hidden md:block">
           <h2 className="text-xl sm:text-2xl font-bold">Video Meets & Collaboration</h2>
@@ -42,7 +42,7 @@ export default async function AdminMeetsPage() {
         <AdminMeetsClient
           initialUpcoming={upcomingMeetings}
           initialPast={pastMeetings}
-          adminName={adminProfile.full_name || 'Admin'}
+          adminName={adminProfile?.full_name || 'Admin'}
           adminId={user.id}
         />
       </main>

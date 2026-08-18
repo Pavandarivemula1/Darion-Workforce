@@ -53,7 +53,7 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
   const referenceDateIso = getKolkataDateKey(referenceDate.toISOString())
 
   return (
-    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
         <div className="hidden md:block">
           <h2 className="text-xl sm:text-2xl font-bold">Weekly Timesheet</h2>

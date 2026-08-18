@@ -25,11 +25,12 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 export interface CandidateLayoutProps {
   children: React.ReactNode
+  candidateId?: string
   candidateName?: string
   candidateAvatarUrl?: string
 }
 
-export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, candidateName, candidateAvatarUrl }) => {
+export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, candidateId, candidateName, candidateAvatarUrl }) => {
   const pathname = usePathname()
   const [isMoreOpen, setIsMoreOpen] = useState(false)
 
@@ -69,7 +70,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
         brandIcon={<Clock className="w-6 h-6" />}
         brandName="Darion Workforce"
         subtitle={candidateName || 'Candidate'}
-        headerAction={<NotificationBell />}
+        headerAction={<NotificationBell userId={candidateId} />}
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
@@ -85,7 +86,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
         </Link>
 
         <div className="flex items-center gap-1">
-          <NotificationBell />
+          <NotificationBell userId={candidateId} />
           <Link
             href="/candidate/profile"
             className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"

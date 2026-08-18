@@ -23,10 +23,10 @@ export default async function CandidateDashboardPage() {
     .from('profiles')
     .select('id, full_name, role, avatar_url')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   return (
-    <CandidateLayout candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
+    <CandidateLayout candidateId={user.id} candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
       <main className="max-w-5xl w-full mx-auto flex flex-col gap-8">
         {/* Welcome Section */}
         <div>

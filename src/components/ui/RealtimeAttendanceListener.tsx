@@ -9,6 +9,14 @@ export function RealtimeAttendanceListener() {
 
   useEffect(() => {
     const supabase = createClient()
+    let refreshTimeout: NodeJS.Timeout | null = null
+
+    const debouncedRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+      refreshTimeout = setTimeout(() => {
+        router.refresh()
+      }, 300)
+    }
     
     // Subscribe to any changes on the attendance table
     const attendanceChannel = supabase
@@ -20,10 +28,7 @@ export function RealtimeAttendanceListener() {
           schema: 'public',
           table: 'attendance',
         },
-        () => {
-          // Tell Next.js to re-fetch the Server Components silently
-          router.refresh()
-        }
+        debouncedRefresh
       )
       .subscribe()
 
@@ -37,13 +42,12 @@ export function RealtimeAttendanceListener() {
           schema: 'public',
           table: 'overshift_requests',
         },
-        () => {
-          router.refresh()
-        }
+        debouncedRefresh
       )
       .subscribe()
 
     return () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
       supabase.removeChannel(attendanceChannel)
       supabase.removeChannel(overshiftChannel)
     }

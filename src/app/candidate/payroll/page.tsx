@@ -90,7 +90,7 @@ export default async function CandidatePayrollPage() {
   }))
 
   return (
-    <CandidateLayout candidateName={safeProfile.full_name}>
+    <CandidateLayout candidateId={user.id} candidateName={safeProfile.full_name}>
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6">
         <CandidatePayrollClient
           candidateProfile={safeProfile}

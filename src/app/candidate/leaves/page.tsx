@@ -79,6 +79,7 @@ export default async function CandidateLeavesPage() {
 
   return (
     <CandidateLayout
+      candidateId={user.id}
       candidateName={rawProfile?.full_name || 'Candidate'}
       candidateAvatarUrl={rawProfile?.avatar_url || undefined}
     >

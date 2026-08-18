@@ -135,7 +135,7 @@ export default async function AdminShiftsPage() {
   })
 
   return (
-    <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
       <main className="max-w-7xl w-full mx-auto px-2 py-2 sm:p-6 lg:p-8 flex flex-col gap-2.5 sm:gap-6">
         <AdminShiftsClient shifts={shiftsWithCount} candidates={candidateUsers} />
       </main>

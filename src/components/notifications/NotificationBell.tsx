@@ -1,10 +1,16 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useTransition, useCallback } from 'react'
 import { Bell } from 'lucide-react'
 import { NotificationDrawer } from './NotificationDrawer'
 import { NotificationItem } from '@/lib/utils/notifications'
-import { fetchUserNotificationsAction } from '@/app/actions/notifications'
+import {
+  fetchUserNotificationsAction,
+  markNotificationAsReadAction,
+  markAllNotificationsAsReadAction,
+  deleteNotificationAction,
+  clearAllReadNotificationsAction,
+} from '@/app/actions/notifications'
 import { createClient } from '@/lib/supabase/client'
 
 interface NotificationBellProps {
@@ -15,37 +21,136 @@ interface NotificationBellProps {
 export const NotificationBell: React.FC<NotificationBellProps> = ({ userId, className = '' }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
-  const [unreadCount, setUnreadCount] = useState<number>(0)
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(userId)
+  const [, startTransition] = useTransition()
 
-  // Fetch initial notifications
+  // Calculate unread count purely from state (derived, no state loop)
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  // Resolve user id once if not provided
   useEffect(() => {
-    let mounted = true
+    if (userId) {
+      setCurrentUserId(userId)
+      return
+    }
 
-    async function load() {
-      const res = await fetchUserNotificationsAction()
-      if (mounted && res) {
-        setNotifications(res.notifications)
-        setUnreadCount(res.unreadCount)
+    let isMounted = true
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (isMounted && data.user?.id) {
+        setCurrentUserId(data.user.id)
       }
-    }
-
-    // Resolve user id if not provided via props
-    if (!currentUserId) {
-      const supabase = createClient()
-      supabase.auth.getUser().then(({ data }) => {
-        if (mounted && data.user) {
-          setCurrentUserId(data.user.id)
-        }
-      })
-    }
-
-    load()
+    })
 
     return () => {
-      mounted = false
+      isMounted = false
+    }
+  }, [userId])
+
+  // Fetch initial notifications once userId is resolved
+  useEffect(() => {
+    if (!currentUserId) return
+
+    let isMounted = true
+
+    fetchUserNotificationsAction().then((res) => {
+      if (isMounted && res?.notifications) {
+        setNotifications(res.notifications)
+      }
+    })
+
+    // Subscribe to realtime changes once
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`notifs-${currentUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as NotificationItem
+          setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)])
+
+          // Native Desktop Notification if permitted
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(newNotif.title, {
+                body: newNotif.message,
+                icon: '/favicon.ico',
+              })
+            } catch {
+              // Ignore native notification errors
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const updated = payload.new as NotificationItem
+          setNotifications((prev) => prev.map((n) => (n.id === updated.id ? updated : n)))
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const deletedId = (payload.old as any)?.id
+          if (deletedId) {
+            setNotifications((prev) => prev.filter((n) => n.id !== deletedId))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      isMounted = false
+      supabase.removeChannel(channel)
     }
   }, [currentUserId])
+
+  const handleMarkAsRead = useCallback((id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+    startTransition(async () => {
+      await markNotificationAsReadAction(id)
+    })
+  }, [])
+
+  const handleMarkAllAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    startTransition(async () => {
+      await markAllNotificationsAsReadAction()
+    })
+  }, [])
+
+  const handleDelete = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    startTransition(async () => {
+      await deleteNotificationAction(id)
+    })
+  }, [])
+
+  const handleClearRead = useCallback(() => {
+    setNotifications((prev) => prev.filter((n) => !n.read))
+    startTransition(async () => {
+      await clearAllReadNotificationsAction()
+    })
+  }, [])
 
   return (
     <>
@@ -68,10 +173,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId, clas
       <NotificationDrawer
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        userId={currentUserId}
-        initialNotifications={notifications}
+        notifications={notifications}
         unreadCount={unreadCount}
-        onUnreadCountChange={setUnreadCount}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onDelete={handleDelete}
+        onClearRead={handleClearRead}
       />
     </>
   )
