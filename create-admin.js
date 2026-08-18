@@ -5,13 +5,17 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function createAdmin() {
-  console.log('Signing up pavan@darion.in as admin...');
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
+  const adminName = process.env.ADMIN_NAME || 'Administrator';
+
+  console.log(`Signing up ${adminEmail} as admin...`);
   const { data, error } = await supabase.auth.signUp({
-    email: 'pavan@darion.in',
-    password: 'AdminPassword123!',
+    email: adminEmail,
+    password: adminPassword,
     options: {
       data: {
-        full_name: 'Pavan',
+        full_name: adminName,
         role: 'admin'
       }
     }
@@ -21,8 +25,8 @@ async function createAdmin() {
     console.error('Error creating user:', error.message);
   } else {
     console.log('Successfully created admin user!');
-    console.log('Email: pavan@darion.in');
-    console.log('Password: AdminPassword123!');
+    console.log(`Email: ${adminEmail}`);
+    console.log(`Password: ${adminPassword}`);
     console.log('\nNOTE: If email confirmations are enabled on your Supabase project, you must check your email to confirm the account before you can log in, or disable email confirmations in the Supabase Dashboard -> Authentication -> Providers -> Email.');
   }
 }

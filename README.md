@@ -358,13 +358,13 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 # 3. Application URLs (Required)
 # ------------------------------------------------------------------------------
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_VERIFY_APP_URL=https://darion-verify.vercel.app
+NEXT_PUBLIC_VERIFY_APP_URL=https://your-verify-app.vercel.app
 
 # ------------------------------------------------------------------------------
 # 4. Darion Meet & Feature Flags (Optional)
 # ------------------------------------------------------------------------------
 NEXT_PUBLIC_ENABLE_MEETS_ALL=false
-MEETS_BETA_ALLOWED_EMAILS=pavan@darion.in,admin@darion.in
+MEETS_BETA_ALLOWED_EMAILS=admin@example.com,user@example.com
 
 # ------------------------------------------------------------------------------
 # 5. Google Drive API Integration for Meeting Recordings (Optional)
@@ -452,16 +452,16 @@ git push origin main
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `NEXT_PUBLIC_SITE_URL` (e.g., `https://workforce.darion.in`)
-   - `NEXT_PUBLIC_VERIFY_APP_URL`
+   - `NEXT_PUBLIC_SITE_URL` (e.g., `https://your-app.vercel.app`)
+   - `NEXT_PUBLIC_VERIFY_APP_URL` (e.g., `https://your-verify-app.vercel.app`)
    - Google Drive & Beta flags (if enabled).
 
 ### 3. Configure Supabase Authentication Redirect URLs
 In Supabase Dashboard -> **Authentication** -> **URL Configuration**:
-- **Site URL**: `https://workforce.darion.in`
+- **Site URL**: `https://your-app.vercel.app`
 - **Redirect URLs**:
-  - `https://workforce.darion.in/auth/callback`
-  - `https://workforce.darion.in/reset-password`
+  - `https://your-app.vercel.app/auth/callback`
+  - `https://your-app.vercel.app/reset-password`
   - `http://localhost:3000/auth/callback` (for local development)
 
 ---
@@ -487,7 +487,7 @@ This software is open-source and licensed under the **[GNU Affero General Public
 ### 💼 Commercial & Enterprise Licensing
 If your organization requires a proprietary license without copyleft obligations (e.g., embedding in closed-source SaaS ecosystems, customized enterprise hosting, or dedicated SLA support agreements), custom commercial licensing terms are available.
 
-Contact: **Darion Workforce** (`dkindustrial.finance@gmail.com`)
+Contact: **Darion Workforce Licensing** (`licensing@example.com`)
 
 ---
 
