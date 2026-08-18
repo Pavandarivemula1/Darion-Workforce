@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   X,
   CheckCheck,
@@ -86,13 +87,35 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
 }) => {
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [desktopAlertsEnabled, setDesktopAlertsEnabled] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    setMounted(true)
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setDesktopAlertsEnabled(Notification.permission === 'granted')
     }
   }, [])
+
+  // Close on Escape key & lock body scroll
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
 
   const filteredNotifications = useMemo(() => {
     if (filter === 'unread') {
@@ -118,24 +141,24 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] overflow-hidden" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in z-[99999]"
         onClick={onClose}
       />
 
       {/* Slide-out Drawer */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-[var(--md-sys-color-surface-container)] border-l border-[var(--md-sys-color-outline-variant)] shadow-2xl flex flex-col transform transition ease-in-out duration-300">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10 z-[100000]">
+        <div className="w-screen max-w-md bg-[var(--md-sys-color-surface)] border-l border-[var(--md-sys-color-outline-variant)] shadow-2xl flex flex-col transform transition ease-in-out duration-300 animate-slide-in-right">
           
           {/* Header */}
-          <div className="p-4 sm:p-5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between bg-[var(--md-sys-color-surface)]">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
+          <div className="p-4 sm:p-5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between bg-[var(--md-sys-color-surface-container-low)]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
                 <BellRing className="w-4 h-4" />
               </div>
               <div>
@@ -156,8 +179,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors cursor-pointer"
-              title="Close drawer"
+              className="p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+              title="Close drawer (Esc)"
             >
               <X className="w-5 h-5" />
             </button>
@@ -181,9 +204,9 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
           )}
 
           {/* Filter & Action Toolbar */}
-          <div className="px-4 py-3 bg-[var(--md-sys-color-surface-container-low)] border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between text-xs">
+          <div className="px-4 py-3 bg-[var(--md-sys-color-surface)] border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between text-xs">
             {/* Tabs */}
-            <div className="flex items-center gap-1 bg-[var(--md-sys-color-surface)] p-1 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
+            <div className="flex items-center gap-1 bg-[var(--md-sys-color-surface-container-low)] p-1 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
               <button
                 type="button"
                 onClick={() => setFilter('all')}
@@ -236,7 +259,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
           </div>
 
           {/* Notifications List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-[var(--md-sys-color-outline-variant)]">
+          <div className="flex-1 overflow-y-auto divide-y divide-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
             {filteredNotifications.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center text-[var(--md-sys-color-on-surface-variant)]">
                 <div className="w-12 h-12 rounded-2xl bg-[var(--md-sys-color-surface-container-high)] flex items-center justify-center mb-3 text-[var(--md-sys-color-on-surface-variant)]">
@@ -259,7 +282,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                     onClick={() => handleNotificationClick(item)}
                     className={`p-4 transition-colors flex items-start gap-3 relative cursor-pointer group ${
                       !item.read
-                        ? 'bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                        ? 'bg-[var(--md-sys-color-surface-container-lowest)] hover:bg-[var(--md-sys-color-surface-container-low)]'
                         : 'bg-transparent hover:bg-[var(--md-sys-color-surface-container-low)] opacity-85'
                     }`}
                   >
@@ -336,6 +359,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
