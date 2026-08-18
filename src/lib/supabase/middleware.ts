@@ -125,6 +125,11 @@ export async function updateSession(request: NextRequest) {
     const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     const requiresMfa = mfaData?.nextLevel === 'aal2' && mfaData?.currentLevel === 'aal1'
 
+    // Allow password reset page to handle its own MFA and password setting flow
+    if (pathname.startsWith('/reset-password')) {
+      return response
+    }
+
     if (requiresMfa) {
       if (pathname !== '/login' && !pathname.startsWith('/actions') && !pathname.startsWith('/auth')) {
         const url = request.nextUrl.clone()
