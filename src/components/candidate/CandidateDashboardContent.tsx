@@ -38,13 +38,13 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
       .single(),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, is_auto_cutoff, created_at')
       .eq('user_id', userId)
       .is('logout_time', null)
       .maybeSingle(),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, is_auto_cutoff, created_at')
       .eq('user_id', userId)
       .gte('login_time', startOfToday.toISOString())
       .order('login_time', { ascending: false })
@@ -52,18 +52,18 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
       .maybeSingle(),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, is_auto_cutoff, created_at')
       .eq('user_id', userId)
       .gte('login_time', startOfWeek.toISOString())
       .lte('login_time', endOfWeek.toISOString()),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, is_auto_cutoff, created_at')
       .eq('user_id', userId)
       .gte('login_time', startOfMonth.toISOString()),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, payout_amount, is_auto_cutoff, created_at')
       .eq('user_id', userId)
       .order('login_time', { ascending: false })
       .limit(5),
@@ -270,7 +270,7 @@ export default async function CandidateDashboardContent({ userId }: { userId: st
             </Link>
           </div>
 
-          <AttendanceTable records={recentRecords || []} />
+          <AttendanceTable records={recentRecords || []} assignedShift={assignedShift} />
         </div>
 
         {/* Desktop Coworkers List (Hidden on Mobile) */}

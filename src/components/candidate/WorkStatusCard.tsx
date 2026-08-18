@@ -33,6 +33,8 @@ import {
   getShiftEndTimeForSession,
   formatShiftTime,
 } from '@/lib/utils/shift'
+import { calculatePunctualityStatus } from '@/lib/utils/punctuality'
+import { PunctualityBadge } from '@/components/ui/PunctualityBadge'
 import { ShiftFeedbackDialog } from './ShiftFeedbackDialog'
 
 export interface AttendanceRecord {
@@ -42,6 +44,7 @@ export interface AttendanceRecord {
   logout_time: string | null
   break_start_time?: string | null
   break_duration_seconds?: number
+  is_auto_cutoff?: boolean
   created_at: string
 }
 
@@ -379,8 +382,26 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
               </span>
             </div>
 
-            {/* Status Badge */}
+            {/* Status & Punctuality Badge */}
             <div className="flex items-center gap-1.5 shrink-0">
+              {(activeSession || todaySession) && (
+                (() => {
+                  const s = activeSession || todaySession!
+                  const p = calculatePunctualityStatus(s.login_time, s.logout_time, assignedShift, s.is_auto_cutoff)
+                  return (
+                    <PunctualityBadge
+                      loginStatus={p.loginStatus}
+                      loginText={p.loginBadgeText}
+                      logoutStatus={p.logoutStatus}
+                      logoutText={p.logoutBadgeText}
+                      isAutoCutoff={s.is_auto_cutoff}
+                      isStale={p.isStale}
+                      staleHours={p.staleHours}
+                    />
+                  )
+                })()
+              )}
+
               {isOnBreak ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-[var(--md-sys-color-warning-container)] text-[var(--md-sys-color-on-warning-container)] animate-pulse">
                   <Coffee className="w-3 h-3" />

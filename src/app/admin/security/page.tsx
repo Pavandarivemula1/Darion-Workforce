@@ -20,12 +20,35 @@ export default async function AdminSecurityPage() {
     .single()
 
   // Fetch pending MFA reset requests
-  const { data: requests, error } = await supabase
+  const { data: rawRequests, error } = await supabase
     .from('mfa_reset_requests')
-    .select('*, profiles!mfa_reset_requests_user_id_fkey(full_name, role)')
+    .select('*')
     .order('created_at', { ascending: false })
 
-  const safeRequests = error ? [] : (requests || [])
+  let safeRequests: any[] = []
+
+  if (!error && rawRequests && rawRequests.length > 0) {
+    const userIds = Array.from(new Set(rawRequests.map((r: any) => r.user_id).filter(Boolean)))
+    
+    const profileMap = new Map<string, { full_name: string; role: string }>()
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .in('id', userIds)
+      
+      if (profiles) {
+        profiles.forEach((p) => {
+          profileMap.set(p.id, { full_name: p.full_name, role: p.role })
+        })
+      }
+    }
+
+    safeRequests = rawRequests.map((req: any) => ({
+      ...req,
+      profiles: req.user_id ? profileMap.get(req.user_id) || null : null,
+    }))
+  }
 
   return (
     <AdminLayout adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>

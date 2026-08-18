@@ -17,6 +17,9 @@ import {
   Filter,
 } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
+import { ShiftConfig, DEFAULT_FALLBACK_SHIFT } from '@/lib/utils/shift'
+import { calculatePunctualityStatus } from '@/lib/utils/punctuality'
+import { PunctualityBadge } from '@/components/ui/PunctualityBadge'
 import {
   CandidateItem,
   SystemAttendanceItem,
@@ -26,6 +29,7 @@ import {
 export interface MobileAdminAttendanceProps {
   candidates: CandidateItem[]
   records: SystemAttendanceItem[]
+  shifts?: ShiftConfig[]
   activeSessions?: SystemAttendanceItem[]
   overshiftRequests: OvershiftRequestItem[]
   selectedCandidate: string
@@ -47,6 +51,7 @@ export interface MobileAdminAttendanceProps {
 export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
   candidates,
   records,
+  shifts = [],
   activeSessions = [],
   overshiftRequests,
   selectedCandidate,
@@ -364,11 +369,25 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
                 netDurationMs = Math.max(0, totalMs - breakMs)
               }
 
+              const defaultShift = shifts.find((s) => s.is_default) || DEFAULT_FALLBACK_SHIFT
+              const candidateShift = shifts.find((s) => s.id === r.shiftId) || defaultShift
+              const punctuality = calculatePunctualityStatus(
+                r.login_time,
+                r.logout_time,
+                candidateShift,
+                r.is_auto_cutoff,
+                12
+              )
+
               return (
                 <Card
                   key={r.id}
                   variant="outlined"
-                  className="p-2.5 rounded-2xl flex flex-col gap-2 relative overflow-hidden transition-all border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] shadow-2xs"
+                  className={`p-2.5 rounded-2xl flex flex-col gap-2 relative overflow-hidden transition-all border shadow-2xs ${
+                    punctuality.isStale
+                      ? 'border-amber-500/80 bg-amber-500/5'
+                      : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]'
+                  }`}
                 >
                   {/* Row Header */}
                   <div className="flex items-center justify-between gap-2">
@@ -384,7 +403,7 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
                       </div>
                     </div>
 
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex items-center gap-1">
                       {isApproved ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40">
                           <CheckCircle2 className="w-3 h-3" /> Approved
@@ -435,6 +454,19 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
                         {logoutDate ? formatDurationMs(netDurationMs) : 'Active'}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Punctuality Badges on Mobile */}
+                  <div className="pt-0.5">
+                    <PunctualityBadge
+                      loginStatus={punctuality.loginStatus}
+                      loginText={punctuality.loginBadgeText}
+                      logoutStatus={punctuality.logoutStatus}
+                      logoutText={punctuality.logoutBadgeText}
+                      isAutoCutoff={r.is_auto_cutoff}
+                      isStale={punctuality.isStale}
+                      staleHours={punctuality.staleHours}
+                    />
                   </div>
 
                   {/* Action Buttons */}

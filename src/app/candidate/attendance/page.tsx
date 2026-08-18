@@ -29,15 +29,17 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
   const [{ data: profile }, { data: records }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, role, avatar_url')
+      .select('id, full_name, role, avatar_url, shift_id, shifts(*)')
       .eq('id', user.id)
       .single(),
     supabase
       .from('attendance')
-      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at')
+      .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, is_auto_cutoff, created_at')
       .eq('user_id', user.id)
       .order('login_time', { ascending: false }),
   ])
+
+  const assignedShift = Array.isArray(profile?.shifts) ? profile?.shifts[0] : (profile?.shifts || undefined)
 
   return (
     <CandidateLayout candidateName={profile?.full_name || 'Candidate'} candidateAvatarUrl={profile?.avatar_url}>
@@ -52,6 +54,7 @@ export default async function CandidateAttendancePage({ searchParams }: PageProp
         {/* Client Container for Instant (< 1ms) Tab Switching */}
         <CandidateAttendanceClient
           allRecords={records || []}
+          assignedShift={assignedShift}
           initialFilter={initialFilter}
         />
       </main>

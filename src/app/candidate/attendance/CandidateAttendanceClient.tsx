@@ -7,13 +7,17 @@ import { Card } from '@/components/ui/Card'
 import { Clock, CalendarRange, CheckCircle, IndianRupee } from 'lucide-react'
 import { formatDurationMs } from '@/lib/utils/timesheet'
 
+import { ShiftConfig } from '@/lib/utils/shift'
+
 export interface CandidateAttendanceClientProps {
   allRecords: AttendanceItem[]
+  assignedShift?: ShiftConfig
   initialFilter?: string
 }
 
 export const CandidateAttendanceClient: React.FC<CandidateAttendanceClientProps> = ({
   allRecords,
+  assignedShift,
   initialFilter = 'this_week',
 }) => {
   const [filter, setFilter] = useState<string>(initialFilter)
@@ -147,7 +151,7 @@ export const CandidateAttendanceClient: React.FC<CandidateAttendanceClientProps>
       />
 
       {/* History Table */}
-      <AttendanceTable records={filteredRecords} />
+      <AttendanceTable records={filteredRecords} assignedShift={assignedShift} />
     </div>
   )
 }

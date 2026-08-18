@@ -4,6 +4,9 @@ import React, { useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { CheckCircle2, Clock, AlertTriangle, FileSpreadsheet, ChevronDown } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
+import { ShiftConfig, DEFAULT_FALLBACK_SHIFT } from '@/lib/utils/shift'
+import { calculatePunctualityStatus } from '@/lib/utils/punctuality'
+import { PunctualityBadge } from '@/components/ui/PunctualityBadge'
 
 export interface AttendanceItem {
   id: string
@@ -15,14 +18,16 @@ export interface AttendanceItem {
   approval_status?: 'pending' | 'approved' | 'rejected'
   rejection_reason?: string | null
   payout_amount?: number | null
+  is_auto_cutoff?: boolean
   created_at: string
 }
 
 export interface AttendanceTableProps {
   records: AttendanceItem[]
+  assignedShift?: ShiftConfig
 }
 
-export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => {
+export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records, assignedShift = DEFAULT_FALLBACK_SHIFT }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (!records || records.length === 0) {
@@ -163,6 +168,24 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                     </span>
                   </div>
 
+                  <div className="col-span-2 p-1.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
+                    <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)] uppercase font-sans font-semibold">
+                      Schedule Adherence
+                    </span>
+                    {(() => {
+                      const p = calculatePunctualityStatus(item.login_time, item.logout_time, assignedShift, item.is_auto_cutoff)
+                      return (
+                        <PunctualityBadge
+                          loginStatus={p.loginStatus}
+                          loginText={p.loginBadgeText}
+                          logoutStatus={p.logoutStatus}
+                          logoutText={p.logoutBadgeText}
+                          isAutoCutoff={item.is_auto_cutoff}
+                        />
+                      )
+                    })()}
+                  </div>
+
                   {item.rejection_reason && (
                     <div className="col-span-2 p-1.5 rounded-lg bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20 text-[10px]">
                       <strong>Reason:</strong> {item.rejection_reason}
@@ -184,6 +207,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                 <th className="py-3.5 px-4 sm:px-6">Date</th>
                 <th className="py-3.5 px-4">Login</th>
                 <th className="py-3.5 px-4">Logout</th>
+                <th className="py-3.5 px-4">Punctuality</th>
                 <th className="py-3.5 px-4">Break</th>
                 <th className="py-3.5 px-4">Net Work Time</th>
                 <th className="py-3.5 px-4 sm:px-6">Shift Payment Status</th>
@@ -198,6 +222,12 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                 const breakSecs = item.break_duration_seconds || 0
                 const status = item.approval_status || 'pending'
                 const payout = item.payout_amount || 0
+                const punctuality = calculatePunctualityStatus(
+                  item.login_time,
+                  item.logout_time,
+                  assignedShift,
+                  item.is_auto_cutoff
+                )
 
                 return (
                   <tr
@@ -212,6 +242,15 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ records }) => 
                     </td>
                     <td className="py-4 px-4 whitespace-nowrap font-mono text-xs">
                       {formatTime(item.logout_time)}
+                    </td>
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <PunctualityBadge
+                        loginStatus={punctuality.loginStatus}
+                        loginText={punctuality.loginBadgeText}
+                        logoutStatus={punctuality.logoutStatus}
+                        logoutText={punctuality.logoutBadgeText}
+                        isAutoCutoff={item.is_auto_cutoff}
+                      />
                     </td>
                     <td className="py-4 px-4 whitespace-nowrap font-mono text-xs text-amber-600 dark:text-amber-400 font-semibold">
                       {formatBreakDuration(breakSecs)}

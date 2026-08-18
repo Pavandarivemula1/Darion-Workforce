@@ -67,12 +67,16 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
 
   const candidatesPromise = supabase
     .from('profiles')
-    .select('id, full_name, hourly_rate, avatar_url')
+    .select('id, full_name, hourly_rate, avatar_url, shift_id')
     .eq('role', 'candidate')
+
+  const shiftsPromise = supabase
+    .from('shifts')
+    .select('*')
 
   let attendanceQuery = supabase
     .from('attendance')
-    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, admin_notes, created_at, profiles(full_name, avatar_url)')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, admin_notes, is_auto_cutoff, created_at, profiles(full_name, avatar_url, shift_id)')
     .order('login_time', { ascending: false })
 
   if (candidateId !== 'all') {
@@ -87,13 +91,14 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
 
   const activeSessionsPromise = supabase
     .from('attendance')
-    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, admin_notes, created_at, profiles(full_name, avatar_url)')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, admin_notes, is_auto_cutoff, created_at, profiles(full_name, avatar_url, shift_id)')
     .is('logout_time', null)
     .order('login_time', { ascending: false })
 
   // Execute All Queries Concurrently (Promise.all)
-  const [{ data: candidates }, { data: attendanceData }, { data: activeSessionsData }, { data: overshiftsData }] = await Promise.all([
+  const [{ data: candidates }, { data: shifts }, { data: attendanceData }, { data: activeSessionsData }, { data: overshiftsData }] = await Promise.all([
     candidatesPromise,
+    shiftsPromise,
     attendanceQuery,
     activeSessionsPromise,
     supabase
@@ -119,9 +124,11 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
       rejection_reason: r.rejection_reason || null,
       payout_amount: r.payout_amount || 0,
       admin_notes: r.admin_notes || null,
+      is_auto_cutoff: r.is_auto_cutoff || false,
       created_at: r.created_at,
       candidateName: profileObj?.full_name || 'Unknown Candidate',
       candidateAvatarUrl: profileObj?.avatar_url || null,
+      shiftId: profileObj?.shift_id || null,
     }
   }
 
@@ -147,6 +154,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6">
         <AdminAttendanceClient
           candidates={candidates || []}
+          shifts={shifts || []}
           records={systemRecords}
           activeSessions={activeSessions}
           overshiftRequests={overshiftRecords}

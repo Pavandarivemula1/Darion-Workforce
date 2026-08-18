@@ -6,8 +6,6 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Snackbar } from '@/components/ui/Snackbar'
-import { approveShiftAction, rejectShiftAction } from '@/app/actions/admin'
-import { approveOvershiftAction, rejectOvershiftAction } from '@/app/actions/overshift'
 import {
   CheckCircle2,
   XCircle,
@@ -22,8 +20,19 @@ import {
   Plus,
   Square,
   Edit,
+  ShieldAlert,
 } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
+import { ShiftConfig, DEFAULT_FALLBACK_SHIFT } from '@/lib/utils/shift'
+import { calculatePunctualityStatus } from '@/lib/utils/punctuality'
+import { PunctualityBadge } from '@/components/ui/PunctualityBadge'
+import {
+  approveShiftAction,
+  rejectShiftAction,
+  adminAutoCutoffSessionAction,
+  adminResolveAllStaleSessionsAction,
+} from '@/app/actions/admin'
+import { approveOvershiftAction, rejectOvershiftAction } from '@/app/actions/overshift'
 import { MobileAdminAttendance } from '@/components/admin/attendance/MobileAdminAttendance'
 import { StartTimerModal } from '@/components/admin/attendance/StartTimerModal'
 import { StopTimerModal } from '@/components/admin/attendance/StopTimerModal'
@@ -36,6 +45,7 @@ export interface CandidateItem {
   id: string
   full_name: string
   hourly_rate?: number
+  shift_id?: string | null
 }
 
 export interface SystemAttendanceItem {
@@ -49,6 +59,8 @@ export interface SystemAttendanceItem {
   rejection_reason?: string | null
   payout_amount?: number | null
   admin_notes?: string | null
+  is_auto_cutoff?: boolean
+  shiftId?: string | null
   created_at: string
   candidateName: string
   candidateAvatarUrl?: string | null
@@ -67,6 +79,7 @@ export interface OvershiftRequestItem {
 
 export interface AdminAttendanceClientProps {
   candidates: CandidateItem[]
+  shifts?: ShiftConfig[]
   records: SystemAttendanceItem[]
   activeSessions?: SystemAttendanceItem[]
   overshiftRequests?: OvershiftRequestItem[]
@@ -74,6 +87,7 @@ export interface AdminAttendanceClientProps {
 
 export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   candidates,
+  shifts = [],
   records: initialRecords,
   activeSessions: initialActiveSessions = [],
   overshiftRequests = [],
@@ -87,6 +101,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
 
   const [isApproving, startApproveTransition] = useTransition()
   const [isRejecting, startRejectTransition] = useTransition()
+  const [isAutoCutoffLoading, startAutoCutoffTransition] = useTransition()
 
   const [optimisticOverrides, setOptimisticOverrides] = useState<
     Record<string, { approval_status: 'approved' | 'rejected'; payout_amount?: number; rejection_reason?: string }>
@@ -108,6 +123,36 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   
   const [isApprovingOvershift, startApproveOvershift] = useTransition()
   const [isRejectingOvershift, startRejectOvershift] = useTransition()
+
+  const defaultShift = useMemo(() => {
+    return shifts.find((s) => s.is_default) || DEFAULT_FALLBACK_SHIFT
+  }, [shifts])
+
+  const handleAutoCutoff = (session: SystemAttendanceItem) => {
+    startAutoCutoffTransition(async () => {
+      const formData = new FormData()
+      formData.append('attendanceId', session.id)
+      const res = await adminAutoCutoffSessionAction({} as any, formData)
+      if (res.error) {
+        setToast({ message: res.error, variant: 'error' })
+      } else {
+        setToast({ message: `Shift auto-cutoff applied for ${session.candidateName}.`, variant: 'success' })
+        router.refresh()
+      }
+    })
+  }
+
+  const handleResolveAllStale = () => {
+    startAutoCutoffTransition(async () => {
+      const res = await adminResolveAllStaleSessionsAction({} as any)
+      if (res.error) {
+        setToast({ message: res.error, variant: 'error' })
+      } else {
+        setToast({ message: 'All overdue stale sessions auto-resolved successfully.', variant: 'success' })
+        router.refresh()
+      }
+    })
+  }
 
   const records = useMemo(() => {
     return initialRecords
@@ -328,6 +373,14 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     return true
   })
 
+  const staleActiveSessions = useMemo(() => {
+    return activeSessionsList.filter((s) => {
+      const sShift = shifts.find((sh) => sh.id === s.shiftId) || defaultShift
+      const res = calculatePunctualityStatus(s.login_time, s.logout_time, sShift, s.is_auto_cutoff, 12)
+      return res.isStale
+    })
+  }, [activeSessionsList, shifts, defaultShift])
+
   return (
     <div className="flex flex-col gap-2.5 sm:gap-6 max-w-7xl mx-auto w-full">
       {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
@@ -335,6 +388,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         <MobileAdminAttendance
           candidates={candidates}
           records={records}
+          shifts={shifts}
           activeSessions={activeSessionsList}
           overshiftRequests={activeOvershifts}
           selectedCandidate={selectedCandidate}
@@ -367,7 +421,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
           <div>
             <h2 className="text-xl sm:text-2xl font-bold">Attendance & Shift Payment Approvals</h2>
             <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-              Manage live timers, log manual shift hours, and approve compensation
+              Manage live timers, schedule adherence & punctuality, log manual shift hours, and approve compensation
             </p>
           </div>
 
@@ -392,12 +446,43 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
           </div>
         </div>
 
+        {/* Stale Sessions Alert Banner (if > 12h runaway sessions exist) */}
+        {staleActiveSessions.length > 0 && (
+          <Card variant="outlined" className="p-3.5 sm:p-4 border border-amber-500/50 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-200">
+                  {staleActiveSessions.length} Overdue / Stale Session{staleActiveSessions.length > 1 ? 's' : ''} Detected
+                </h4>
+                <p className="text-[11px] text-amber-700/80 dark:text-amber-300/80">
+                  Continuous timers exceeding 12 hours. You can auto-cutoff to standard shift length.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="filled"
+              size="sm"
+              isLoading={isAutoCutoffLoading}
+              onClick={handleResolveAllStale}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0"
+            >
+              Auto-Cutoff All ({staleActiveSessions.length})
+            </Button>
+          </Card>
+        )}
+
         {/* Active Timers Banner & Session Controls */}
         <ActiveSessionsCard
           activeSessions={activeSessionsList}
           candidates={candidates}
+          shifts={shifts}
           onOpenStopModal={(session) => setStopTimerSession(session)}
           onOpenStartModal={() => setIsStartTimerModalOpen(true)}
+          onAutoCutoff={handleAutoCutoff}
+          isAutoCutoffLoading={isAutoCutoffLoading}
         />
 
 
@@ -536,6 +621,14 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
             const breakSecs = item.break_duration_seconds || 0
             const status = item.approval_status || 'pending'
             const payout = item.payout_amount || 0
+            const sShift = shifts.find((sh) => sh.id === item.shiftId) || defaultShift
+            const punctuality = calculatePunctualityStatus(
+              item.login_time,
+              item.logout_time,
+              sShift,
+              item.is_auto_cutoff,
+              12
+            )
 
             return (
               <Card
@@ -591,6 +684,17 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                     <span>Net: {calculateNetTotal(item.login_time, item.logout_time, breakSecs)}</span>
                     <span className="text-amber-600 dark:text-amber-400">Break: {formatBreakDuration(breakSecs)}</span>
                   </div>
+                </div>
+
+                {/* Punctuality Badge Row on Mobile */}
+                <div className="pt-1">
+                  <PunctualityBadge
+                    loginStatus={punctuality.loginStatus}
+                    loginText={punctuality.loginBadgeText}
+                    logoutStatus={punctuality.logoutStatus}
+                    logoutText={punctuality.logoutBadgeText}
+                    isAutoCutoff={item.is_auto_cutoff}
+                  />
                 </div>
 
                 {isWorking ? (
@@ -670,6 +774,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 <th className="py-3.5 px-4 sm:px-6">Candidate</th>
                 <th className="py-3.5 px-4">Date</th>
                 <th className="py-3.5 px-4">Login / Logout</th>
+                <th className="py-3.5 px-4">Punctuality</th>
                 <th className="py-3.5 px-4">Break</th>
                 <th className="py-3.5 px-4">Net Work Time</th>
                 <th className="py-3.5 px-4">Payment Approval</th>
@@ -686,6 +791,14 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                   const breakSecs = item.break_duration_seconds || 0
                   const status = item.approval_status || 'pending'
                   const payout = item.payout_amount || 0
+                  const sShift = shifts.find((sh) => sh.id === item.shiftId) || defaultShift
+                  const punctuality = calculatePunctualityStatus(
+                    item.login_time,
+                    item.logout_time,
+                    sShift,
+                    item.is_auto_cutoff,
+                    12
+                  )
 
                   return (
                     <tr
@@ -707,6 +820,18 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                             Out: {formatTime(item.logout_time)}
                           </span>
                         </div>
+                      </td>
+
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <PunctualityBadge
+                          loginStatus={punctuality.loginStatus}
+                          loginText={punctuality.loginBadgeText}
+                          logoutStatus={punctuality.logoutStatus}
+                          logoutText={punctuality.logoutBadgeText}
+                          isAutoCutoff={item.is_auto_cutoff}
+                          isStale={punctuality.isStale}
+                          staleHours={punctuality.staleHours}
+                        />
                       </td>
 
                       <td className="py-4 px-4 whitespace-nowrap font-mono text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
@@ -823,7 +948,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  <td colSpan={8} className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
                     No attendance records found matching criteria.
                   </td>
                 </tr>

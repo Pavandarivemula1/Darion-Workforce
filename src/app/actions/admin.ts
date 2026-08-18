@@ -1089,3 +1089,214 @@ export async function adminDeleteAttendanceAction(
   return { success: true }
 }
 
+export async function adminAutoCutoffSessionAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // 1. Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const attendanceId = formData.get('attendanceId') as string
+  if (!attendanceId) {
+    return { error: 'Attendance ID is required.' }
+  }
+
+  // Fetch session & profile
+  const { data: session, error: fetchErr } = await supabase
+    .from('attendance')
+    .select('id, user_id, login_time, break_start_time, break_duration_seconds, profiles(hourly_rate, shift_id)')
+    .eq('id', attendanceId)
+    .single()
+
+  if (fetchErr || !session) {
+    return { error: 'Attendance session not found.' }
+  }
+
+  const profileObj: any = Array.isArray(session.profiles) ? session.profiles[0] : session.profiles
+  const hourlyRate = Number(profileObj?.hourly_rate || 0)
+  const shiftId = profileObj?.shift_id
+
+  // Fetch Shift Configuration if assigned
+  let shiftConfig = null
+  if (shiftId) {
+    const { data: sData } = await supabase
+      .from('shifts')
+      .select('*')
+      .eq('id', shiftId)
+      .maybeSingle()
+    if (sData) shiftConfig = sData
+  }
+
+  const loginDate = new Date(session.login_time)
+  let cutoffDate = new Date(loginDate.getTime() + 8 * 60 * 60 * 1000) // Default 8 hours cap
+
+  if (shiftConfig) {
+    const [eH, eM, eS] = (shiftConfig.end_time || '17:00:00').split(':').map((v: string) => parseInt(v || '0', 10))
+    const calculatedEnd = new Date(loginDate)
+    calculatedEnd.setHours(eH, eM, eS, 0)
+    if (calculatedEnd.getTime() <= loginDate.getTime()) {
+      calculatedEnd.setDate(calculatedEnd.getDate() + 1)
+    }
+    cutoffDate = calculatedEnd
+  }
+
+  // Ensure cutoff does not exceed current time
+  const now = new Date()
+  if (cutoffDate.getTime() > now.getTime()) {
+    cutoffDate = now
+  }
+
+  let finalBreakSeconds = session.break_duration_seconds || 0
+  if (session.break_start_time) {
+    const bStart = new Date(session.break_start_time).getTime()
+    finalBreakSeconds += Math.max(0, Math.floor((cutoffDate.getTime() - bStart) / 1000))
+  }
+
+  const grossMs = Math.max(0, cutoffDate.getTime() - loginDate.getTime())
+  const netMs = Math.max(0, grossMs - finalBreakSeconds * 1000)
+  const netHours = netMs / (1000 * 60 * 60)
+  const finalPayout = Math.round(netHours * hourlyRate * 100) / 100
+
+  const adminClient = createAdminClient()
+  const { error: updateErr } = await adminClient
+    .from('attendance')
+    .update({
+      logout_time: cutoffDate.toISOString(),
+      break_start_time: null,
+      break_duration_seconds: finalBreakSeconds,
+      payout_amount: finalPayout,
+      approval_status: 'pending',
+      is_auto_cutoff: true,
+      admin_notes: 'Auto-cutoff executed by admin (session exceeded max shift duration)',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', attendanceId)
+
+  if (updateErr) {
+    return { error: updateErr.message || 'Failed to auto-cutoff session.' }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/payroll')
+  revalidatePath('/candidate')
+  revalidatePath('/candidate/attendance')
+  revalidatePath('/candidate/payroll')
+  return { success: true }
+}
+
+export async function adminResolveAllStaleSessionsAction(
+  prevState?: AdminActionState,
+  formData?: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // 1. Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  // 2. Fetch all active sessions
+  const { data: activeSessions, error: fetchErr } = await supabase
+    .from('attendance')
+    .select('id, user_id, login_time, break_start_time, break_duration_seconds, profiles(hourly_rate, shift_id)')
+    .is('logout_time', null)
+
+  if (fetchErr) {
+    return { error: fetchErr.message || 'Failed to fetch active sessions.' }
+  }
+
+  if (!activeSessions || activeSessions.length === 0) {
+    return { success: true }
+  }
+
+  const now = new Date()
+  const thresholdMs = 12 * 60 * 60 * 1000 // 12 hours
+  const adminClient = createAdminClient()
+
+  let resolvedCount = 0
+
+  for (const session of activeSessions) {
+    const loginDate = new Date(session.login_time)
+    const elapsedMs = now.getTime() - loginDate.getTime()
+
+    // If running for >= 12 hours, auto-cutoff
+    if (elapsedMs >= thresholdMs) {
+      const profileObj: any = Array.isArray(session.profiles) ? session.profiles[0] : session.profiles
+      const hourlyRate = Number(profileObj?.hourly_rate || 0)
+      const cutoffDate = new Date(loginDate.getTime() + 8 * 60 * 60 * 1000) // cap to 8 hours
+      let breakSecs = session.break_duration_seconds || 0
+      if (session.break_start_time) {
+        const bStart = new Date(session.break_start_time).getTime()
+        breakSecs += Math.max(0, Math.floor((cutoffDate.getTime() - bStart) / 1000))
+      }
+
+      const grossMs = Math.max(0, cutoffDate.getTime() - loginDate.getTime())
+      const netMs = Math.max(0, grossMs - breakSecs * 1000)
+      const netHours = netMs / (1000 * 60 * 60)
+      const finalPayout = Math.round(netHours * hourlyRate * 100) / 100
+
+      await adminClient
+        .from('attendance')
+        .update({
+          logout_time: cutoffDate.toISOString(),
+          break_start_time: null,
+          break_duration_seconds: breakSecs,
+          payout_amount: finalPayout,
+          approval_status: 'pending',
+          is_auto_cutoff: true,
+          admin_notes: 'Batch auto-cutoff executed: session exceeded 12h threshold',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', session.id)
+
+      resolvedCount++
+    }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/payroll')
+  revalidatePath('/candidate')
+  revalidatePath('/candidate/attendance')
+  revalidatePath('/candidate/payroll')
+  return { success: true }
+}
+
+
