@@ -584,3 +584,508 @@ export async function approveMfaResetAction(
   revalidatePath('/admin/security')
   return { success: true }
 }
+
+export async function adminStartWorkAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // 1. Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const candidateId = formData.get('candidateId') as string
+  const customStartTime = formData.get('startTime') as string
+  const adminNotes = formData.get('adminNotes') as string
+
+  if (!candidateId) {
+    return { error: 'Candidate selection is required.' }
+  }
+
+  // Check if candidate already has an active session
+  const { data: activeSession } = await supabase
+    .from('attendance')
+    .select('id')
+    .eq('user_id', candidateId)
+    .is('logout_time', null)
+    .maybeSingle()
+
+  if (activeSession) {
+    return { error: 'Candidate already has an active work session in progress.' }
+  }
+
+  let loginIso: string
+  if (customStartTime && customStartTime.trim() !== '') {
+    const parsed = new Date(customStartTime)
+    if (isNaN(parsed.getTime())) {
+      return { error: 'Invalid custom start time.' }
+    }
+    loginIso = parsed.toISOString()
+  } else {
+    loginIso = new Date().toISOString()
+  }
+
+  const adminClient = createAdminClient()
+  const insertPayload: any = {
+    user_id: candidateId,
+    login_time: loginIso,
+    break_duration_seconds: 0,
+    admin_notes: adminNotes?.trim() || 'Timer started by admin',
+  }
+
+  const { error: insertError } = await adminClient
+    .from('attendance')
+    .insert(insertPayload)
+
+  if (insertError) {
+    if (insertError.code === '23505') {
+      return { error: 'Candidate already has an active work session in progress.' }
+    }
+    return { error: insertError.message || 'Failed to start timer for candidate.' }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin/candidates')
+  revalidatePath('/candidate')
+  revalidatePath('/candidate/attendance')
+  return { success: true }
+}
+
+export async function adminEndWorkAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // 1. Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const attendanceId = formData.get('attendanceId') as string
+  const customStopTime = formData.get('stopTime') as string
+  const breakMinutesStr = formData.get('breakDurationMinutes') as string
+  const customPayoutStr = formData.get('payoutAmount') as string
+  const approvalStatus = (formData.get('approvalStatus') as string) || 'approved'
+  const adminNotes = formData.get('adminNotes') as string
+
+  if (!attendanceId) {
+    return { error: 'Attendance ID is required.' }
+  }
+
+  // Fetch active session
+  const { data: session, error: fetchError } = await supabase
+    .from('attendance')
+    .select('id, user_id, login_time, break_start_time, break_duration_seconds')
+    .eq('id', attendanceId)
+    .single()
+
+  if (fetchError || !session) {
+    return { error: 'Attendance session not found.' }
+  }
+
+  let logoutDate: Date
+  if (customStopTime && customStopTime.trim() !== '') {
+    logoutDate = new Date(customStopTime)
+    if (isNaN(logoutDate.getTime())) {
+      return { error: 'Invalid custom stop time.' }
+    }
+  } else {
+    logoutDate = new Date()
+  }
+
+  const loginDate = new Date(session.login_time)
+  if (logoutDate.getTime() < loginDate.getTime()) {
+    return { error: 'Stop time cannot be earlier than start time.' }
+  }
+
+  // Calculate Break Duration
+  let finalBreakSeconds = session.break_duration_seconds || 0
+  if (breakMinutesStr !== null && breakMinutesStr !== undefined && breakMinutesStr.trim() !== '') {
+    const mins = parseInt(breakMinutesStr, 10)
+    if (!isNaN(mins) && mins >= 0) {
+      finalBreakSeconds = mins * 60
+    }
+  } else if (session.break_start_time) {
+    const breakStart = new Date(session.break_start_time).getTime()
+    const elapsedSec = Math.max(0, Math.floor((logoutDate.getTime() - breakStart) / 1000))
+    finalBreakSeconds += elapsedSec
+  }
+
+  // Fetch Candidate Hourly Rate
+  const { data: candidateProfile } = await supabase
+    .from('profiles')
+    .select('hourly_rate')
+    .eq('id', session.user_id)
+    .single()
+
+  const hourlyRate = Number(candidateProfile?.hourly_rate || 0)
+  const grossMs = Math.max(0, logoutDate.getTime() - loginDate.getTime())
+  const netMs = Math.max(0, grossMs - finalBreakSeconds * 1000)
+  const netHours = netMs / (1000 * 60 * 60)
+
+  let finalPayout: number
+  if (customPayoutStr !== null && customPayoutStr !== undefined && customPayoutStr.trim() !== '') {
+    const parsed = parseFloat(customPayoutStr)
+    finalPayout = isNaN(parsed) ? 0 : Math.max(0, parsed)
+  } else {
+    finalPayout = Math.round(netHours * hourlyRate * 100) / 100
+  }
+
+  const adminClient = createAdminClient()
+  const updatePayload: any = {
+    logout_time: logoutDate.toISOString(),
+    break_start_time: null,
+    break_duration_seconds: finalBreakSeconds,
+    payout_amount: finalPayout,
+    approval_status: approvalStatus === 'pending' ? 'pending' : 'approved',
+    payment_status: 'unpaid',
+    admin_notes: adminNotes?.trim() || 'Timer stopped by admin',
+  }
+
+  const { error: updateError } = await adminClient
+    .from('attendance')
+    .update(updatePayload)
+    .eq('id', attendanceId)
+
+  if (updateError) {
+    return { error: updateError.message || 'Failed to stop candidate timer.' }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/payroll')
+  revalidatePath('/candidate')
+  revalidatePath('/candidate/attendance')
+  revalidatePath('/candidate/payroll')
+  return { success: true }
+}
+
+export async function adminCreateManualShiftAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // 1. Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const candidateId = formData.get('candidateId') as string
+  const loginTimeStr = formData.get('loginTime') as string
+  const logoutTimeStr = formData.get('logoutTime') as string
+  const breakMinutesStr = formData.get('breakDurationMinutes') as string
+  const customPayoutStr = formData.get('payoutAmount') as string
+  const approvalStatus = (formData.get('approvalStatus') as string) || 'approved'
+  const adminNotes = formData.get('adminNotes') as string
+
+  if (!candidateId || !loginTimeStr || !logoutTimeStr) {
+    return { error: 'Candidate, Start Time, and End Time are required.' }
+  }
+
+  const loginDate = new Date(loginTimeStr)
+  const logoutDate = new Date(logoutTimeStr)
+
+  if (isNaN(loginDate.getTime()) || isNaN(logoutDate.getTime())) {
+    return { error: 'Invalid start or end date/time.' }
+  }
+
+  if (logoutDate.getTime() <= loginDate.getTime()) {
+    return { error: 'End time must be after start time.' }
+  }
+
+  const breakMins = parseInt(breakMinutesStr || '0', 10)
+  const breakSeconds = isNaN(breakMins) || breakMins < 0 ? 0 : breakMins * 60
+  const grossMs = logoutDate.getTime() - loginDate.getTime()
+
+  if (breakSeconds * 1000 >= grossMs) {
+    return { error: 'Break duration cannot exceed or equal the total shift duration.' }
+  }
+
+  // Fetch Candidate Hourly Rate
+  const { data: candidateProfile } = await supabase
+    .from('profiles')
+    .select('hourly_rate')
+    .eq('id', candidateId)
+    .single()
+
+  const hourlyRate = Number(candidateProfile?.hourly_rate || 0)
+  const netMs = grossMs - breakSeconds * 1000
+  const netHours = netMs / (1000 * 60 * 60)
+
+  let finalPayout: number
+  if (customPayoutStr !== null && customPayoutStr !== undefined && customPayoutStr.trim() !== '') {
+    const parsed = parseFloat(customPayoutStr)
+    finalPayout = isNaN(parsed) ? 0 : Math.max(0, parsed)
+  } else {
+    finalPayout = Math.round(netHours * hourlyRate * 100) / 100
+  }
+
+  const adminClient = createAdminClient()
+  const insertPayload: any = {
+    user_id: candidateId,
+    login_time: loginDate.toISOString(),
+    logout_time: logoutDate.toISOString(),
+    break_start_time: null,
+    break_duration_seconds: breakSeconds,
+    payout_amount: finalPayout,
+    approval_status: approvalStatus === 'pending' ? 'pending' : 'approved',
+    payment_status: 'unpaid',
+    admin_notes: adminNotes?.trim() || 'Manual shift logged by admin',
+  }
+
+  const { error: insertError } = await adminClient
+    .from('attendance')
+    .insert(insertPayload)
+
+  if (insertError) {
+    return { error: insertError.message || 'Failed to create manual shift record.' }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/payroll')
+  revalidatePath('/candidate')
+  revalidatePath('/candidate/attendance')
+  revalidatePath('/candidate/payroll')
+  return { success: true }
+}
+
+export async function adminUpdateAttendanceAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // 1. Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const attendanceId = formData.get('attendanceId') as string
+  const loginTimeStr = formData.get('loginTime') as string
+  const logoutTimeStr = formData.get('logoutTime') as string
+  const breakMinutesStr = formData.get('breakDurationMinutes') as string
+  const customPayoutStr = formData.get('payoutAmount') as string
+  const approvalStatus = formData.get('approvalStatus') as string
+  const adminNotes = formData.get('adminNotes') as string
+
+  if (!attendanceId) {
+    return { error: 'Attendance ID is required.' }
+  }
+
+  const { data: currentRecord, error: fetchErr } = await supabase
+    .from('attendance')
+    .select('id, user_id, login_time, logout_time, break_duration_seconds, payout_amount')
+    .eq('id', attendanceId)
+    .single()
+
+  if (fetchErr || !currentRecord) {
+    return { error: 'Attendance record not found.' }
+  }
+
+  const loginDate = loginTimeStr ? new Date(loginTimeStr) : new Date(currentRecord.login_time)
+  let logoutDate: Date | null = null
+  if (logoutTimeStr && logoutTimeStr.trim() !== '') {
+    logoutDate = new Date(logoutTimeStr)
+  } else if (currentRecord.logout_time) {
+    logoutDate = new Date(currentRecord.logout_time)
+  }
+
+  if (isNaN(loginDate.getTime())) {
+    return { error: 'Invalid start time format.' }
+  }
+
+  if (logoutDate && isNaN(logoutDate.getTime())) {
+    return { error: 'Invalid end time format.' }
+  }
+
+  if (logoutDate && logoutDate.getTime() <= loginDate.getTime()) {
+    return { error: 'End time must be after start time.' }
+  }
+
+  let breakSeconds = currentRecord.break_duration_seconds || 0
+  if (breakMinutesStr !== null && breakMinutesStr !== undefined && breakMinutesStr.trim() !== '') {
+    const mins = parseInt(breakMinutesStr, 10)
+    if (!isNaN(mins) && mins >= 0) {
+      breakSeconds = mins * 60
+    }
+  }
+
+  if (logoutDate && breakSeconds * 1000 >= (logoutDate.getTime() - loginDate.getTime())) {
+    return { error: 'Break duration cannot exceed total shift duration.' }
+  }
+
+  // Calculate Payout
+  let finalPayout = currentRecord.payout_amount || 0
+  if (customPayoutStr !== null && customPayoutStr !== undefined && customPayoutStr.trim() !== '') {
+    const parsed = parseFloat(customPayoutStr)
+    finalPayout = isNaN(parsed) ? 0 : Math.max(0, parsed)
+  } else if (logoutDate) {
+    // Auto recalculate from profile hourly rate
+    const { data: candidateProfile } = await supabase
+      .from('profiles')
+      .select('hourly_rate')
+      .eq('id', currentRecord.user_id)
+      .single()
+
+    const hourlyRate = Number(candidateProfile?.hourly_rate || 0)
+    const grossMs = logoutDate.getTime() - loginDate.getTime()
+    const netMs = Math.max(0, grossMs - breakSeconds * 1000)
+    const netHours = netMs / (1000 * 60 * 60)
+    finalPayout = Math.round(netHours * hourlyRate * 100) / 100
+  }
+
+  const adminClient = createAdminClient()
+  const updatePayload: any = {
+    login_time: loginDate.toISOString(),
+    logout_time: logoutDate ? logoutDate.toISOString() : null,
+    break_duration_seconds: breakSeconds,
+    payout_amount: finalPayout,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (approvalStatus) {
+    updatePayload.approval_status = approvalStatus
+  }
+
+  if (adminNotes !== undefined) {
+    updatePayload.admin_notes = adminNotes?.trim() || null
+  }
+
+  const { error: updateError } = await adminClient
+    .from('attendance')
+    .update(updatePayload)
+    .eq('id', attendanceId)
+
+  if (updateError) {
+    return { error: updateError.message || 'Failed to update attendance record.' }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/payroll')
+  revalidatePath('/candidate')
+  revalidatePath('/candidate/attendance')
+  revalidatePath('/candidate/payroll')
+  return { success: true }
+}
+
+export async function adminDeleteAttendanceAction(
+  prevState: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const supabase = await createClient()
+
+  // 1. Verify admin authorization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized.' }
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (adminProfile?.role !== 'admin') {
+    return { error: 'Access denied. Admin privileges required.' }
+  }
+
+  const attendanceId = formData.get('attendanceId') as string
+  if (!attendanceId) {
+    return { error: 'Attendance ID is required.' }
+  }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
+    .from('attendance')
+    .delete()
+    .eq('id', attendanceId)
+
+  if (error) {
+    return { error: error.message || 'Failed to delete attendance record.' }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/attendance')
+  revalidatePath('/admin/timesheet')
+  revalidatePath('/admin/candidates')
+  revalidatePath('/admin/payroll')
+  revalidatePath('/candidate')
+  revalidatePath('/candidate/attendance')
+  revalidatePath('/candidate/payroll')
+  return { success: true }
+}
+

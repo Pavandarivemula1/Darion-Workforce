@@ -250,17 +250,25 @@ export default async function AdminDashboardContent() {
                           Login: {new Date(session.login_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}
                         </p>
                       </div>
-                      {isOnBreak ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-1 shrink-0">
-                          <Clock className="w-3 h-3" />
-                          On Break
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                          In Progress
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isOnBreak ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            On Break
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            In Progress
+                          </span>
+                        )}
+                        <Link
+                          href="/admin/attendance"
+                          className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 transition-colors"
+                        >
+                          Manage
+                        </Link>
+                      </div>
                     </div>
                   )
                 })}
@@ -271,6 +279,14 @@ export default async function AdminDashboardContent() {
                 No candidates are currently checked in.
               </div>
             )}
+            <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex justify-end">
+              <Link
+                href="/admin/attendance"
+                className="text-xs font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1"
+              >
+                Go to Attendance & Timers <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </Card>
 
           {/* Quick Links Card */}

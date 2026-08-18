@@ -72,7 +72,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
 
   let attendanceQuery = supabase
     .from('attendance')
-    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, created_at, profiles(full_name, avatar_url)')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, admin_notes, created_at, profiles(full_name, avatar_url)')
     .order('login_time', { ascending: false })
 
   if (candidateId !== 'all') {
@@ -85,10 +85,17 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
     attendanceQuery = attendanceQuery.lte('login_time', rangeEnd.toISOString())
   }
 
+  const activeSessionsPromise = supabase
+    .from('attendance')
+    .select('id, user_id, login_time, logout_time, break_start_time, break_duration_seconds, approval_status, rejection_reason, payout_amount, admin_notes, created_at, profiles(full_name, avatar_url)')
+    .is('logout_time', null)
+    .order('login_time', { ascending: false })
+
   // Execute All Queries Concurrently (Promise.all)
-  const [{ data: candidates }, { data: attendanceData }, { data: overshiftsData }] = await Promise.all([
+  const [{ data: candidates }, { data: attendanceData }, { data: activeSessionsData }, { data: overshiftsData }] = await Promise.all([
     candidatesPromise,
     attendanceQuery,
+    activeSessionsPromise,
     supabase
       .from('overshift_requests')
       .select('id, user_id, request_date, request_type, status, created_at, profiles(full_name)')
@@ -99,19 +106,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
     redirect('/candidate')
   }
 
-  const systemRecords = (attendanceData || []).map((r: {
-    id: string
-    user_id: string
-    login_time: string
-    logout_time: string | null
-    break_start_time?: string | null
-    break_duration_seconds?: number
-    approval_status?: 'pending' | 'approved' | 'rejected'
-    rejection_reason?: string | null
-    payout_amount?: number | null
-    created_at: string
-    profiles?: { full_name: string; avatar_url?: string } | { full_name: string; avatar_url?: string }[] | null
-  }) => {
+  const mapRecord = (r: any) => {
     const profileObj = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
     return {
       id: r.id,
@@ -120,14 +115,18 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
       logout_time: r.logout_time,
       break_start_time: r.break_start_time,
       break_duration_seconds: r.break_duration_seconds,
-      approval_status: r.approval_status || 'pending',
+      approval_status: (r.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
       rejection_reason: r.rejection_reason || null,
       payout_amount: r.payout_amount || 0,
+      admin_notes: r.admin_notes || null,
       created_at: r.created_at,
       candidateName: profileObj?.full_name || 'Unknown Candidate',
       candidateAvatarUrl: profileObj?.avatar_url || null,
     }
-  })
+  }
+
+  const systemRecords = (attendanceData || []).map(mapRecord)
+  const activeSessions = (activeSessionsData || []).map(mapRecord)
 
   const overshiftRecords = (overshiftsData || []).map((r: any) => {
     const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
@@ -149,6 +148,7 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
         <AdminAttendanceClient
           candidates={candidates || []}
           records={systemRecords}
+          activeSessions={activeSessions}
           overshiftRequests={overshiftRecords}
         />
       </main>

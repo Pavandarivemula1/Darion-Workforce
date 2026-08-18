@@ -26,6 +26,7 @@ import {
 export interface MobileAdminAttendanceProps {
   candidates: CandidateItem[]
   records: SystemAttendanceItem[]
+  activeSessions?: SystemAttendanceItem[]
   overshiftRequests: OvershiftRequestItem[]
   selectedCandidate: string
   selectedFilter: string
@@ -33,6 +34,10 @@ export interface MobileAdminAttendanceProps {
   onFilterChange: (filter: string) => void
   onOpenApprove: (record: SystemAttendanceItem) => void
   onOpenReject: (record: SystemAttendanceItem) => void
+  onOpenStartModal?: () => void
+  onOpenStopModal?: (session: SystemAttendanceItem) => void
+  onOpenManualModal?: () => void
+  onOpenEditModal?: (record: SystemAttendanceItem) => void
   onApproveOvershift: (requestId: string) => void
   onRejectOvershift: (requestId: string) => void
   isApprovingOvershift: boolean
@@ -42,6 +47,7 @@ export interface MobileAdminAttendanceProps {
 export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
   candidates,
   records,
+  activeSessions = [],
   overshiftRequests,
   selectedCandidate,
   selectedFilter,
@@ -49,18 +55,23 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
   onFilterChange,
   onOpenApprove,
   onOpenReject,
+  onOpenStartModal,
+  onOpenStopModal,
+  onOpenManualModal,
+  onOpenEditModal,
   onApproveOvershift,
   onRejectOvershift,
   isApprovingOvershift,
   isRejectingOvershift,
 }) => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'live'>('all')
 
   const totalCount = records.length
   const approvedCount = records.filter((r) => r.approval_status === 'approved').length
   const pendingCount = records.filter((r) => !r.approval_status || r.approval_status === 'pending').length
   const rejectedCount = records.filter((r) => r.approval_status === 'rejected').length
+  const liveCount = activeSessions.length
 
   const periodTabs = [
     { key: 'today', label: 'Today' },
@@ -71,9 +82,10 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
   ]
 
   const filteredRecords = records.filter((r) => {
-    if (statusFilter === 'pending' && r.approval_status && r.approval_status !== 'pending') return false
+    if (statusFilter === 'pending' && (r.approval_status && r.approval_status !== 'pending' || !r.logout_time)) return false
     if (statusFilter === 'approved' && r.approval_status !== 'approved') return false
     if (statusFilter === 'rejected' && r.approval_status !== 'rejected') return false
+    if (statusFilter === 'live' && !!r.logout_time) return false
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -110,23 +122,40 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
         </select>
       </div>
 
+      {/* Quick Action Buttons for Admin (Start Timer / Add Shift) */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={onOpenStartModal}
+          className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Start Timer</span>
+        </button>
+        <button
+          onClick={onOpenManualModal}
+          className="h-9 px-3 rounded-xl bg-[var(--md-sys-color-primary)] hover:opacity-90 active:scale-95 text-[var(--md-sys-color-on-primary)] font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+        >
+          <span>+ Add Shift / Hours</span>
+        </button>
+      </div>
+
       {/* 2. 2x2 Bento Summary Matrix */}
       <div className="grid grid-cols-2 gap-2">
-        {/* Metric 1: Pending Review */}
+        {/* Metric 1: Working Now / Pending */}
         <div className="p-2.5 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-              Pending Review
+              Working Now
             </span>
-            <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-center">
-              <Clock className="w-3.5 h-3.5" />
+            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Clock className="w-3.5 h-3.5 animate-pulse" />
             </div>
           </div>
           <div className="mt-1.5">
-            <span className="text-xl font-black font-mono text-[var(--md-sys-color-on-surface)]">
-              {pendingCount}
+            <span className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+              {liveCount}
             </span>
-            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block truncate">Awaiting Approval</span>
+            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block truncate">Active Sessions</span>
           </div>
         </div>
 
@@ -166,21 +195,21 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
           </div>
         </div>
 
-        {/* Metric 4: Rejected */}
+        {/* Metric 4: Pending / Rejected */}
         <div className="p-2.5 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-              Rejected
+              Pending Review
             </span>
             <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-center">
-              <XCircle className="w-3.5 h-3.5" />
+              <Clock className="w-3.5 h-3.5" />
             </div>
           </div>
           <div className="mt-1.5">
             <span className="text-xl font-black font-mono text-[var(--md-sys-color-on-surface)]">
-              {rejectedCount}
+              {pendingCount}
             </span>
-            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block truncate">Flagged / Denied</span>
+            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block truncate">Awaiting Approval</span>
           </div>
         </div>
       </div>
@@ -270,6 +299,16 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
             }`}
           >
             All ({records.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('live')}
+            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              statusFilter === 'live'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-[var(--md-sys-color-surface-container)] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+            }`}
+          >
+            Live ({liveCount})
           </button>
           <button
             onClick={() => setStatusFilter('pending')}
@@ -399,27 +438,60 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
                   </div>
 
                   {/* Action Buttons */}
-                  {isPending && !isLive && (
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
+                    {isLive ? (
                       <Button
                         variant="filled"
                         size="xs"
-                        className="flex-1 h-7 text-[11px]"
-                        onClick={() => onOpenApprove(r)}
-                        icon={<Check className="w-3 h-3" />}
+                        className="w-full h-8 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
+                        onClick={() => onOpenStopModal?.(r)}
                       >
-                        Approve
+                        Stop Candidate Timer
                       </Button>
+                    ) : (
+                      <>
+                        {onOpenEditModal && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenEditModal(r)}
+                            className="h-7 px-2.5 rounded-lg bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-[10px] font-bold hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {isPending && (
+                          <>
+                            <Button
+                              variant="filled"
+                              size="xs"
+                              className="flex-1 h-7 text-[11px]"
+                              onClick={() => onOpenApprove(r)}
+                              icon={<Check className="w-3 h-3" />}
+                            >
+                              Approve
+                            </Button>
 
-                      <button
-                        onClick={() => onOpenReject(r)}
-                        className="flex-1 h-7 rounded-lg bg-[var(--md-sys-color-surface-container-high)] hover:bg-red-500/10 text-red-600 dark:text-red-400 font-bold text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <X className="w-3 h-3" />
-                        <span>Reject</span>
-                      </button>
-                    </div>
-                  )}
+                            <button
+                              onClick={() => onOpenReject(r)}
+                              className="flex-1 h-7 rounded-lg bg-[var(--md-sys-color-surface-container-high)] hover:bg-red-500/10 text-red-600 dark:text-red-400 font-bold text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+                        {isApproved && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenApprove(r)}
+                            className="flex-1 h-7 rounded-lg bg-[var(--md-sys-color-surface-container-high)] text-emerald-700 dark:text-emerald-300 font-bold text-[10px] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
+                          >
+                            Edit Payout (₹{(r.payout_amount || 0).toFixed(2)})
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </Card>
               )
             })
@@ -429,3 +501,4 @@ export const MobileAdminAttendance: React.FC<MobileAdminAttendanceProps> = ({
     </div>
   )
 }
+

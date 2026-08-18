@@ -18,10 +18,19 @@ import {
   Calendar,
   Users,
   X,
+  Play,
+  Plus,
+  Square,
+  Edit,
 } from 'lucide-react'
 import { formatDurationMs, formatBreakDuration } from '@/lib/utils/timesheet'
 import { MobileAdminAttendance } from '@/components/admin/attendance/MobileAdminAttendance'
-
+import { StartTimerModal } from '@/components/admin/attendance/StartTimerModal'
+import { StopTimerModal } from '@/components/admin/attendance/StopTimerModal'
+import { ManualShiftModal } from '@/components/admin/attendance/ManualShiftModal'
+import { EditShiftModal } from '@/components/admin/attendance/EditShiftModal'
+import { ActiveSessionsCard } from '@/components/admin/attendance/ActiveSessionsCard'
+import { RealtimeAttendanceListener } from '@/components/ui/RealtimeAttendanceListener'
 
 export interface CandidateItem {
   id: string
@@ -39,6 +48,7 @@ export interface SystemAttendanceItem {
   approval_status?: 'pending' | 'approved' | 'rejected'
   rejection_reason?: string | null
   payout_amount?: number | null
+  admin_notes?: string | null
   created_at: string
   candidateName: string
   candidateAvatarUrl?: string | null
@@ -58,12 +68,14 @@ export interface OvershiftRequestItem {
 export interface AdminAttendanceClientProps {
   candidates: CandidateItem[]
   records: SystemAttendanceItem[]
+  activeSessions?: SystemAttendanceItem[]
   overshiftRequests?: OvershiftRequestItem[]
 }
 
 export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   candidates,
   records: initialRecords,
+  activeSessions: initialActiveSessions = [],
   overshiftRequests = [],
 }) => {
   const router = useRouter()
@@ -81,6 +93,11 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
   >({})
 
   // Modal dialog states
+  const [isStartTimerModalOpen, setIsStartTimerModalOpen] = useState(false)
+  const [stopTimerSession, setStopTimerSession] = useState<SystemAttendanceItem | null>(null)
+  const [isManualShiftModalOpen, setIsManualShiftModalOpen] = useState(false)
+  const [editShiftRecord, setEditShiftRecord] = useState<SystemAttendanceItem | null>(null)
+
   const [approveItem, setApproveItem] = useState<SystemAttendanceItem | null>(null)
   const [customPayoutText, setCustomPayoutText] = useState('')
   const [rejectItem, setRejectItem] = useState<SystemAttendanceItem | null>(null)
@@ -294,6 +311,17 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
     })
   }
 
+  const activeSessionsList = useMemo(() => {
+    if (initialActiveSessions && initialActiveSessions.length > 0) {
+      return initialActiveSessions
+    }
+    return initialRecords.filter((r) => !r.logout_time)
+  }, [initialActiveSessions, initialRecords])
+
+  const activeUserIds = useMemo(() => {
+    return activeSessionsList.map((s) => s.user_id)
+  }, [activeSessionsList])
+
   const activeOvershifts = overshiftRequests.filter((req) => {
     if (req.status === 'rejected') return false
     if (selectedCandidate !== 'all' && req.user_id !== selectedCandidate) return false
@@ -307,6 +335,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         <MobileAdminAttendance
           candidates={candidates}
           records={records}
+          activeSessions={activeSessionsList}
           overshiftRequests={activeOvershifts}
           selectedCandidate={selectedCandidate}
           selectedFilter={selectedFilter}
@@ -320,6 +349,10 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
           }}
           onOpenApprove={openApproveModal}
           onOpenReject={openRejectModal}
+          onOpenStartModal={() => setIsStartTimerModalOpen(true)}
+          onOpenStopModal={(session) => setStopTimerSession(session)}
+          onOpenManualModal={() => setIsManualShiftModalOpen(true)}
+          onOpenEditModal={(record) => setEditShiftRecord(record)}
           onApproveOvershift={handleApproveOvershift}
           onRejectOvershift={handleRejectOvershift}
           isApprovingOvershift={isApprovingOvershift}
@@ -327,15 +360,45 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
         />
       </div>
 
-      {/* DESKTOP VIEW (>= 768px) - 100% UNTOUCHED ORIGINAL LAYOUT */}
+      {/* DESKTOP VIEW (>= 768px) */}
       <div className="hidden md:flex flex-col gap-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold">Attendance & Shift Payment Approvals</h2>
-          <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-            Review completed work shifts, approve hourly payouts, or reject with feedback
-          </p>
+        {/* Header & Quick Action Buttons */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold">Attendance & Shift Payment Approvals</h2>
+            <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              Manage live timers, log manual shift hours, and approve compensation
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outlined"
+              size="md"
+              icon={<Play className="w-4 h-4 fill-current text-emerald-600 dark:text-emerald-400" />}
+              onClick={() => setIsStartTimerModalOpen(true)}
+              className="border-emerald-600/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+            >
+              Start Timer
+            </Button>
+            <Button
+              variant="filled"
+              size="md"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => setIsManualShiftModalOpen(true)}
+            >
+              + Add Shift / Hours
+            </Button>
+          </div>
         </div>
+
+        {/* Active Timers Banner & Session Controls */}
+        <ActiveSessionsCard
+          activeSessions={activeSessionsList}
+          candidates={candidates}
+          onOpenStopModal={(session) => setStopTimerSession(session)}
+          onOpenStartModal={() => setIsStartTimerModalOpen(true)}
+        />
 
 
       {activeOvershifts.length > 0 && (
@@ -530,8 +593,28 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                   </div>
                 </div>
 
-                {hasLogout && (
+                {isWorking ? (
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+                    <Button
+                      variant="filled"
+                      size="sm"
+                      className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
+                      onClick={() => setStopTimerSession(item)}
+                      icon={<Square className="w-3.5 h-3.5 fill-current" />}
+                    >
+                      Stop Candidate Timer
+                    </Button>
+                  </div>
+                ) : hasLogout ? (
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+                    <button
+                      type="button"
+                      onClick={() => setEditShiftRecord(item)}
+                      className="px-2.5 py-1.5 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold hover:bg-[var(--md-sys-color-surface-container-highest)]"
+                    >
+                      Edit
+                    </button>
+
                     {status === 'approved' ? (
                       <button
                         onClick={() => openApproveModal(item)}
@@ -567,7 +650,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                       </>
                     )}
                   </div>
-                )}
+                ) : null}
               </Card>
             )
           })
@@ -678,8 +761,26 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                       </td>
 
                       <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
-                        {hasLogout && (
+                        {isWorking ? (
+                          <Button
+                            variant="filled"
+                            size="sm"
+                            className="bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 text-xs px-3 h-8"
+                            icon={<Square className="w-3 h-3 fill-current" />}
+                            onClick={() => setStopTimerSession(item)}
+                          >
+                            Stop Timer
+                          </Button>
+                        ) : hasLogout ? (
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setEditShiftRecord(item)}
+                              className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors cursor-pointer"
+                              title="Edit Shift Record"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+
                             {status === 'approved' ? (
                               <button
                                 onClick={() => openApproveModal(item)}
@@ -715,7 +816,7 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
                               </>
                             )}
                           </div>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   )
@@ -733,8 +834,54 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
       </Card>
     </div>
 
-      {/* Approve Shift Modal Dialog */}
+      {/* Start Timer Modal Dialog */}
+      <StartTimerModal
+        isOpen={isStartTimerModalOpen}
+        onClose={() => setIsStartTimerModalOpen(false)}
+        candidates={candidates}
+        activeUserIds={activeUserIds}
+        onSuccess={() => {
+          setToast({ message: 'Work timer started successfully.', variant: 'success' })
+          router.refresh()
+        }}
+      />
 
+      {/* Stop Timer Modal Dialog */}
+      <StopTimerModal
+        isOpen={!!stopTimerSession}
+        onClose={() => setStopTimerSession(null)}
+        session={stopTimerSession}
+        hourlyRate={candidates.find((c) => c.id === stopTimerSession?.user_id)?.hourly_rate || 0}
+        onSuccess={() => {
+          setToast({ message: 'Candidate shift ended and recorded.', variant: 'success' })
+          router.refresh()
+        }}
+      />
+
+      {/* Manual Shift Modal Dialog */}
+      <ManualShiftModal
+        isOpen={isManualShiftModalOpen}
+        onClose={() => setIsManualShiftModalOpen(false)}
+        candidates={candidates}
+        onSuccess={() => {
+          setToast({ message: 'Manual shift record added successfully.', variant: 'success' })
+          router.refresh()
+        }}
+      />
+
+      {/* Edit Shift Modal Dialog */}
+      <EditShiftModal
+        isOpen={!!editShiftRecord}
+        onClose={() => setEditShiftRecord(null)}
+        record={editShiftRecord}
+        hourlyRate={candidates.find((c) => c.id === editShiftRecord?.user_id)?.hourly_rate || 0}
+        onSuccess={() => {
+          setToast({ message: 'Attendance record updated successfully.', variant: 'success' })
+          router.refresh()
+        }}
+      />
+
+      {/* Approve Shift Modal Dialog */}
       {approveItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
           <div className="w-full max-w-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] rounded-[var(--md-sys-shape-corner-extra-large)] p-6 border border-[var(--md-sys-color-outline-variant)] flex flex-col gap-4 my-auto">
@@ -850,6 +997,9 @@ export const AdminAttendanceClient: React.FC<AdminAttendanceClientProps> = ({
           </div>
         </div>
       )}
+
+      {/* Realtime Attendance Listener */}
+      <RealtimeAttendanceListener />
 
       {/* Snackbar Notifications */}
       <Snackbar
