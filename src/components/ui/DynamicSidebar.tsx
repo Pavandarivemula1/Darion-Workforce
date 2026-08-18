@@ -17,6 +17,7 @@ export interface DynamicSidebarProps {
   brandName?: string
   brandIcon?: React.ReactNode
   subtitle?: string
+  headerAction?: React.ReactNode
 }
 
 const MIN_WIDTH = 80
@@ -29,6 +30,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
   brandIcon,
   brandName = 'App',
   subtitle,
+  headerAction,
 }) => {
   const pathname = usePathname()
   
@@ -125,14 +127,17 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
           </div>
         </div>
         
-        {/* Toggle Button */}
-        <button
-          onClick={toggleCollapse}
-          className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] transition-colors shrink-0 flex items-center justify-center z-10"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </button>
+        {/* Header Action & Toggle Button */}
+        <div className="flex items-center gap-1 shrink-0">
+          {headerAction}
+          <button
+            onClick={toggleCollapse}
+            className="p-1.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] transition-colors shrink-0 flex items-center justify-center z-10"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Navigation List */}

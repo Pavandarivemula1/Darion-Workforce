@@ -26,6 +26,8 @@ import {
   ChevronRight,
 } from 'lucide-react'
 
+import { NotificationBell } from '@/components/notifications/NotificationBell'
+
 export interface AdminLayoutProps {
   children: React.ReactNode
   adminName?: string
@@ -82,6 +84,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
         brandIcon={<ShieldCheck className="w-6 h-6" />}
         brandName="Darion Workforce"
         subtitle={adminName || 'System Admin'}
+        headerAction={<NotificationBell />}
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
@@ -96,18 +99,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminName, a
           </span>
         </Link>
 
-        <Link
-          href="/admin/profile"
-          className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"
-        >
-          {adminAvatarUrl ? (
-            <img src={adminAvatarUrl} alt={adminName} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
-          ) : (
-            <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-[10px] font-bold flex items-center justify-center">
-              {adminName?.charAt(0).toUpperCase() || 'A'}
-            </div>
-          )}
-        </Link>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <Link
+            href="/admin/profile"
+            className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"
+          >
+            {adminAvatarUrl ? (
+              <img src={adminAvatarUrl} alt={adminName} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-[10px] font-bold flex items-center justify-center">
+                {adminName?.charAt(0).toUpperCase() || 'A'}
+              </div>
+            )}
+          </Link>
+        </div>
       </header>
 
       {/* Main Content Container */}

@@ -1,7 +1,6 @@
-'use server'
-
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendNotification } from '@/lib/utils/notifications'
 
 export type AdminActionState = {
   error?: string
@@ -354,6 +353,17 @@ export async function approveShiftAction(
   }
 
   console.log('[approveShiftAction] SUCCESS for shift:', attendanceId, 'payout:', finalPayoutAmount)
+
+  // Dispatch real-time in-app notification to candidate
+  await sendNotification({
+    userId: shift.user_id,
+    title: 'Shift Approved & Paid',
+    message: `Your shift on ${new Date(shift.login_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} was approved (₹${finalPayoutAmount.toFixed(2)} recorded).`,
+    type: 'shift_approved',
+    link: '/candidate/attendance',
+    metadata: { attendanceId, payoutAmount: finalPayoutAmount },
+  })
+
   revalidatePath('/admin/attendance')
   revalidatePath('/admin/timesheet')
   revalidatePath('/admin')
@@ -412,6 +422,18 @@ export async function rejectShiftAction(
     return {
       error: 'Update blocked by Supabase Database RLS. Please run the SQL script in Supabase SQL Editor to enable Admin shift rejections.',
     }
+  }
+
+  const rejectedRecord = updatedData[0]
+  if (rejectedRecord?.user_id) {
+    await sendNotification({
+      userId: rejectedRecord.user_id,
+      title: 'Shift Rejected',
+      message: `Your shift on ${new Date(rejectedRecord.login_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} was rejected. Reason: ${rejectionReason.trim()}`,
+      type: 'shift_rejected',
+      link: '/candidate/attendance',
+      metadata: { attendanceId, rejectionReason: rejectionReason.trim() },
+    })
   }
 
   revalidatePath('/admin/attendance')
@@ -660,6 +682,16 @@ export async function adminStartWorkAction(
     return { error: insertError.message || 'Failed to start timer for candidate.' }
   }
 
+  // Dispatch notification to candidate
+  await sendNotification({
+    userId: candidateId,
+    title: 'Work Timer Started by Admin',
+    message: `An administrator started your work session at ${new Date(loginIso).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}.`,
+    type: 'timer_started',
+    link: '/candidate',
+    metadata: { loginTime: loginIso },
+  })
+
   revalidatePath('/admin')
   revalidatePath('/admin/attendance')
   revalidatePath('/admin/timesheet')
@@ -784,6 +816,16 @@ export async function adminEndWorkAction(
     return { error: updateError.message || 'Failed to stop candidate timer.' }
   }
 
+  // Dispatch notification to candidate
+  await sendNotification({
+    userId: session.user_id,
+    title: 'Shift Ended by Admin',
+    message: `Your shift was recorded by an admin: ${netHours.toFixed(2)} hrs (Payout: ₹${finalPayout.toFixed(2)}).`,
+    type: 'timer_stopped',
+    link: '/candidate/attendance',
+    metadata: { attendanceId, logoutTime: logoutDate.toISOString(), payoutAmount: finalPayout },
+  })
+
   revalidatePath('/admin')
   revalidatePath('/admin/attendance')
   revalidatePath('/admin/timesheet')
@@ -890,6 +932,16 @@ export async function adminCreateManualShiftAction(
   if (insertError) {
     return { error: insertError.message || 'Failed to create manual shift record.' }
   }
+
+  // Dispatch notification to candidate
+  await sendNotification({
+    userId: candidateId,
+    title: 'Manual Shift Logged by Admin',
+    message: `A shift of ${netHours.toFixed(2)} hrs on ${loginDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} was added by an admin (Payout: ₹${finalPayout.toFixed(2)}).`,
+    type: 'manual_shift',
+    link: '/candidate/attendance',
+    metadata: { loginTime: loginDate.toISOString(), payoutAmount: finalPayout },
+  })
 
   revalidatePath('/admin')
   revalidatePath('/admin/attendance')
@@ -1193,6 +1245,16 @@ export async function adminAutoCutoffSessionAction(
   if (updateErr) {
     return { error: updateErr.message || 'Failed to auto-cutoff session.' }
   }
+
+  // Dispatch notification to candidate
+  await sendNotification({
+    userId: session.user_id,
+    title: 'Shift Auto-Cutoff Executed',
+    message: `Your shift was automatically closed after exceeding maximum duration. Capped payout: ₹${finalPayout.toFixed(2)}.`,
+    type: 'auto_cutoff',
+    link: '/candidate/attendance',
+    metadata: { attendanceId, logoutTime: cutoffDate.toISOString(), payoutAmount: finalPayout },
+  })
 
   revalidatePath('/admin')
   revalidatePath('/admin/attendance')

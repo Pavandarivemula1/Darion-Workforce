@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendNotification, sendAdminBroadcast } from '@/lib/utils/notifications'
 
 export interface RequestLeaveInput {
   leave_type: 'casual' | 'sick' | 'paid' | 'unpaid' | 'emergency'
@@ -52,6 +53,15 @@ export async function requestLeaveAction(input: RequestLeaveInput) {
     }
   }
 
+  // Fetch candidate profile name
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
+
+  const candidateName = profile?.full_name || 'A candidate'
+
   const { error } = await supabase.from('leaves').insert({
     user_id: user.id,
     leave_type: input.leave_type,
@@ -65,6 +75,15 @@ export async function requestLeaveAction(input: RequestLeaveInput) {
   if (error) {
     return { error: error.message || 'Failed to submit leave request.' }
   }
+
+  // Broadcast to all admins
+  await sendAdminBroadcast({
+    title: 'New Leave Request',
+    message: `${candidateName} applied for ${input.leave_type.toUpperCase()} leave (${input.total_days} ${input.total_days === 1 ? 'day' : 'days'}) from ${input.start_date} to ${input.end_date}.`,
+    type: 'leave_requested',
+    link: '/admin/leaves',
+    metadata: { candidateId: user.id, startDate: input.start_date, endDate: input.end_date, leaveType: input.leave_type },
+  })
 
   revalidatePath('/candidate')
   revalidatePath('/candidate/leaves')
@@ -124,6 +143,13 @@ export async function approveLeaveAction(leaveId: string, adminNotes?: string) {
     return { error: 'Access denied. Admin privileges required.' }
   }
 
+  // Fetch leave details to notify recipient
+  const { data: leaveRecord } = await supabase
+    .from('leaves')
+    .select('id, user_id, start_date, end_date, total_days, leave_type')
+    .eq('id', leaveId)
+    .single()
+
   const updateData: {
     status: string
     approved_by: string
@@ -146,6 +172,17 @@ export async function approveLeaveAction(leaveId: string, adminNotes?: string) {
 
   if (error) {
     return { error: error.message || 'Failed to approve leave request.' }
+  }
+
+  if (leaveRecord?.user_id) {
+    await sendNotification({
+      userId: leaveRecord.user_id,
+      title: 'Leave Request Approved',
+      message: `Your ${leaveRecord.leave_type.toUpperCase()} leave request from ${leaveRecord.start_date} to ${leaveRecord.end_date} (${leaveRecord.total_days} days) has been approved.`,
+      type: 'leave_status',
+      link: '/candidate/leaves',
+      metadata: { leaveId, status: 'approved' },
+    })
   }
 
   revalidatePath('/admin/leaves')
@@ -174,6 +211,13 @@ export async function rejectLeaveAction(leaveId: string, adminNotes: string) {
     return { error: 'Access denied. Admin privileges required.' }
   }
 
+  // Fetch leave details to notify recipient
+  const { data: leaveRecord } = await supabase
+    .from('leaves')
+    .select('id, user_id, start_date, end_date, total_days, leave_type')
+    .eq('id', leaveId)
+    .single()
+
   const { error } = await supabase
     .from('leaves')
     .update({
@@ -186,6 +230,17 @@ export async function rejectLeaveAction(leaveId: string, adminNotes: string) {
 
   if (error) {
     return { error: error.message || 'Failed to reject leave request.' }
+  }
+
+  if (leaveRecord?.user_id) {
+    await sendNotification({
+      userId: leaveRecord.user_id,
+      title: 'Leave Request Rejected',
+      message: `Your ${leaveRecord.leave_type.toUpperCase()} leave request from ${leaveRecord.start_date} to ${leaveRecord.end_date} was rejected. Note: ${adminNotes.trim() || 'Contact administration.'}`,
+      type: 'leave_status',
+      link: '/candidate/leaves',
+      metadata: { leaveId, status: 'rejected' },
+    })
   }
 
   revalidatePath('/admin/leaves')

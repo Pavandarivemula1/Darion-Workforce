@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendNotification, sendAdminBroadcast } from '@/lib/utils/notifications'
 
 export type OvershiftActionState = {
   error?: string
@@ -36,6 +37,15 @@ export async function requestOvershiftAction(date: string, requestType: 'now' | 
     return { error: `You already have a ${existingRequests[0].status} overshift request for this date.` }
   }
 
+  // Fetch candidate profile name
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
+
+  const candidateName = profile?.full_name || 'A candidate'
+
   const { error } = await supabase
     .from('overshift_requests')
     .insert({
@@ -50,6 +60,15 @@ export async function requestOvershiftAction(date: string, requestType: 'now' | 
     }
     return { error: error.message || 'Failed to request overshift.' }
   }
+
+  // Broadcast to all admins
+  await sendAdminBroadcast({
+    title: 'New Overshift Request',
+    message: `${candidateName} requested an ${requestType === 'now' ? 'immediate' : 'upcoming'} overshift for ${date}.`,
+    type: 'overshift_requested',
+    link: '/admin/attendance',
+    metadata: { candidateId: user.id, requestDate: date, requestType },
+  })
 
   revalidatePath('/candidate')
   return { success: true }
@@ -79,12 +98,32 @@ export async function approveOvershiftAction(
   const requestId = formData.get('requestId') as string
   if (!requestId) return { error: 'Request ID is required.' }
 
+  const { data: req, error: fetchErr } = await supabase
+    .from('overshift_requests')
+    .select('id, user_id, request_date')
+    .eq('id', requestId)
+    .single()
+
+  if (fetchErr || !req) {
+    return { error: 'Overshift request not found.' }
+  }
+
   const { error } = await supabase
     .from('overshift_requests')
     .update({ status: 'approved' })
     .eq('id', requestId)
 
   if (error) return { error: error.message || 'Failed to approve overshift.' }
+
+  // Notify candidate
+  await sendNotification({
+    userId: req.user_id,
+    title: 'Overshift Approved',
+    message: `Your overshift request for ${req.request_date} has been approved. You are authorized to work extra hours.`,
+    type: 'overshift_status',
+    link: '/candidate',
+    metadata: { requestId, status: 'approved' },
+  })
 
   revalidatePath('/admin/attendance')
   return { success: true }
@@ -114,12 +153,32 @@ export async function rejectOvershiftAction(
   const requestId = formData.get('requestId') as string
   if (!requestId) return { error: 'Request ID is required.' }
 
+  const { data: req, error: fetchErr } = await supabase
+    .from('overshift_requests')
+    .select('id, user_id, request_date')
+    .eq('id', requestId)
+    .single()
+
+  if (fetchErr || !req) {
+    return { error: 'Overshift request not found.' }
+  }
+
   const { error } = await supabase
     .from('overshift_requests')
     .update({ status: 'rejected' })
     .eq('id', requestId)
 
   if (error) return { error: error.message || 'Failed to reject overshift.' }
+
+  // Notify candidate
+  await sendNotification({
+    userId: req.user_id,
+    title: 'Overshift Rejected',
+    message: `Your overshift request for ${req.request_date} was rejected by an administrator.`,
+    type: 'overshift_status',
+    link: '/candidate',
+    metadata: { requestId, status: 'rejected' },
+  })
 
   revalidatePath('/admin/attendance')
   return { success: true }

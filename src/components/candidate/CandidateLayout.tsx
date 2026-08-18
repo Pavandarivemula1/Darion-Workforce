@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { FeedbackWidget } from './FeedbackWidget'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 export interface CandidateLayoutProps {
   children: React.ReactNode
@@ -68,6 +69,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
         brandIcon={<Clock className="w-6 h-6" />}
         brandName="Darion Workforce"
         subtitle={candidateName || 'Candidate'}
+        headerAction={<NotificationBell />}
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
@@ -82,18 +84,21 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
           </span>
         </Link>
 
-        <Link
-          href="/candidate/profile"
-          className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"
-        >
-          {candidateAvatarUrl ? (
-            <img src={candidateAvatarUrl} alt={candidateName} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
-          ) : (
-            <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-[10px] font-bold flex items-center justify-center">
-              {candidateName?.charAt(0).toUpperCase() || 'C'}
-            </div>
-          )}
-        </Link>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <Link
+            href="/candidate/profile"
+            className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-95 transition-all"
+          >
+            {candidateAvatarUrl ? (
+              <img src={candidateAvatarUrl} alt={candidateName} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-[10px] font-bold flex items-center justify-center">
+                {candidateName?.charAt(0).toUpperCase() || 'C'}
+              </div>
+            )}
+          </Link>
+        </div>
       </header>
 
       {/* Main Content Container */}
