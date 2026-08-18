@@ -24,6 +24,7 @@ import {
   Video,
   KeyRound,
   ChevronRight,
+  CheckSquare,
 } from 'lucide-react'
 
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -42,6 +43,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminId, adm
   // Full nav items for desktop sidebar
   const allNavItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { label: 'Task Reports', href: '/admin/tasks', icon: CheckSquare },
     { label: 'Video Meets', href: '/admin/meets', icon: Video },
     { label: 'Candidates', href: '/admin/candidates', icon: Users },
     { label: 'Shifts', href: '/admin/shifts', icon: Clock },
@@ -58,14 +60,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminId, adm
   // Primary 4 mobile bottom tabs
   const mobilePrimaryTabs = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { label: 'Tasks', href: '/admin/tasks', icon: CheckSquare },
     { label: 'Shifts', href: '/admin/shifts', icon: Clock },
     { label: 'Payroll', href: '/admin/payroll', icon: Banknote },
-    { label: 'Meets', href: '/admin/meets', icon: Video },
   ]
 
   // Secondary items in "More" bottom sheet
   const moreSheetItems = [
+    { label: 'Daily Task Reports', href: '/admin/tasks', icon: CheckSquare, desc: 'Candidate task logs & blockers' },
     { label: 'Candidates Directory', href: '/admin/candidates', icon: Users, desc: 'Manage workforce & rates' },
+    { label: 'Video Meets', href: '/admin/meets', icon: Video, desc: 'Host & manage video meetings' },
     { label: 'Attendance Logs', href: '/admin/attendance', icon: CalendarCheck, desc: 'Live & past clock records' },
     { label: 'Timesheet Matrix', href: '/admin/timesheet', icon: FileSpreadsheet, desc: 'Weekly candidate matrix' },
     { label: 'Leave Requests', href: '/admin/leaves', icon: Palmtree, desc: 'Review & approve leaves' },

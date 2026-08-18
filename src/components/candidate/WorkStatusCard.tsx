@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import {
   startWorkAction,
   startBreakAction,
@@ -24,6 +25,7 @@ import {
   IndianRupee,
   Moon,
   Sun,
+  CheckSquare,
 } from 'lucide-react'
 import { formatINR } from '@/lib/utils/payroll'
 import {
@@ -530,6 +532,18 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
                     ? 'Shift Finished Today'
                     : 'Start Work'}
                 </Button>
+                {isCompletedToday && (
+                  <Link href="/candidate/tasks" className="w-full">
+                    <Button
+                      variant="filled"
+                      size="lg"
+                      className="w-full !bg-emerald-600 hover:!bg-emerald-700 !text-white"
+                      icon={<CheckSquare className="w-5 h-5" />}
+                    >
+                      Log Daily Tasks
+                    </Button>
+                  </Link>
+                )}
                 {requiresOvershift && localOvershiftStatus !== 'approved' && (
                   <Button
                     variant="outlined"

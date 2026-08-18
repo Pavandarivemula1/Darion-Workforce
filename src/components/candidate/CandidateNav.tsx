@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
-import { Clock, History, LogOut, LayoutDashboard, User, Banknote, MessageSquare, Palmtree } from 'lucide-react'
+import { Clock, History, LogOut, LayoutDashboard, User, Banknote, MessageSquare, Palmtree, CheckSquare } from 'lucide-react'
 
 export interface CandidateNavProps {
   userName?: string
@@ -16,6 +16,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
 
   const navItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
+    { label: 'Tasks', href: '/candidate/tasks', icon: CheckSquare },
     { label: 'Attendance', href: '/candidate/attendance', icon: History },
     { label: 'Earnings', href: '/candidate/payroll', icon: Banknote },
     { label: 'Leaves', href: '/candidate/leaves', icon: Palmtree },

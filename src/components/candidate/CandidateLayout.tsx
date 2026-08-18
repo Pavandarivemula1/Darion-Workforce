@@ -19,6 +19,7 @@ import {
   Palmtree,
   Video,
   ChevronRight,
+  CheckSquare,
 } from 'lucide-react'
 import { FeedbackWidget } from './FeedbackWidget'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -37,6 +38,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
   // Primary desktop & full items
   const allNavItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
+    { label: 'Daily Tasks', href: '/candidate/tasks', icon: CheckSquare },
     { label: 'Video Meets', href: '/candidate/meets', icon: Video },
     { label: 'Attendance', href: '/candidate/attendance', icon: History },
     { label: 'Earnings', href: '/candidate/payroll', icon: Banknote },
@@ -48,13 +50,15 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
   // Primary 4 mobile bottom tabs
   const mobilePrimaryTabs = [
     { label: 'Home', href: '/candidate', icon: LayoutDashboard },
+    { label: 'Tasks', href: '/candidate/tasks', icon: CheckSquare },
     { label: 'Attendance', href: '/candidate/attendance', icon: History },
     { label: 'Earnings', href: '/candidate/payroll', icon: Banknote },
-    { label: 'Meets', href: '/candidate/meets', icon: Video },
   ]
 
   // Secondary items in "More" bottom sheet
   const moreSheetItems = [
+    { label: 'Daily Task Logs', href: '/candidate/tasks', icon: CheckSquare, desc: 'Report & track completed tasks' },
+    { label: 'Video Meets', href: '/candidate/meets', icon: Video, desc: 'Join video meetings & recordings' },
     { label: 'Leave Requests', href: '/candidate/leaves', icon: Palmtree, desc: 'Apply & track time off' },
     { label: 'Shift Feedback', href: '/candidate/feedback', icon: MessageSquare, desc: 'Submit ratings & remarks' },
     { label: 'Account Profile', href: '/candidate/profile', icon: User, desc: 'Personal details & MFA security' },

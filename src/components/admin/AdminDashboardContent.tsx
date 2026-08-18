@@ -297,6 +297,17 @@ export default async function AdminDashboardContent() {
 
             <div className="flex flex-col gap-2.5">
               <Link
+                href="/admin/tasks"
+                className="p-3.5 rounded-xl bg-[var(--md-sys-color-primary-container)]/30 hover:bg-[var(--md-sys-color-primary-container)]/50 border border-[var(--md-sys-color-primary)]/20 active:scale-[0.98] transition-all flex items-center justify-between"
+              >
+                <div>
+                  <p className="text-sm font-bold text-[var(--md-sys-color-primary)]">Daily Task Reports</p>
+                  <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">Track completed tasks, hours & active blockers</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+              </Link>
+
+              <Link
                 href="/admin/candidates"
                 className="p-3.5 rounded-xl bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] active:scale-[0.98] transition-all flex items-center justify-between"
               >
