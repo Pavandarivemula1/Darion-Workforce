@@ -59,10 +59,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId, clas
       }
     })
 
-    // Subscribe to realtime changes once
+    // Subscribe to realtime changes once with instance-unique channel name
     const supabase = createClient()
+    const channelName = `notifs-${currentUserId}-${Math.random().toString(36).slice(2, 9)}`
     const channel = supabase
-      .channel(`notifs-${currentUserId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

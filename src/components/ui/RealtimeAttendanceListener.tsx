@@ -19,8 +19,9 @@ export function RealtimeAttendanceListener() {
     }
     
     // Subscribe to any changes on the attendance table
+    const attChannelName = `att_${Math.random().toString(36).slice(2, 9)}`
     const attendanceChannel = supabase
-      .channel('attendance_changes')
+      .channel(attChannelName)
       .on(
         'postgres_changes',
         {
@@ -33,8 +34,9 @@ export function RealtimeAttendanceListener() {
       .subscribe()
 
     // Subscribe to any changes on the overshift_requests table
+    const overshiftChannelName = `overshift_${Math.random().toString(36).slice(2, 9)}`
     const overshiftChannel = supabase
-      .channel('overshift_changes')
+      .channel(overshiftChannelName)
       .on(
         'postgres_changes',
         {
