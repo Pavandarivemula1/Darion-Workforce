@@ -192,7 +192,7 @@ export const GlobalPushNotificationManager: React.FC<GlobalPushNotificationManag
 
           triggerNotification({
             id: newMsg.id,
-            userId: currentUserId,
+            user_id: currentUserId,
             title: `Message from ${senderName}`,
             message: snippet.slice(0, 95),
             type: 'chat_message',
