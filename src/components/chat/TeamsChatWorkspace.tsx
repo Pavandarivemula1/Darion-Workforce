@@ -29,6 +29,7 @@ import {
   Trash2,
   Forward,
   Pencil,
+  Reply,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -95,12 +96,27 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [isForwardOpen, setIsForwardOpen] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
+  const [replyingTo, setReplyingTo] = useState<ChatMessageItem | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mainInputRef = useRef<HTMLTextAreaElement>(null)
 
   const activeConv = conversations.find((c) => c.id === activeConvId)
+
+  // Scroll to original message when quoted reply bubble is clicked
+  const scrollToMessage = (targetId: string) => {
+    if (!targetId) return
+    const el = document.getElementById(`chat-msg-${targetId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('ring-2', 'ring-[var(--md-sys-color-primary)]', 'rounded-2xl', 'transition-all', 'duration-300')
+      setTimeout(() => {
+        el.classList.remove('ring-2', 'ring-[var(--md-sys-color-primary)]', 'rounded-2xl')
+      }, 2000)
+    }
+  }
 
   // Load messages whenever active conversation changes
   useEffect(() => {
@@ -250,7 +266,24 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     if (!inputText.trim() || !activeConvId || sending) return
 
     const content = inputText.trim()
+    const replyMeta = replyingTo
+      ? {
+          replyTo: {
+            messageId: replyingTo.id,
+            senderName: replyingTo.senderName,
+            content:
+              replyingTo.messageType === 'file'
+                ? `📎 ${replyingTo.fileName || 'Attachment'}`
+                : replyingTo.messageType === 'meet_card'
+                ? '📹 Video Meeting'
+                : replyingTo.content,
+            messageType: replyingTo.messageType,
+          },
+        }
+      : undefined
+
     setInputText('')
+    setReplyingTo(null)
     soundEffects.playMessageSentSound()
     setSending(true)
 
@@ -259,6 +292,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         conversationId: activeConvId,
         content,
         messageType: 'text',
+        metadata: replyMeta,
       })
       // Refresh messages list
       const fresh = await getConversationMessagesAction(activeConvId)
@@ -791,6 +825,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   ) : (
                     /* User Message Row */
                     <div
+                      id={`chat-msg-${msg.id}`}
                       className={`flex items-start gap-2.5 group/msg relative transition-all ${
                         isMe ? 'flex-row-reverse' : 'flex-row'
                       } ${isConsecutive ? 'mt-0.5' : 'mt-3.5'}`}
@@ -841,6 +876,29 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               : 'px-3.5 py-2 text-[13px] leading-[1.55] bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#151d2c] dark:text-slate-100 dark:border-[#222e44] rounded-2xl rounded-tl-xs shadow-xs font-normal'
                           }`}
                         >
+                          {/* In-Chat Quoted Tagging / Reply Bubble */}
+                          {(msg.replyTo || msg.metadata?.replyTo) && (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                scrollToMessage((msg.replyTo || msg.metadata?.replyTo).messageId)
+                              }}
+                              className={`mb-2 p-2 rounded-xl border-l-4 cursor-pointer transition-all active:scale-[0.98] text-left select-none ${
+                                isMe
+                                  ? 'bg-black/20 dark:bg-black/40 border-white/90 hover:bg-black/30 text-white'
+                                  : 'bg-black/5 dark:bg-slate-800/80 border-[var(--md-sys-color-primary)] hover:bg-black/10 dark:hover:bg-slate-800 text-[var(--md-sys-color-on-surface)]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 text-[11px] font-bold opacity-90 truncate">
+                                <Reply className="w-3 h-3 shrink-0" />
+                                <span>{(msg.replyTo || msg.metadata?.replyTo).senderName}</span>
+                              </div>
+                              <p className="text-[11px] opacity-80 truncate mt-0.5 line-clamp-1">
+                                {(msg.replyTo || msg.metadata?.replyTo).content}
+                              </p>
+                            </div>
+                          )}
+
                           {/* Live Meet Card / Missed Call Card */}
                           {msg.messageType === 'meet_card' && <ChatMeetCard metadata={msg.metadata} />}
 
@@ -992,6 +1050,16 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             ))}
                             <div className="w-px h-3 bg-[var(--md-sys-color-outline-variant)] dark:bg-slate-700 mx-0.5" />
                             <button
+                              onClick={() => {
+                                setReplyingTo(msg)
+                                mainInputRef.current?.focus()
+                              }}
+                              title="Quote Reply in Chat"
+                              className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors"
+                            >
+                              <Reply className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => setActiveThreadParent(msg)}
                               title="Reply in thread"
                               className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors"
@@ -1083,16 +1151,48 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d]">
           <form onSubmit={handleSendMessage} className="relative flex flex-col gap-1.5">
             <div className="relative rounded-2xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]/20 transition-all p-3 shadow-xs">
+              
+              {/* In-Chat Quote Reply Preview Bar */}
+              {replyingTo && (
+                <div className="flex items-center justify-between mb-2.5 px-3 py-2 bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#1c273c] rounded-xl border-l-4 border-[var(--md-sys-color-primary)] text-xs animate-in slide-in-from-bottom-1 select-none">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 font-bold text-[var(--md-sys-color-primary)]">
+                      <Reply className="w-3.5 h-3.5 shrink-0" />
+                      <span>Replying to {replyingTo.senderName}</span>
+                    </div>
+                    <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 truncate mt-0.5">
+                      {replyingTo.messageType === 'file'
+                        ? `📎 ${replyingTo.fileName || 'Attachment'}`
+                        : replyingTo.messageType === 'meet_card'
+                        ? '📹 Video Meeting'
+                        : replyingTo.content}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+                    title="Cancel reply"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               <textarea
+                ref={mainInputRef}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
                     handleSendMessage()
+                  } else if (e.key === 'Escape' && replyingTo) {
+                    e.preventDefault()
+                    setReplyingTo(null)
                   }
                 }}
-                placeholder={`Message #${activeConv?.name || 'chat'}...`}
+                placeholder={replyingTo ? `Reply to ${replyingTo.senderName}...` : `Message #${activeConv?.name || 'chat'}...`}
                 rows={2}
                 className="w-full bg-transparent text-[13px] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none resize-none px-1 font-normal leading-relaxed"
               />
