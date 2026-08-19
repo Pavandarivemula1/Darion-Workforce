@@ -191,6 +191,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
                 callerRole: item.metadata?.callerRole || '',
                 conversationId: item.metadata?.conversationId || '',
                 callType: item.title?.includes('AUDIO') ? 'audio' : 'video',
+                recipientIds: item.metadata?.recipientIds || (resolvedUserId ? [resolvedUserId] : []),
                 meetUrl: item.link || `/meet/${roomCode}`,
                 startedAt: new Date().toISOString(),
               }
