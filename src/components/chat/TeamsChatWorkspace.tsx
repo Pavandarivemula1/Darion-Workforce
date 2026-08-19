@@ -142,18 +142,18 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'chat_messages',
           filter: `conversation_id=eq.${activeConvId}`,
         },
         async (payload) => {
-          // If received from another user, play incoming chime
-          if (payload.new && (payload.new as any).sender_id !== currentUserId) {
+          // If received from another user, play incoming chime on insert
+          if (payload.eventType === 'INSERT' && payload.new && (payload.new as any).sender_id !== currentUserId) {
             soundEffects.playNotificationSound()
           }
 
-          // If message is for thread or main feed, refresh messages
+          // Refresh messages
           const freshMessages = await getConversationMessagesAction(activeConvId)
           setMessages(freshMessages)
 
@@ -177,8 +177,26 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       )
       .subscribe()
 
+    // Also listen to broadcast call events to update call cards immediately
+    const callBroadcastChannel = supabase
+      .channel(`chat-calls-${activeConvId}`)
+      .on('broadcast', { event: 'call_declined' }, async () => {
+        const freshMessages = await getConversationMessagesAction(activeConvId)
+        setMessages(freshMessages)
+      })
+      .on('broadcast', { event: 'call_cancelled' }, async () => {
+        const freshMessages = await getConversationMessagesAction(activeConvId)
+        setMessages(freshMessages)
+      })
+      .on('broadcast', { event: 'call_accepted' }, async () => {
+        const freshMessages = await getConversationMessagesAction(activeConvId)
+        setMessages(freshMessages)
+      })
+      .subscribe()
+
     return () => {
       supabase.removeChannel(channel)
+      supabase.removeChannel(callBroadcastChannel)
     }
   }, [activeConvId, activeThreadParent, currentUserId])
 
@@ -777,13 +795,15 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                         {/* Content Box */}
                         <div
-                          className={`relative px-3.5 py-2 text-[13px] leading-[1.55] transition-all select-text ${
-                            isMe
-                              ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-normal rounded-2xl rounded-tr-xs shadow-md border border-[var(--md-sys-color-primary)]/40'
-                              : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#151d2c] dark:text-slate-100 dark:border-[#222e44] rounded-2xl rounded-tl-xs shadow-xs font-normal'
+                          className={`relative transition-all select-text ${
+                            msg.messageType === 'meet_card'
+                              ? 'p-0 bg-transparent border-0 shadow-none'
+                              : isMe
+                              ? 'px-3.5 py-2 text-[13px] leading-[1.55] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-normal rounded-2xl rounded-tr-xs shadow-md border border-[var(--md-sys-color-primary)]/40'
+                              : 'px-3.5 py-2 text-[13px] leading-[1.55] bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#151d2c] dark:text-slate-100 dark:border-[#222e44] rounded-2xl rounded-tl-xs shadow-xs font-normal'
                           }`}
                         >
-                          {/* Live Meet Card */}
+                          {/* Live Meet Card / Missed Call Card */}
                           {msg.messageType === 'meet_card' && <ChatMeetCard metadata={msg.metadata} />}
 
                           {/* File Card */}
@@ -850,8 +870,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             )
                           )}
 
-                          {/* Inline Time & Read Status for Sent messages */}
-                          {isMe && (
+                          {/* Inline Time & Read Status for Sent text messages */}
+                          {isMe && msg.messageType !== 'meet_card' && (
                             <div className="flex items-center justify-end gap-1 mt-1 -mb-0.5 text-[9.5px] opacity-75 select-none">
                               {(msg.isEdited || msg.metadata?.isEdited) && (
                                 <span className="text-[9px] opacity-70 italic font-medium mr-0.5">(edited)</span>
@@ -861,8 +881,16 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             </div>
                           )}
 
-                          {/* Inline Time & Edited Status for Received messages */}
-                          {!isMe && (msg.isEdited || msg.metadata?.isEdited) && (
+                          {/* Inline Time for Sent meet cards */}
+                          {isMe && msg.messageType === 'meet_card' && (
+                            <div className="flex items-center justify-end gap-1 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none">
+                              <span>{formatMessageTime(msg.createdAt)}</span>
+                              <CheckCheck className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
+                            </div>
+                          )}
+
+                          {/* Inline Time & Edited Status for Received text messages */}
+                          {!isMe && msg.messageType !== 'meet_card' && (msg.isEdited || msg.metadata?.isEdited) && (
                             <div className="flex items-center gap-1 mt-1 -mb-0.5 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic select-none">
                               <span>(edited)</span>
                             </div>

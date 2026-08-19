@@ -8,8 +8,6 @@ import {
   PhoneMissed,
   PhoneOff,
   ArrowUpRight,
-  Lock,
-  RotateCw,
   Radio,
 } from 'lucide-react'
 
@@ -36,8 +34,13 @@ export const ChatMeetCard: React.FC<ChatMeetCardProps> = ({ metadata }) => {
   const callType = metadata?.callType || 'video'
   const status = metadata?.status || 'connected'
 
+  const formattedTime = metadata?.startedAt
+    ? new Date(metadata.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : ''
+
   // Handle Call Back trigger
-  const handleCallBack = () => {
+  const handleCallBack = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('start-outgoing-call', {
@@ -56,150 +59,138 @@ export const ChatMeetCard: React.FC<ChatMeetCardProps> = ({ metadata }) => {
     }
   }
 
-  // 1. MISSED / DECLINED / CANCELLED CALL CARD (No direct meeting link, shows Missed Call banner + Call Back)
+  // 1. MISSED / DECLINED / CANCELLED CALL (RULED ENTERPRISE UI - NO MEETING LINK)
   if (status === 'missed' || status === 'declined' || status === 'cancelled') {
     const isMissed = status === 'missed'
     const isDeclined = status === 'declined'
-    const isCancelled = status === 'cancelled'
 
     return (
-      <div className="my-1.5 max-w-sm w-full rounded-2xl overflow-hidden border border-rose-500/30 bg-rose-950/10 dark:bg-rose-950/20 shadow-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-100 transition-all select-none">
-        <div className="p-3.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Red / Rose Phone Missed Icon Badge */}
-            <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-500 flex items-center justify-center flex-shrink-0 border border-rose-500/30 shadow-xs">
-              {callType === 'video' ? (
-                <PhoneMissed className="w-5 h-5 text-rose-500" />
-              ) : (
-                <PhoneOff className="w-5 h-5 text-rose-500" />
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
-                <span className="text-[10px] font-black tracking-wide text-rose-600 dark:text-rose-400 uppercase">
-                  {isMissed ? 'Missed Call' : isDeclined ? 'Declined Call' : 'Cancelled Call'}
-                </span>
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">• {callType.toUpperCase()}</span>
-              </div>
-              <h4 className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white truncate mt-0.5">
-                {hostName}
-              </h4>
-              <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 truncate">
-                {isMissed ? 'No answer • Call disconnected' : isDeclined ? 'Call was declined' : 'Call ended by caller'}
-              </p>
-            </div>
-          </div>
-
-          {/* Call Back Button */}
-          <button
-            type="button"
-            onClick={handleCallBack}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs active:scale-95 transition-all shadow-xs flex-shrink-0 cursor-pointer"
-            title="Call back"
-          >
-            {callType === 'video' ? (
-              <Video className="w-3.5 h-3.5" />
-            ) : (
-              <Phone className="w-3.5 h-3.5" />
-            )}
-            <span>Call Back</span>
-          </button>
-        </div>
-
-        <div className="px-3.5 py-1.5 bg-rose-500/5 border-t border-rose-500/20 flex items-center justify-between text-[10px] text-rose-400/90 font-medium">
-          <span>{callType === 'video' ? 'Video' : 'Voice'} Call wasn&apos;t connected</span>
-          <span className="text-[9px] opacity-75">Click Call Back to retry</span>
-        </div>
-      </div>
-    )
-  }
-
-  // 2. ACTIVE RINGING CALL CARD (In progress)
-  if (status === 'ringing') {
-    return (
-      <div className="my-1.5 max-w-sm w-full rounded-2xl overflow-hidden border border-amber-500/40 bg-amber-500/10 shadow-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-100 transition-all select-none animate-pulse">
-        <div className="p-3.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center flex-shrink-0 border border-amber-500/30">
-              <Radio className="w-5 h-5 animate-pulse text-amber-500" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping flex-shrink-0" />
-                <span className="text-[10px] font-black tracking-wide text-amber-600 dark:text-amber-400 uppercase">
-                  Ringing...
-                </span>
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">• {callType.toUpperCase()}</span>
-              </div>
-              <h4 className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white truncate mt-0.5">
-                {meetTitle}
-              </h4>
-              <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 truncate">
-                Calling by {hostName}...
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href={meetUrl}
-            className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs active:scale-95 transition-all shadow-xs flex-shrink-0"
-          >
-            <span>Answer</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  // 3. SUCCESSFUL CONNECTED MEETING / CALL CARD
-  return (
-    <div className="my-1.5 max-w-sm w-full rounded-2xl overflow-hidden border border-emerald-500/40 bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] shadow-sm text-[var(--md-sys-color-on-surface)] dark:text-slate-100 transition-all select-none">
-      <div className="p-3.5 flex items-center justify-between gap-3">
+      <div className="w-[310px] sm:w-[330px] rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-sm p-3.5 flex items-center justify-between gap-3 text-slate-800 dark:text-slate-100 select-none">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-500/30 shadow-xs">
+          {/* Subtle Rose/Red Icon Container */}
+          <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 dark:text-rose-400 flex items-center justify-center flex-shrink-0 border border-rose-100 dark:border-rose-900/30">
             {callType === 'video' ? (
-              <Video className="w-5 h-5 text-emerald-500" />
+              <PhoneMissed className="w-5 h-5" />
             ) : (
-              <Phone className="w-5 h-5 text-emerald-500" />
+              <PhoneOff className="w-5 h-5" />
             )}
           </div>
+
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-              <span className="text-[10px] font-black tracking-wide text-emerald-600 dark:text-emerald-400 uppercase">
-                Connected Meeting
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
+              <span className="text-[10px] font-bold tracking-wider text-rose-600 dark:text-rose-400 uppercase">
+                {isMissed ? 'Missed Call' : isDeclined ? 'Declined Call' : 'Cancelled'}
               </span>
-              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">• {roomCode}</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                • {callType.toUpperCase()}
+              </span>
             </div>
-            <h4 className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white truncate mt-0.5">
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
               {meetTitle}
             </h4>
-            <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 truncate">
-              Connected with {hostName}
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+              {isDeclined ? 'Call was declined' : 'No answer'} {formattedTime && `• ${formattedTime}`}
+            </p>
+          </div>
+        </div>
+
+        {/* 1-Click Call Back Action */}
+        <button
+          type="button"
+          onClick={handleCallBack}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white font-semibold text-xs transition-all active:scale-95 shadow-xs flex-shrink-0 cursor-pointer"
+          title="Call back"
+        >
+          {callType === 'video' ? (
+            <Video className="w-3.5 h-3.5" />
+          ) : (
+            <Phone className="w-3.5 h-3.5" />
+          )}
+          <span>Call Back</span>
+        </button>
+      </div>
+    )
+  }
+
+  // 2. ACTIVE RINGING IN-PROGRESS (RULED ENTERPRISE UI)
+  if (status === 'ringing') {
+    return (
+      <div className="w-[310px] sm:w-[330px] rounded-2xl bg-white dark:bg-[#111827] border border-amber-200 dark:border-amber-500/30 shadow-sm p-3.5 flex items-center justify-between gap-3 text-slate-800 dark:text-slate-100 select-none">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 dark:text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-100 dark:border-amber-900/30">
+            <Radio className="w-5 h-5 animate-pulse text-amber-500" />
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping flex-shrink-0" />
+              <span className="text-[10px] font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase">
+                Ringing...
+              </span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                • {callType.toUpperCase()}
+              </span>
+            </div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+              {meetTitle}
+            </h4>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+              Calling {hostName}...
             </p>
           </div>
         </div>
 
         <Link
           href={meetUrl}
-          target="_blank"
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs hover:opacity-95 active:scale-95 transition-all shadow-xs flex-shrink-0"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all active:scale-95 shadow-xs flex-shrink-0"
         >
-          <span>Join</span>
+          <span>Answer</span>
           <ArrowUpRight className="w-3.5 h-3.5" />
         </Link>
       </div>
+    )
+  }
 
-      <div className="px-3.5 py-1.5 bg-emerald-500/5 dark:bg-[#0e1424] border-t border-emerald-500/20 dark:border-[#1e293b] flex items-center justify-between text-[10px] text-emerald-600/90 dark:text-emerald-400/90 font-medium">
-        <div className="flex items-center gap-1.5">
-          <Lock className="w-3 h-3 text-emerald-500" />
-          <span>Active Enterprise Meeting</span>
+  // 3. SUCCESSFUL CONNECTED MEETING (RULED ENTERPRISE UI)
+  return (
+    <div className="w-[310px] sm:w-[330px] rounded-2xl bg-white dark:bg-[#111827] border border-emerald-200 dark:border-emerald-500/30 shadow-sm p-3.5 flex items-center justify-between gap-3 text-slate-800 dark:text-slate-100 select-none">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-100 dark:border-emerald-900/30">
+          {callType === 'video' ? (
+            <Video className="w-5 h-5" />
+          ) : (
+            <Phone className="w-5 h-5" />
+          )}
         </div>
-        <span className="text-[9px] opacity-75">Click Join to enter</span>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+            <span className="text-[10px] font-bold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+              Connected Meeting
+            </span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              • {roomCode}
+            </span>
+          </div>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+            {meetTitle}
+          </h4>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            Connected with {hostName} {formattedTime && `• ${formattedTime}`}
+          </p>
+        </div>
       </div>
+
+      <Link
+        href={meetUrl}
+        target="_blank"
+        className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all active:scale-95 shadow-xs flex-shrink-0"
+      >
+        <span>Join</span>
+        <ArrowUpRight className="w-3.5 h-3.5" />
+      </Link>
     </div>
   )
 }
