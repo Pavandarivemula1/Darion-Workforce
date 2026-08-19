@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { soundEffects } from '@/lib/utils/soundEffects'
-import { CallSessionPayload, respondToCallAction } from '@/app/actions/calls'
+import { CallSessionPayload, respondToCallAction, updateCallStatusAction } from '@/app/actions/calls'
 import {
   Phone,
   PhoneOff,
@@ -30,7 +30,6 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   const incomingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const ringingTransitionRef = useRef<NodeJS.Timeout | null>(null)
   const broadcastChannelRef = useRef<any>(null)
 
   // Resolve user id
@@ -48,28 +47,22 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   // Start outgoing call handler
   const startOutgoingCall = (payload: CallSessionPayload) => {
     setOutgoingCall(payload)
-    setOutgoingStatus('calling')
+    setOutgoingStatus('calling') // Start with "Calling..." (waiting for recipient to acknowledge)
     setOutgoingTimer(0)
-    soundEffects.startRingingOutgoing()
-
-    // Transition from Calling... to Ringing...
-    if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
-    ringingTransitionRef.current = setTimeout(() => {
-      setOutgoingStatus('ringing')
-    }, 1500)
 
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
     outgoingIntervalRef.current = setInterval(() => {
       setOutgoingTimer((prev) => prev + 1)
     }, 1000)
 
+    // Auto cancel after 35s if recipient never answers
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     outgoingTimeoutRef.current = setTimeout(() => {
       handleCancelOutgoing()
-    }, 40000)
+    }, 35000)
   }
 
-  // Start incoming call handler (Loud Ringing)
+  // Start incoming call handler (Loud Ringing on recipient)
   const triggerIncomingCall = (incoming: CallSessionPayload) => {
     // Don't ring if the caller is ourselves
     if (resolvedUserId && incoming.callerId === resolvedUserId) return
@@ -77,12 +70,12 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     setIncomingCall(incoming)
     soundEffects.startRingingIncoming()
 
-    // Notify caller that recipient device is ringing
+    // Acknowledge to caller that recipient device is ONLINE and actively RINGING
     if (broadcastChannelRef.current) {
       broadcastChannelRef.current.send({
         type: 'broadcast',
         event: 'call_ringing',
-        payload: { roomCode: incoming.roomCode },
+        payload: { roomCode: incoming.roomCode, recipientId: resolvedUserId },
       })
     }
 
@@ -132,19 +125,23 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
         }
       })
       .on('broadcast', { event: 'call_ringing' }, ({ payload }) => {
-        // When recipient is ringing, switch caller status immediately to 'ringing'
+        // Recipient is verified online and actively ringing:
+        // Transition caller from "Calling..." -> "Ringing..." and start playing ringback tone!
         setOutgoingStatus('ringing')
+        soundEffects.startRingingOutgoing()
+        if (payload?.roomCode) {
+          updateCallStatusAction(payload.roomCode, 'ringing').catch(() => {})
+        }
       })
-      .on('broadcast', { event: 'call_declined' }, ({ payload }) => {
+      .on('broadcast', { event: 'call_declined' }, () => {
         // When declined, cancel outgoing screen immediately
         soundEffects.playCallEndedSound()
         if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
         if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
-        if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
         setOutgoingCall(null)
         setOutgoingTimer(0)
       })
-      .on('broadcast', { event: 'call_cancelled' }, ({ payload }) => {
+      .on('broadcast', { event: 'call_cancelled' }, () => {
         // When caller hangs up/cancels, dismiss incoming screen immediately
         soundEffects.playCallEndedSound()
         if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
@@ -155,7 +152,6 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
         soundEffects.stopRinging()
         if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
         if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
-        if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
         setOutgoingCall(null)
         if (payload?.meetUrl) {
           router.push(payload.meetUrl)
@@ -268,7 +264,6 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     soundEffects.playCallEndedSound()
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
-    if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
 
     const cur = outgoingCall
     setOutgoingCall(null)
@@ -298,7 +293,6 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     soundEffects.stopRinging()
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
-    if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
 
     const url = outgoingCall.meetUrl
     setOutgoingCall(null)
@@ -403,8 +397,8 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
             </h3>
             <p className="text-xs text-slate-400 font-mono mb-8">
               {outgoingStatus === 'calling'
-                ? 'Connecting...'
-                : `Ringing • ${Math.floor(outgoingTimer / 60)}:${(outgoingTimer % 60).toString().padStart(2, '0')}`}
+                ? 'Connecting to recipient...'
+                : `Ringing on recipient's device • ${Math.floor(outgoingTimer / 60)}:${(outgoingTimer % 60).toString().padStart(2, '0')}`}
             </p>
 
             {/* Actions: Cancel & Direct Join */}

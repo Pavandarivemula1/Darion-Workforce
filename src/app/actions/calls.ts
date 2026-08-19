@@ -280,3 +280,42 @@ export async function respondToCallAction(params: {
     return { success: false, error: err.message }
   }
 }
+
+/**
+ * Update active call status (e.g. from calling to ringing)
+ */
+export async function updateCallStatusAction(
+  roomCode: string,
+  status: 'calling' | 'ringing'
+): Promise<{ success: boolean }> {
+  try {
+    const adminClient = createAdminClient()
+    const { data: msgs } = await adminClient
+      .from('chat_messages')
+      .select('id, metadata')
+      .filter('metadata->>roomCode', 'eq', roomCode)
+
+    if (msgs && msgs.length > 0) {
+      for (const m of msgs) {
+        const prevMeta = m.metadata || {}
+        if (
+          prevMeta.status !== 'connected' &&
+          prevMeta.status !== 'declined' &&
+          prevMeta.status !== 'missed' &&
+          prevMeta.status !== 'cancelled'
+        ) {
+          await adminClient
+            .from('chat_messages')
+            .update({
+              content: `${status}... (${prevMeta.callType || 'video'})`,
+              metadata: { ...prevMeta, status },
+            })
+            .eq('id', m.id)
+        }
+      }
+    }
+    return { success: true }
+  } catch {
+    return { success: false }
+  }
+}
