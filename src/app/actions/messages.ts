@@ -663,6 +663,76 @@ export async function toggleReactionAction(messageId: string, emoji: string) {
 }
 
 /**
+ * Edit an existing message content
+ */
+export async function editMessageAction(
+  messageId: string,
+  newContent: string
+): Promise<{ success: boolean; error?: string }> {
+  const user = await getCurrentUserFast()
+  if (!user) throw new Error('Unauthorized')
+
+  if (!newContent.trim()) {
+    return { success: false, error: 'Message content cannot be empty' }
+  }
+
+  const supabase = await getSupabase()
+
+  // 1. Check ownership
+  const { data: msg, error: fetchErr } = await supabase
+    .from('chat_messages')
+    .select('id, sender_id, conversation_id, metadata')
+    .eq('id', messageId)
+    .single()
+
+  if (fetchErr || !msg) {
+    return { success: false, error: 'Message not found' }
+  }
+
+  if (msg.sender_id !== user.id) {
+    return { success: false, error: 'Permission denied: You can only edit your own messages' }
+  }
+
+  // 2. Update content and mark is_edited = true
+  const updatedMetadata = {
+    ...(msg.metadata || {}),
+    isEdited: true,
+    editedAt: new Date().toISOString(),
+  }
+
+  const { error: updateErr } = await supabase
+    .from('chat_messages')
+    .update({
+      content: newContent.trim(),
+      is_edited: true,
+      updated_at: new Date().toISOString(),
+      metadata: updatedMetadata,
+    })
+    .eq('id', messageId)
+
+  if (updateErr) {
+    // If is_edited column is missing in schema, update without is_edited column
+    const { error: fallbackErr } = await supabase
+      .from('chat_messages')
+      .update({
+        content: newContent.trim(),
+        updated_at: new Date().toISOString(),
+        metadata: updatedMetadata,
+      })
+      .eq('id', messageId)
+
+    if (fallbackErr) {
+      return { success: false, error: fallbackErr.message }
+    }
+  }
+
+  revalidatePath('/admin/messages')
+  revalidatePath('/candidate/messages')
+
+  return { success: true }
+}
+
+/**
  * Delete a message (soft delete with deleted_at timestamp)
  */
 export async function deleteMessageAction(messageId: string): Promise<{ success: boolean; error?: string }> {

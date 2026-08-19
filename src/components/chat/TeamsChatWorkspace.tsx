@@ -28,6 +28,7 @@ import {
   Copy,
   Trash2,
   Forward,
+  Pencil,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -40,6 +41,7 @@ import {
   startInstantMeetInChatAction,
   markConversationAsReadAction,
   deleteMessageAction,
+  editMessageAction,
 } from '@/app/actions/messages'
 import { initiateCallAction } from '@/app/actions/calls'
 import { useBranding } from '@/components/providers/BrandingProvider'
@@ -91,6 +93,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessageItem | null>(null)
   const [isForwardOpen, setIsForwardOpen] = useState(false)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
@@ -262,6 +266,51 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       }
     } catch (err) {
       console.error('Failed to delete message:', err)
+    }
+  }
+
+  // Edit Message Handlers
+  const handleStartEdit = (msg: ChatMessageItem) => {
+    setEditingMessageId(msg.id)
+    setEditText(msg.content)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null)
+    setEditText('')
+  }
+
+  const handleSaveEdit = async (messageId: string) => {
+    if (!editText.trim()) return
+    const newText = editText.trim()
+
+    // Optimistic update
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, content: newText, isEdited: true, updatedAt: new Date().toISOString() }
+          : m
+      )
+    )
+    setThreadMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, content: newText, isEdited: true, updatedAt: new Date().toISOString() }
+          : m
+      )
+    )
+    setEditingMessageId(null)
+    setEditText('')
+
+    try {
+      const res = await editMessageAction(messageId, newText)
+      if (!res.success) {
+        alert(res.error || 'Failed to save edited message')
+        const fresh = await getConversationMessagesAction(activeConvId)
+        setMessages(fresh)
+      }
+    } catch (err: any) {
+      console.error('Failed to edit message:', err)
     }
   }
 
@@ -758,16 +807,64 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             </div>
                           )}
 
-                          {/* Regular Text */}
-                          {msg.content && msg.messageType !== 'meet_card' && (
-                            <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                          {/* Regular Text & Inline Edit Mode */}
+                          {editingMessageId === msg.id ? (
+                            <div className="w-full min-w-[240px] max-w-md py-1">
+                              <textarea
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault()
+                                    handleSaveEdit(msg.id)
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault()
+                                    handleCancelEdit()
+                                  }
+                                }}
+                                autoFocus
+                                rows={2}
+                                className="w-full p-2 text-xs rounded-xl bg-black/10 dark:bg-black/40 border border-white/20 text-inherit placeholder-white/60 focus:outline-none focus:ring-1 focus:ring-white resize-none"
+                              />
+                              <div className="flex items-center justify-end gap-1.5 mt-1.5 text-[11px]">
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEdit}
+                                  className="px-2.5 py-1 rounded-lg bg-black/20 hover:bg-black/30 text-inherit font-semibold transition-colors cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEdit(msg.id)}
+                                  className="px-3 py-1 rounded-lg bg-white text-blue-600 font-bold hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                                >
+                                  Save
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            msg.content &&
+                            msg.messageType !== 'meet_card' && (
+                              <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                            )
                           )}
 
                           {/* Inline Time & Read Status for Sent messages */}
                           {isMe && (
                             <div className="flex items-center justify-end gap-1 mt-1 -mb-0.5 text-[9.5px] opacity-75 select-none">
+                              {(msg.isEdited || msg.metadata?.isEdited) && (
+                                <span className="text-[9px] opacity-70 italic font-medium mr-0.5">(edited)</span>
+                              )}
                               <span>{formatMessageTime(msg.createdAt)}</span>
                               <CheckCheck className="w-3 h-3 text-white/90" />
+                            </div>
+                          )}
+
+                          {/* Inline Time & Edited Status for Received messages */}
+                          {!isMe && (msg.isEdited || msg.metadata?.isEdited) && (
+                            <div className="flex items-center gap-1 mt-1 -mb-0.5 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic select-none">
+                              <span>(edited)</span>
                             </div>
                           )}
 
@@ -795,6 +892,15 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             >
                               <MessageCircle className="w-3.5 h-3.5" />
                             </button>
+                            {isMe && msg.messageType === 'text' && (
+                              <button
+                                onClick={() => handleStartEdit(msg)}
+                                title="Edit message"
+                                className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleOpenForward(msg)}
                               title="Forward message"
