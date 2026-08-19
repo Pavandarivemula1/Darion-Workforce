@@ -50,6 +50,7 @@ import { ChatMeetCard } from './ChatMeetCard'
 import { NewChatModal } from './NewChatModal'
 import { NewChannelModal } from './NewChannelModal'
 import { ForwardMessageModal } from './ForwardMessageModal'
+import { EmojiAndGifPicker } from './EmojiAndGifPicker'
 import { soundEffects } from '@/lib/utils/soundEffects'
 
 interface TeamsChatWorkspaceProps {
@@ -302,6 +303,56 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       alert(err.message || 'Failed to send message')
     } finally {
       setSending(false)
+    }
+  }
+
+  // Handle Select Emoji from Picker
+  const handleSelectEmoji = (emoji: string) => {
+    setInputText((prev) => prev + emoji)
+    setShowEmojiPicker(false)
+    mainInputRef.current?.focus()
+  }
+
+  // Handle Select & Send GIF from Picker
+  const handleSelectGif = async (gifUrl: string, title: string) => {
+    if (!activeConvId) return
+    setShowEmojiPicker(false)
+    soundEffects.playMessageSentSound()
+
+    const replyMeta = replyingTo
+      ? {
+          replyTo: {
+            messageId: replyingTo.id,
+            senderName: replyingTo.senderName,
+            content:
+              replyingTo.messageType === 'file'
+                ? `📎 ${replyingTo.fileName || 'Attachment'}`
+                : replyingTo.messageType === 'meet_card'
+                ? '📹 Video Meeting'
+                : replyingTo.content,
+            messageType: replyingTo.messageType,
+          },
+          isGif: true,
+        }
+      : { isGif: true }
+
+    setReplyingTo(null)
+
+    try {
+      await sendMessageAction({
+        conversationId: activeConvId,
+        content: title,
+        messageType: 'file',
+        fileUrl: gifUrl,
+        fileName: `${title}.gif`,
+        fileType: 'image/gif',
+        metadata: replyMeta,
+      })
+      const fresh = await getConversationMessagesAction(activeConvId)
+      setMessages(fresh)
+    } catch (err: any) {
+      console.error('Failed to send GIF:', err)
+      alert(err.message || 'Failed to send GIF')
     }
   }
 
@@ -902,25 +953,44 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           {/* Live Meet Card / Missed Call Card */}
                           {msg.messageType === 'meet_card' && <ChatMeetCard metadata={msg.metadata} />}
 
-                          {/* File Card */}
+                          {/* File / GIF Card */}
                           {msg.messageType === 'file' && (
-                            <div className="my-1 p-2.5 rounded-xl bg-black/5 dark:bg-black/20 border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 truncate">
-                                <FileText className="w-4 h-4 flex-shrink-0 text-[var(--md-sys-color-primary)]" />
-                                <span className="font-semibold truncate text-[var(--md-sys-color-on-surface)] dark:text-slate-100">{msg.fileName || 'Attachment'}</span>
+                            msg.fileType === 'image/gif' ||
+                            msg.fileUrl?.includes('.gif') ||
+                            msg.fileUrl?.includes('giphy.gif') ||
+                            msg.metadata?.isGif ? (
+                              <div className="my-1.5 overflow-hidden rounded-2xl border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 max-w-[280px] shadow-sm bg-black/5 dark:bg-black/30">
+                                <img
+                                  src={msg.fileUrl}
+                                  alt={msg.fileName || 'GIF'}
+                                  loading="lazy"
+                                  className="w-full max-h-[220px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200"
+                                />
+                                {msg.content && msg.content !== msg.fileName && (
+                                  <div className="p-1.5 text-[11px] font-semibold text-center opacity-85 truncate">
+                                    {msg.content}
+                                  </div>
+                                )}
                               </div>
-                              {msg.fileUrl && (
-                                <a
-                                  href={msg.fileUrl}
-                                  download
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors text-[var(--md-sys-color-on-surface)] dark:text-white"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                </a>
-                              )}
-                            </div>
+                            ) : (
+                              <div className="my-1 p-2.5 rounded-xl bg-black/5 dark:bg-black/20 border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 truncate">
+                                  <FileText className="w-4 h-4 flex-shrink-0 text-[var(--md-sys-color-primary)]" />
+                                  <span className="font-semibold truncate text-[var(--md-sys-color-on-surface)] dark:text-slate-100">{msg.fileName || 'Attachment'}</span>
+                                </div>
+                                {msg.fileUrl && (
+                                  <a
+                                    href={msg.fileUrl}
+                                    download
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors text-[var(--md-sys-color-on-surface)] dark:text-white"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                              </div>
+                            )
                           )}
 
                           {/* Regular Text & Inline Edit Mode */}
@@ -1250,22 +1320,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Quick Emoji Picker Strip */}
+            {/* Full Emoji & Animated GIF Picker Popover */}
             {showEmojiPicker && (
-              <div className="flex items-center gap-1 p-2 rounded-xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#1e293b] border border-[var(--md-sys-color-outline-variant)] dark:border-slate-700 shadow-xl animate-in fade-in zoom-in-95">
-                {COMMON_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => {
-                      setInputText((prev) => prev + emoji)
-                      setShowEmojiPicker(false)
-                    }}
-                    className="p-1 text-sm hover:scale-125 transition-transform"
-                  >
-                    {emoji}
-                  </button>
-                ))}
+              <div className="absolute bottom-full left-0 mb-3 z-50 animate-in fade-in zoom-in-95">
+                <EmojiAndGifPicker
+                  onSelectEmoji={handleSelectEmoji}
+                  onSelectGif={handleSelectGif}
+                  onClose={() => setShowEmojiPicker(false)}
+                />
               </div>
             )}
           </form>
