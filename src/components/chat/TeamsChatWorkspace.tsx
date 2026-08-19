@@ -26,6 +26,8 @@ import {
   Radio,
   Share2,
   Copy,
+  Trash2,
+  Forward,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -37,11 +39,13 @@ import {
   toggleReactionAction,
   startInstantMeetInChatAction,
   markConversationAsReadAction,
+  deleteMessageAction,
 } from '@/app/actions/messages'
 import { useBranding } from '@/components/providers/BrandingProvider'
 import { ChatMeetCard } from './ChatMeetCard'
 import { NewChatModal } from './NewChatModal'
 import { NewChannelModal } from './NewChannelModal'
+import { ForwardMessageModal } from './ForwardMessageModal'
 
 interface TeamsChatWorkspaceProps {
   currentUserId: string
@@ -83,6 +87,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [threadInputText, setThreadInputText] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessageItem | null>(null)
+  const [isForwardOpen, setIsForwardOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
@@ -231,6 +237,29 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     } catch (err) {
       console.error('Failed to toggle reaction:', err)
     }
+  }
+
+  // Delete Message Handler
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) return
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    setThreadMessages((prev) => prev.filter((m) => m.id !== messageId))
+    try {
+      const res = await deleteMessageAction(messageId)
+      if (!res.success) {
+        alert(res.error || 'Failed to delete message')
+        const fresh = await getConversationMessagesAction(activeConvId)
+        setMessages(fresh)
+      }
+    } catch (err) {
+      console.error('Failed to delete message:', err)
+    }
+  }
+
+  // Forward Message Handler
+  const handleOpenForward = (msg: ChatMessageItem) => {
+    setForwardingMessage(msg)
+    setIsForwardOpen(true)
   }
 
   // Start Instant Video Meet in Chat
@@ -726,6 +755,13 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               <MessageCircle className="w-3.5 h-3.5" />
                             </button>
                             <button
+                              onClick={() => handleOpenForward(msg)}
+                              title="Forward message"
+                              className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors"
+                            >
+                              <Forward className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => handleCopyMessage(msg.id, msg.content || '')}
                               title="Copy text"
                               className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors"
@@ -736,6 +772,15 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 <Copy className="w-3.5 h-3.5" />
                               )}
                             </button>
+                            {(isMe || currentUserRole === 'admin' || currentUserRole === 'superadmin') && (
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id)}
+                                title="Delete message"
+                                className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -967,6 +1012,20 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           const fresh = await getConversationsListAction()
           setConversations(fresh)
           setActiveConvId(convId)
+        }}
+      />
+
+      <ForwardMessageModal
+        isOpen={isForwardOpen}
+        onClose={() => {
+          setIsForwardOpen(false)
+          setForwardingMessage(null)
+        }}
+        message={forwardingMessage}
+        conversations={conversations}
+        onForwarded={async () => {
+          const fresh = await getConversationMessagesAction(activeConvId)
+          setMessages(fresh)
         }}
       />
     </div>

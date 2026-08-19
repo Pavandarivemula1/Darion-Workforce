@@ -663,6 +663,159 @@ export async function toggleReactionAction(messageId: string, emoji: string) {
 }
 
 /**
+ * Delete a message (soft delete with deleted_at timestamp)
+ */
+export async function deleteMessageAction(messageId: string): Promise<{ success: boolean; error?: string }> {
+  const user = await getCurrentUserFast()
+  if (!user) throw new Error('Unauthorized')
+
+  const supabase = await getSupabase()
+
+  // 1. Fetch message to check ownership or admin role
+  const { data: msg, error: fetchErr } = await supabase
+    .from('chat_messages')
+    .select('id, sender_id, conversation_id')
+    .eq('id', messageId)
+    .single()
+
+  if (fetchErr || !msg) {
+    return { success: false, error: 'Message not found' }
+  }
+
+  // 2. Fetch user role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const isAuthor = msg.sender_id === user.id
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin' || profile?.role === 'manager'
+
+  if (!isAuthor && !isAdmin) {
+    return { success: false, error: 'Permission denied: You can only delete your own messages' }
+  }
+
+  // 3. Mark deleted_at
+  const { error: delErr } = await supabase
+    .from('chat_messages')
+    .update({
+      deleted_at: new Date().toISOString(),
+      content: '[This message was deleted]',
+    })
+    .eq('id', messageId)
+
+  if (delErr) {
+    return { success: false, error: delErr.message }
+  }
+
+  revalidatePath('/admin/messages')
+  revalidatePath('/candidate/messages')
+
+  return { success: true }
+}
+
+/**
+ * Forward an existing message to one or more target conversations
+ */
+export async function forwardMessageAction(payload: {
+  messageId: string
+  targetConversationIds: string[]
+  additionalComment?: string
+}): Promise<{ success: boolean; count: number; error?: string }> {
+  const user = await getCurrentUserFast()
+  if (!user) throw new Error('Unauthorized')
+
+  if (!payload.targetConversationIds || payload.targetConversationIds.length === 0) {
+    return { success: false, count: 0, error: 'Please select at least one conversation' }
+  }
+
+  const supabase = await getSupabase()
+
+  // 1. Fetch source message
+  const { data: sourceMsg, error: fetchErr } = await supabase
+    .from('chat_messages')
+    .select(`
+      id,
+      content,
+      message_type,
+      file_url,
+      file_name,
+      file_size_bytes,
+      file_type,
+      metadata,
+      profiles:sender_id (full_name)
+    `)
+    .eq('id', payload.messageId)
+    .single()
+
+  if (fetchErr || !sourceMsg) {
+    return { success: false, count: 0, error: 'Source message not found' }
+  }
+
+  const originalSenderName = (sourceMsg.profiles as any)?.full_name || 'Team Member'
+  let forwardCount = 0
+
+  for (const convId of payload.targetConversationIds) {
+    let effectiveConvId = convId
+
+    // Handle fallback default channels if needed
+    if (effectiveConvId.startsWith('default-')) {
+      const slug = effectiveConvId.replace('default-', '')
+      const { data: existingChannel } = await supabase
+        .from('chat_conversations')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle()
+      if (existingChannel) effectiveConvId = existingChannel.id
+    }
+
+    const forwardedMetadata = {
+      ...(sourceMsg.metadata || {}),
+      isForwarded: true,
+      originalSenderName,
+      originalMessageId: sourceMsg.id,
+      forwardedAt: new Date().toISOString(),
+    }
+
+    const { data: newMsg, error: insErr } = await supabase
+      .from('chat_messages')
+      .insert({
+        conversation_id: effectiveConvId,
+        sender_id: user.id,
+        content: payload.additionalComment
+          ? `${payload.additionalComment}\n\n↳ Forwarded from ${originalSenderName}:\n${sourceMsg.content || ''}`
+          : (sourceMsg.content || ''),
+        message_type: sourceMsg.message_type || 'text',
+        file_url: sourceMsg.file_url,
+        file_name: sourceMsg.file_name,
+        file_size_bytes: sourceMsg.file_size_bytes,
+        file_type: sourceMsg.file_type,
+        metadata: forwardedMetadata,
+      })
+      .select('id')
+      .single()
+
+    if (!insErr && newMsg) {
+      forwardCount++
+      // Update conversation last_message_at
+      await supabase
+        .from('chat_conversations')
+        .update({
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', effectiveConvId)
+    }
+  }
+
+  revalidatePath('/admin/messages')
+  revalidatePath('/candidate/messages')
+
+  return { success: true, count: forwardCount }
+}
+
+/**
  * Initiate a 1:1 Direct Message with another user
  */
 export async function createDirectMessageAction(targetUserId: string): Promise<string> {
