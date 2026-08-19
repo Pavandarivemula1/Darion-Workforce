@@ -338,6 +338,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
           const fresh = await getConversationMessagesAction(activeConvId)
           setMessages(fresh)
+          broadcastChatActivity()
         } catch (err: any) {
           alert(err.message || 'Failed to send voice note')
         } finally {
@@ -544,35 +545,78 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Real-time Supabase Subscription for Messages & Reactions
+  // Refresh messages helper
+  const refreshMessages = useCallback(async (playIncomingSound = false) => {
+    if (!activeConvId) return
+    try {
+      const freshMessages = await getConversationMessagesAction(activeConvId)
+      setMessages(freshMessages)
+
+      if (playIncomingSound) {
+        soundEffects.playNotificationSound()
+      }
+
+      if (activeThreadParent) {
+        const threadMsgs = await getConversationMessagesAction(activeConvId, activeThreadParent.id)
+        setThreadMessages(threadMsgs)
+      }
+    } catch (err) {
+      console.error('Failed to refresh messages:', err)
+    }
+  }, [activeConvId, activeThreadParent])
+
+  // Instant broadcast trigger to all active peers
+  const broadcastChatActivity = useCallback(() => {
+    if (!activeConvId) return
+    try {
+      const supabase = createClient()
+      const channel = supabase.channel(`chat-realtime-${activeConvId}`)
+      channel.send({
+        type: 'broadcast',
+        event: 'chat_activity',
+        payload: { conversationId: activeConvId, timestamp: Date.now() },
+      })
+    } catch {}
+  }, [activeConvId])
+
+  // Real-time Supabase Subscription & Resilient Auto-Sync
   useEffect(() => {
     if (!activeConvId) return
 
     const supabase = createClient()
 
-    const channel = supabase
-      .channel(`chat-room-${activeConvId}`)
+    // 1. Direct WebSocket Broadcast Channel (Instant 0ms latency between peers)
+    const realtimeChannel = supabase
+      .channel(`chat-realtime-${activeConvId}`)
+      .on('broadcast', { event: 'chat_activity' }, async () => {
+        await refreshMessages(true)
+      })
+      .on('broadcast', { event: 'call_declined' }, async () => {
+        await refreshMessages()
+      })
+      .on('broadcast', { event: 'call_cancelled' }, async () => {
+        await refreshMessages()
+      })
+      .on('broadcast', { event: 'call_accepted' }, async () => {
+        await refreshMessages()
+      })
+      .subscribe()
+
+    // 2. Postgres Database Changes listener
+    const dbChannel = supabase
+      .channel(`chat-db-${activeConvId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'chat_messages',
-          filter: `conversation_id=eq.${activeConvId}`,
         },
         async (payload) => {
-          // If received from another user, play incoming chime on insert
-          if (payload.eventType === 'INSERT' && payload.new && (payload.new as any).sender_id !== currentUserId) {
-            soundEffects.playNotificationSound()
-          }
-
-          // Refresh messages
-          const freshMessages = await getConversationMessagesAction(activeConvId)
-          setMessages(freshMessages)
-
-          if (activeThreadParent) {
-            const threadMsgs = await getConversationMessagesAction(activeConvId, activeThreadParent.id)
-            setThreadMessages(threadMsgs)
+          const msgConvId = (payload.new as any)?.conversation_id || (payload.old as any)?.conversation_id
+          if (!msgConvId || msgConvId === activeConvId) {
+            const isIncoming = payload.eventType === 'INSERT' && (payload.new as any)?.sender_id !== currentUserId
+            await refreshMessages(isIncoming)
           }
         }
       )
@@ -584,34 +628,35 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           table: 'chat_reactions',
         },
         async () => {
-          const freshMessages = await getConversationMessagesAction(activeConvId)
-          setMessages(freshMessages)
+          await refreshMessages()
         }
       )
       .subscribe()
 
-    // Also listen to broadcast call events to update call cards immediately
-    const callBroadcastChannel = supabase
-      .channel(`chat-calls-${activeConvId}`)
-      .on('broadcast', { event: 'call_declined' }, async () => {
-        const freshMessages = await getConversationMessagesAction(activeConvId)
-        setMessages(freshMessages)
-      })
-      .on('broadcast', { event: 'call_cancelled' }, async () => {
-        const freshMessages = await getConversationMessagesAction(activeConvId)
-        setMessages(freshMessages)
-      })
-      .on('broadcast', { event: 'call_accepted' }, async () => {
-        const freshMessages = await getConversationMessagesAction(activeConvId)
-        setMessages(freshMessages)
-      })
-      .subscribe()
+    // 3. Resilient Polling Heartbeat (every 3 seconds when tab is active)
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        refreshMessages()
+      }
+    }, 3000)
+
+    // 4. Instant Refresh on Tab Focus / Visibility Change
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        refreshMessages()
+      }
+    }
+    window.addEventListener('visibilitychange', handleVisibilityOrFocus)
+    window.addEventListener('focus', handleVisibilityOrFocus)
 
     return () => {
-      supabase.removeChannel(channel)
-      supabase.removeChannel(callBroadcastChannel)
+      clearInterval(pollInterval)
+      window.removeEventListener('visibilitychange', handleVisibilityOrFocus)
+      window.removeEventListener('focus', handleVisibilityOrFocus)
+      supabase.removeChannel(realtimeChannel)
+      supabase.removeChannel(dbChannel)
     }
-  }, [activeConvId, activeThreadParent, currentUserId])
+  }, [activeConvId, currentUserId, refreshMessages])
 
   // Real-time Conversation List unread count listener
   useEffect(() => {
@@ -685,6 +730,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       // Refresh messages list
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
+      broadcastChatActivity()
     } catch (err: any) {
       console.error('Failed to send message:', err)
       alert(err.message || 'Failed to send message')
@@ -737,6 +783,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       })
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
+      broadcastChatActivity()
     } catch (err: any) {
       console.error('Failed to send GIF:', err)
       alert(err.message || 'Failed to send GIF')
@@ -762,6 +809,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       setThreadMessages(threadMsgs)
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
+      broadcastChatActivity()
     } catch (err: any) {
       console.error('Failed to send reply:', err)
     }
@@ -773,6 +821,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       await toggleReactionAction(messageId, emoji)
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
+      broadcastChatActivity()
     } catch (err) {
       console.error('Failed to toggle reaction:', err)
     }
@@ -789,6 +838,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         alert(res.error || 'Failed to delete message')
         const fresh = await getConversationMessagesAction(activeConvId)
         setMessages(fresh)
+      } else {
+        broadcastChatActivity()
       }
     } catch (err) {
       console.error('Failed to delete message:', err)
@@ -834,6 +885,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         alert(res.error || 'Failed to save edited message')
         const fresh = await getConversationMessagesAction(activeConvId)
         setMessages(fresh)
+      } else {
+        broadcastChatActivity()
       }
     } catch (err: any) {
       console.error('Failed to edit message:', err)
@@ -917,6 +970,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
+      broadcastChatActivity()
     } catch (err: any) {
       alert(err.message || 'Failed to upload attachment')
     } finally {
