@@ -937,7 +937,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       </div>
 
                       {/* Message Bubble Container */}
-                      <div className={`max-w-[76%] md:max-w-[65%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                         {/* Header info (Only for first message in group) */}
                         {!isConsecutive && (
                           <div className={`flex items-center gap-1.5 mb-1 px-1 text-[11px] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -952,12 +952,12 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                         {/* Content Box */}
                         <div
-                          className={`relative transition-all select-text ${
+                          className={`relative transition-all select-text max-w-full min-w-0 ${
                             msg.messageType === 'meet_card' || isGif
                               ? 'p-0 bg-transparent border-0 shadow-none'
                               : isMe
-                              ? 'px-4 py-2.5 text-[13.5px] leading-relaxed bg-[var(--md-sys-color-primary)] text-white font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent'
-                              : 'px-4 py-2.5 text-[13.5px] leading-relaxed bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#131c2e] dark:text-slate-100 dark:border-[#202d46] rounded-2xl rounded-tl-xs shadow-2xs font-normal'
+                              ? 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-primary)] text-white font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent'
+                              : 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#131c2e] dark:text-slate-100 dark:border-[#202d46] rounded-2xl rounded-tl-xs shadow-2xs font-normal'
                           }`}
                         >
                           {/* In-Chat Quoted Tagging / Reply Bubble */}
@@ -967,7 +967,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 e.stopPropagation()
                                 scrollToMessage((msg.replyTo || msg.metadata?.replyTo).messageId)
                               }}
-                              className={`mb-2 p-2.5 rounded-xl border-l-[3.5px] cursor-pointer transition-all active:scale-[0.98] text-left select-none shadow-2xs ${
+                              className={`mb-2 p-2 sm:p-2.5 rounded-xl border-l-[3.5px] cursor-pointer transition-all active:scale-[0.98] text-left select-none shadow-2xs max-w-full min-w-0 overflow-hidden ${
                                 isMe
                                   ? 'bg-black/20 dark:bg-black/40 border-white/90 hover:bg-black/30 text-white'
                                   : 'bg-black/5 dark:bg-slate-800/80 border-[var(--md-sys-color-primary)] hover:bg-black/10 dark:hover:bg-slate-800 text-[var(--md-sys-color-on-surface)] dark:text-slate-200'
@@ -975,7 +975,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             >
                               <div className={`flex items-center gap-1 text-[11px] font-bold truncate ${isMe ? 'text-white/90' : 'text-[var(--md-sys-color-primary)]'}`}>
                                 <Reply className="w-3 h-3 shrink-0" />
-                                <span>{(msg.replyTo || msg.metadata?.replyTo).senderName}</span>
+                                <span className="truncate">{(msg.replyTo || msg.metadata?.replyTo).senderName}</span>
                               </div>
                               <p className="text-[11px] opacity-80 truncate mt-0.5 line-clamp-1">
                                 {(msg.replyTo || msg.metadata?.replyTo).content}
@@ -988,7 +988,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                           {/* Pure Animated GIF Card (Borderless, Frameless, No Title Text) */}
                           {isGif && msg.fileUrl && (
-                            <div className="relative group/gif overflow-hidden rounded-2xl shadow-md max-w-[280px] my-0.5">
+                            <div className="relative group/gif overflow-hidden rounded-2xl shadow-md max-w-full sm:max-w-[280px] my-0.5">
                               <img
                                 src={msg.fileUrl}
                                 alt="GIF"
@@ -1000,20 +1000,20 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                           {/* Regular File Attachment Card */}
                           {msg.messageType === 'file' && !isGif && (
-                            <div className={`my-1.5 p-3 rounded-2xl border flex items-center justify-between gap-3 shadow-2xs ${
+                            <div className={`my-1 p-2.5 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3 shadow-2xs max-w-full min-w-0 overflow-hidden ${
                               isMe
                                 ? 'bg-black/20 dark:bg-black/40 border-white/20 text-white'
                                 : 'bg-black/5 dark:bg-[#192338] border-[var(--md-sys-color-outline-variant)] dark:border-[#283652] text-[var(--md-sys-color-on-surface)] dark:text-slate-100'
                             }`}>
-                              <div className="flex items-center gap-2.5 truncate">
-                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
+                                <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
                                   isMe ? 'bg-white/20 text-white' : 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)]'
                                 }`}>
-                                  <FileText className="w-5 h-5" />
+                                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                                 </div>
-                                <div className="truncate">
-                                  <span className="font-bold text-xs truncate block">{msg.fileName || 'Attachment Document'}</span>
-                                  <span className="text-[10px] block opacity-80 uppercase font-medium mt-0.5">
+                                <div className="min-w-0 flex-1 overflow-hidden">
+                                  <span className="font-bold text-xs truncate block max-w-full">{msg.fileName || 'Attachment Document'}</span>
+                                  <span className="text-[10px] block opacity-80 uppercase font-medium mt-0.5 truncate">
                                     {msg.fileType ? msg.fileType.split('/')[1] || 'File' : 'File'}
                                   </span>
                                 </div>
@@ -1024,14 +1024,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                   download
                                   target="_blank"
                                   rel="noreferrer"
-                                  className={`p-2 rounded-xl transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer ${
+                                  className={`p-1.5 sm:p-2 rounded-xl transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer ${
                                     isMe
                                       ? 'bg-white/20 hover:bg-white/30 text-white'
                                       : 'bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-[var(--md-sys-color-on-surface)] dark:text-white'
                                   }`}
                                   title="Download file"
                                 >
-                                  <Download className="w-4 h-4" />
+                                  <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </a>
                               )}
                             </div>
@@ -1039,7 +1039,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                           {/* Regular Text & Inline Edit Mode */}
                           {editingMessageId === msg.id ? (
-                            <div className="w-full min-w-[240px] max-w-md py-1">
+                            <div className="w-full min-w-0 max-w-md py-1">
                               <textarea
                                 value={editText}
                                 onChange={(e) => setEditText(e.target.value)}
@@ -1077,7 +1077,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             msg.content &&
                             msg.messageType !== 'meet_card' &&
                             !isGif && (
-                              <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                              <div className="whitespace-pre-wrap break-words [word-break:break-word] overflow-hidden max-w-full">{msg.content}</div>
                             )
                           )}
 
