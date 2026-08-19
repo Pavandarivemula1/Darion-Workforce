@@ -232,36 +232,38 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
   const hoursList = Array.from({ length: 24 }, (_, i) => i)
 
   return (
-    <div className="flex flex-col h-full w-full rounded-none overflow-hidden border-0 bg-[var(--md-sys-color-surface-container-low)]">
+    <div className="flex flex-col h-full w-full rounded-none overflow-hidden border-0 bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 font-sans">
       {/* 1. TOP CONTROL BAR */}
-      <header className="p-3 sm:p-4 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex flex-wrap items-center justify-between gap-3">
+      <header className="p-3 sm:p-4 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] flex flex-wrap items-center justify-between gap-3">
         {/* Navigation & Title */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[var(--md-sys-color-primary)] text-black flex items-center justify-center font-bold">
-            <CalendarIcon className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center flex-shrink-0 border border-[var(--md-sys-color-outline-variant)]/60 dark:border-slate-700 shadow-2xs">
+            <CalendarIcon className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
           </div>
 
           <div className="flex items-center gap-2">
-            <h2 className="text-base sm:text-lg font-bold text-[var(--md-sys-color-on-surface)]">
+            <h2 className="text-base sm:text-lg font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">
               {getHeaderTitle()}
             </h2>
 
-            <div className="flex items-center rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] p-0.5 ml-2">
+            <div className="flex items-center rounded-xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] p-0.5 ml-2 shadow-2xs">
               <button
                 onClick={handlePrev}
-                className="p-1 rounded-lg hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors"
+                title="Previous period"
+                className="p-1 rounded-lg hover:bg-[var(--md-sys-color-surface-container-high)] dark:hover:bg-slate-800 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:text-white transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={handleToday}
-                className="px-2.5 py-0.5 rounded-lg text-xs font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors"
+                className="px-2.5 py-0.5 rounded-lg text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white hover:bg-[var(--md-sys-color-surface-container-high)] dark:hover:bg-slate-800 transition-colors"
               >
                 Today
               </button>
               <button
                 onClick={handleNext}
-                className="p-1 rounded-lg hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors"
+                title="Next period"
+                className="p-1 rounded-lg hover:bg-[var(--md-sys-color-surface-container-high)] dark:hover:bg-slate-800 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:text-white transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -272,15 +274,15 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
         {/* View Switcher Pills & Actions */}
         <div className="flex items-center flex-wrap gap-2">
           {/* View selector pills */}
-          <div className="flex items-center rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] p-1 text-xs font-semibold">
+          <div className="flex items-center rounded-xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] p-1 text-xs shadow-2xs">
             {(['month', 'week', 'work_week', 'day', 'agenda'] as CalendarViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-2.5 py-1 rounded-lg transition-all capitalize ${
+                className={`px-3 py-1 rounded-lg transition-all capitalize text-xs ${
                   viewMode === mode
-                    ? 'bg-[var(--md-sys-color-primary)] text-black font-bold shadow-sm'
-                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold shadow-xs'
+                    : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-[var(--md-sys-color-on-surface)] dark:hover:text-white hover:bg-[var(--md-sys-color-surface-container-high)] dark:hover:bg-slate-800 font-medium'
                 }`}
               >
                 {mode.replace('_', ' ')}
@@ -292,7 +294,7 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
           <button
             onClick={handleExportICS}
             title="Download .ics for Google / Outlook / Apple Calendar"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs font-semibold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-xs font-semibold text-[var(--md-sys-color-on-surface)] dark:text-slate-200 hover:bg-[var(--md-sys-color-surface-container-high)] dark:hover:bg-slate-800 transition-colors shadow-2xs"
           >
             <Download className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Export iCal</span>
@@ -305,85 +307,85 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
               setCreateDefaultTime('10:00')
               setIsCreateOpen(true)
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--md-sys-color-primary)] text-black font-bold text-xs tracking-wide hover:opacity-90 active:scale-95 transition-all shadow-md"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold text-xs hover:opacity-90 active:scale-95 transition-all shadow-xs"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>New Event</span>
           </button>
         </div>
       </header>
 
       {/* 2. LAYER FILTER CHIPS BAR */}
-      <div className="px-4 py-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-high)]/40 flex items-center justify-between gap-2 overflow-x-auto">
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[11px] font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider mr-1 flex items-center gap-1">
-            <Layers className="w-3 h-3" />
+      <div className="px-4 py-2.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface-container-low)] dark:bg-[#0c111d]/60 flex items-center justify-between gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+            <Layers className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
             Layers:
           </span>
 
           <button
             onClick={() => setLayerShifts(!layerShifts)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border ${
               layerShifts
-                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
-                : 'bg-[var(--md-sys-color-surface-container)] border-transparent text-[var(--md-sys-color-on-surface-variant)] opacity-50'
+                ? 'bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 font-semibold shadow-2xs'
+                : 'bg-transparent border-transparent text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 opacity-40 line-through'
             }`}
           >
-            <Clock className="w-3 h-3" />
+            <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
             <span>Shifts</span>
           </button>
 
           <button
             onClick={() => setLayerMeets(!layerMeets)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border ${
               layerMeets
-                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                : 'bg-[var(--md-sys-color-surface-container)] border-transparent text-[var(--md-sys-color-on-surface-variant)] opacity-50'
+                ? 'bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 font-semibold shadow-2xs'
+                : 'bg-transparent border-transparent text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 opacity-40 line-through'
             }`}
           >
-            <Video className="w-3 h-3" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
             <span>Video Meets</span>
           </button>
 
           <button
             onClick={() => setLayerLeaves(!layerLeaves)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border ${
               layerLeaves
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                : 'bg-[var(--md-sys-color-surface-container)] border-transparent text-[var(--md-sys-color-on-surface-variant)] opacity-50'
+                ? 'bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 font-semibold shadow-2xs'
+                : 'bg-transparent border-transparent text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 opacity-40 line-through'
             }`}
           >
-            <Palmtree className="w-3 h-3" />
+            <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
             <span>Leaves & Offs</span>
           </button>
 
           <button
             onClick={() => setLayerTasks(!layerTasks)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border ${
               layerTasks
-                ? 'bg-purple-500/20 border-purple-500/40 text-purple-400'
-                : 'bg-[var(--md-sys-color-surface-container)] border-transparent text-[var(--md-sys-color-on-surface-variant)] opacity-50'
+                ? 'bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 font-semibold shadow-2xs'
+                : 'bg-transparent border-transparent text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 opacity-40 line-through'
             }`}
           >
-            <CheckSquare className="w-3 h-3" />
+            <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />
             <span>Tasks</span>
           </button>
 
           <button
             onClick={() => setLayerEvents(!layerEvents)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border ${
               layerEvents
-                ? 'bg-blue-500/20 border-blue-500/40 text-blue-400'
-                : 'bg-[var(--md-sys-color-surface-container)] border-transparent text-[var(--md-sys-color-on-surface-variant)] opacity-50'
+                ? 'bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 font-semibold shadow-2xs'
+                : 'bg-transparent border-transparent text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 opacity-40 line-through'
             }`}
           >
-            <Sparkles className="w-3 h-3" />
+            <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
             <span>Events</span>
           </button>
         </div>
 
         {loading && (
-          <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] animate-pulse">
+          <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 animate-pulse">
             Syncing calendar feed...
           </span>
         )}
@@ -395,14 +397,14 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
         {viewMode === 'month' && (
           <div className="h-full flex flex-col min-w-[700px]">
             {/* Weekday Header Row */}
-            <div className="grid grid-cols-7 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-center text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] py-2">
+            <div className="grid grid-cols-7 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 py-2.5">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
                 <div key={d}>{d}</div>
               ))}
             </div>
 
             {/* Day Cells Grid */}
-            <div className="flex-1 grid grid-cols-7 auto-rows-fr divide-x divide-y divide-[var(--md-sys-color-outline-variant)]/60">
+            <div className="flex-1 grid grid-cols-7 auto-rows-fr divide-x divide-y divide-[var(--md-sys-color-outline-variant)]/60 dark:divide-[#1e293b]/60">
               {monthDays.map((cell) => {
                 const dayEvents = events.filter((e) => e.startTime.startsWith(cell.dateStr))
 
@@ -412,8 +414,8 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                     onClick={() => handleSlotClick(cell.dateStr)}
                     className={`min-h-[100px] p-1.5 transition-colors flex flex-col justify-between group cursor-pointer ${
                       cell.isCurrentMonth
-                        ? 'bg-[var(--md-sys-color-surface-container-lowest)] hover:bg-[var(--md-sys-color-surface-container-high)]/40'
-                        : 'bg-[var(--md-sys-color-surface-container)]/30 opacity-40'
+                        ? 'bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12] hover:bg-[var(--md-sys-color-surface-container-high)]/40 dark:hover:bg-[#0f1626]'
+                        : 'bg-[var(--md-sys-color-surface-container)]/20 dark:bg-black/20 opacity-35'
                     }`}
                   >
                     {/* Date number */}
@@ -421,8 +423,8 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                       <span
                         className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
                           cell.isToday
-                            ? 'bg-[var(--md-sys-color-primary)] text-black shadow-md'
-                            : 'text-[var(--md-sys-color-on-surface)]'
+                            ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                            : 'text-[var(--md-sys-color-on-surface)] dark:text-slate-200'
                         }`}
                       >
                         {cell.date.getDate()}
@@ -432,7 +434,7 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                           e.stopPropagation()
                           handleSlotClick(cell.dateStr)
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container-highest)] dark:hover:bg-slate-800 transition-opacity"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -449,12 +451,11 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                           }}
                           style={{
                             borderLeftColor: evt.color,
-                            backgroundColor: `${evt.color}15`,
                           }}
-                          className="w-full text-left px-2 py-0.5 rounded text-[11px] font-semibold border-l-2 truncate flex items-center justify-between gap-1 hover:brightness-125 transition-all text-[var(--md-sys-color-on-surface)] shadow-2xs"
+                          className="w-full text-left px-2 py-0.5 rounded text-[11px] font-medium border-l-2 truncate flex items-center justify-between gap-1 transition-all text-[var(--md-sys-color-on-surface)] dark:text-slate-200 bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)]/60 dark:border-[#24324c] hover:border-[var(--md-sys-color-primary)] shadow-2xs"
                         >
                           <span className="truncate">{evt.title}</span>
-                          {evt.meetUrl && <Video className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />}
+                          {evt.meetUrl && <Video className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />}
                         </button>
                       ))}
                       {dayEvents.length > 3 && (
@@ -474,13 +475,15 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
         {(viewMode === 'week' || viewMode === 'work_week') && (
           <div className="flex flex-col h-full min-w-[750px] overflow-y-auto">
             {/* Header Columns */}
-            <div className={`grid ${viewMode === 'work_week' ? 'grid-cols-6' : 'grid-cols-8'} border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-center py-2 sticky top-0 z-10`}>
-              <div className="text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] py-1">Time</div>
+            <div className={`grid ${viewMode === 'work_week' ? 'grid-cols-6' : 'grid-cols-8'} border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b] bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] text-center py-2 sticky top-0 z-10`}>
+              <div className="text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 py-1">Time</div>
               {weekDays.map((col) => (
                 <div
                   key={col.dateStr}
                   className={`py-1 rounded-xl mx-1 ${
-                    col.isToday ? 'bg-[var(--md-sys-color-primary)]/15 text-[var(--md-sys-color-primary)] font-bold' : 'text-[var(--md-sys-color-on-surface)]'
+                    col.isToday
+                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
+                      : 'text-[var(--md-sys-color-on-surface)] dark:text-slate-200'
                   }`}
                 >
                   <div className="text-xs font-bold">{col.dayName}</div>
@@ -489,12 +492,12 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
             </div>
 
             {/* Time Grid Rows */}
-            <div className="flex-1 divide-y divide-[var(--md-sys-color-outline-variant)]/40">
+            <div className="flex-1 divide-y divide-[var(--md-sys-color-outline-variant)]/40 dark:divide-[#1e293b]/50">
               {hoursList.map((hour) => {
                 const hourLabel = `${hour.toString().padStart(2, '0')}:00`
                 return (
-                  <div key={hour} className={`grid ${viewMode === 'work_week' ? 'grid-cols-6' : 'grid-cols-8'} min-h-[48px] divide-x divide-[var(--md-sys-color-outline-variant)]/40`}>
-                    <div className="p-2 text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono text-center">
+                  <div key={hour} className={`grid ${viewMode === 'work_week' ? 'grid-cols-6' : 'grid-cols-8'} min-h-[48px] divide-x divide-[var(--md-sys-color-outline-variant)]/40 dark:divide-[#1e293b]/50`}>
+                    <div className="p-2 text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 font-mono text-center">
                       {hourLabel}
                     </div>
 
@@ -511,7 +514,7 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                         <div
                           key={col.dateStr}
                           onClick={() => handleSlotClick(col.dateStr, hourLabel)}
-                          className="p-1 hover:bg-[var(--md-sys-color-surface-container-high)]/40 transition-colors cursor-pointer relative group"
+                          className="p-1 hover:bg-[var(--md-sys-color-surface-container-high)]/40 dark:hover:bg-slate-800/30 transition-colors cursor-pointer relative group"
                         >
                           {curSlotEvents.map((evt) => (
                             <button
@@ -522,12 +525,11 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                               }}
                               style={{
                                 borderLeftColor: evt.color,
-                                backgroundColor: `${evt.color}20`,
                               }}
-                              className="w-full text-left p-1.5 rounded-lg border-l-3 text-[11px] font-bold text-[var(--md-sys-color-on-surface)] truncate shadow-sm hover:brightness-125 transition-all mb-1 block"
+                              className="w-full text-left p-1.5 rounded-lg border-l-2 text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)]/60 dark:border-[#24324c] truncate shadow-2xs hover:border-[var(--md-sys-color-primary)] transition-all mb-1 block"
                             >
                               <div className="truncate font-semibold">{evt.title}</div>
-                              <div className="text-[10px] opacity-75">{evt.badgeText}</div>
+                              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">{evt.badgeText}</div>
                             </button>
                           ))}
                         </div>
@@ -543,20 +545,20 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
         {/* DAY TIMELINE VIEW */}
         {viewMode === 'day' && (
           <div className="p-4 max-w-3xl mx-auto space-y-3">
-            <div className="p-3 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
-              <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+            <div className="p-3.5 rounded-2xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] flex items-center justify-between shadow-2xs">
+              <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">
                 {currentDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
               </h3>
               <button
                 onClick={() => handleSlotClick(currentDate.toISOString().split('T')[0])}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-black font-bold text-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold text-xs hover:opacity-90 active:scale-95 transition-all shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Event</span>
               </button>
             </div>
 
-            <div className="divide-y divide-[var(--md-sys-color-outline-variant)]/60 bg-[var(--md-sys-color-surface-container-low)] rounded-2xl border border-[var(--md-sys-color-outline-variant)]">
+            <div className="divide-y divide-[var(--md-sys-color-outline-variant)]/60 dark:divide-[#1e293b] bg-[var(--md-sys-color-surface-container-low)] dark:bg-[#0c111d] rounded-2xl border border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]">
               {hoursList.map((hour) => {
                 const dateStr = currentDate.toISOString().split('T')[0]
                 const hourLabel = `${hour.toString().padStart(2, '0')}:00`
@@ -569,9 +571,9 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                   <div
                     key={hour}
                     onClick={() => handleSlotClick(dateStr, hourLabel)}
-                    className="p-3 flex items-start gap-4 hover:bg-[var(--md-sys-color-surface-container-high)]/30 transition-colors cursor-pointer group"
+                    className="p-3 flex items-start gap-4 hover:bg-[var(--md-sys-color-surface-container-high)]/30 dark:hover:bg-slate-800/20 transition-colors cursor-pointer group"
                   >
-                    <span className="w-14 text-xs font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] flex-shrink-0">
+                    <span className="w-14 text-xs font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 flex-shrink-0">
                       {hourLabel}
                     </span>
 
@@ -589,17 +591,17 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                               setSelectedItem(evt)
                             }}
                             style={{ borderLeftColor: evt.color }}
-                            className="p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] border-l-4 shadow-sm flex items-center justify-between gap-3 cursor-pointer hover:shadow-md transition-all"
+                            className="p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] border-l-4 shadow-2xs flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--md-sys-color-primary)] transition-all"
                           >
                             <div>
                               <span
                                 className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase mb-1"
-                                style={{ backgroundColor: `${evt.color}25`, color: evt.color }}
+                                style={{ backgroundColor: `${evt.color}15`, color: evt.color }}
                               >
                                 {evt.badgeText}
                               </span>
-                              <h4 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">{evt.title}</h4>
-                              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{evt.description}</p>
+                              <h4 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">{evt.title}</h4>
+                              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">{evt.description}</p>
                             </div>
                             {evt.meetUrl && (
                               <a
@@ -607,7 +609,7 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                                 target="_blank"
                                 rel="noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-black font-bold text-xs"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold text-xs hover:opacity-90 active:scale-95 transition-all shadow-xs"
                               >
                                 <Video className="w-3.5 h-3.5" />
                                 <span>Join</span>
@@ -626,9 +628,9 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
 
         {/* AGENDA LIST VIEW */}
         {viewMode === 'agenda' && (
-          <div className="p-4 max-w-4xl mx-auto space-y-4">
+          <div className="p-4 max-w-4xl mx-auto space-y-3">
             {events.length === 0 ? (
-              <div className="py-16 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              <div className="py-16 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
                 No events scheduled for the selected period.
               </div>
             ) : (
@@ -637,17 +639,17 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                   key={evt.id}
                   onClick={() => setSelectedItem(evt)}
                   style={{ borderLeftColor: evt.color }}
-                  className="p-4 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] border-l-4 shadow-sm hover:shadow-lg transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
+                  className="p-4 rounded-2xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] border-l-4 shadow-2xs hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span
                         className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
-                        style={{ backgroundColor: `${evt.color}25`, color: evt.color }}
+                        style={{ backgroundColor: `${evt.color}15`, color: evt.color }}
                       >
                         {evt.badgeText}
                       </span>
-                      <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">
                         {new Date(evt.startTime).toLocaleDateString([], {
                           weekday: 'short',
                           month: 'short',
@@ -659,9 +661,9 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                       </span>
                     </div>
 
-                    <h4 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">{evt.title}</h4>
+                    <h4 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">{evt.title}</h4>
                     {evt.description && (
-                      <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{evt.description}</p>
+                      <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">{evt.description}</p>
                     )}
                   </div>
 
@@ -672,10 +674,10 @@ export const PerfectCalendarWorkspace: React.FC<PerfectCalendarWorkspaceProps> =
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs tracking-wide transition-all shadow-md"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold text-xs hover:opacity-90 active:scale-95 transition-all shadow-xs"
                       >
                         <Video className="w-3.5 h-3.5" />
-                        <span>Join Video Call</span>
+                        <span>Join Call</span>
                       </a>
                     )}
                   </div>

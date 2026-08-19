@@ -93,20 +93,20 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ item, onClos
 
           {/* Video Meet Call Banner */}
           {item.meetUrl && (
-            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
+            <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] flex items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500 text-black flex items-center justify-center font-bold">
-                  <Video className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center font-bold">
+                  <Video className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-xs text-emerald-400">Live Video Meeting</h4>
-                  <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">WebRTC HD Video & Screen Sharing</p>
+                  <h4 className="font-bold text-xs text-[var(--md-sys-color-on-surface)] dark:text-white">Live Video Meeting</h4>
+                  <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">WebRTC HD Video & Screen Sharing</p>
                 </div>
               </div>
               <Link
                 href={item.meetUrl}
                 target="_blank"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs tracking-wide transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold text-xs tracking-wide hover:opacity-90 active:scale-95 transition-all shadow-xs"
               >
                 <span>Join Meet</span>
                 <ExternalLink className="w-3 h-3" />

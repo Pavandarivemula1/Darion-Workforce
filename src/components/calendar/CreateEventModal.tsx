@@ -339,7 +339,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-[var(--md-sys-color-primary)] text-black hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all shadow-md"
             >
               {loading ? (
                 <>
