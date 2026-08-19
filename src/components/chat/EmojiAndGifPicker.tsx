@@ -481,7 +481,7 @@ export const EmojiAndGifPicker: React.FC<EmojiAndGifPickerProps> = ({
                 <button
                   key={gif.id}
                   type="button"
-                  onClick={() => onSelectGif(gif.url, gif.title)}
+                  onClick={() => onSelectGif?.(gif.url, gif.title)}
                   className="group relative rounded-xl overflow-hidden bg-black/20 border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 hover:border-[var(--md-sys-color-primary)] hover:shadow-lg transition-all active:scale-95 cursor-pointer aspect-video flex items-center justify-center"
                 >
                   <img
