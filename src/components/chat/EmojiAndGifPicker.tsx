@@ -17,8 +17,11 @@ import {
 
 interface EmojiAndGifPickerProps {
   onSelectEmoji: (emoji: string) => void
-  onSelectGif: (gifUrl: string, title: string) => void
+  onSelectGif?: (gifUrl: string, title: string) => void
   onClose: () => void
+  initialTab?: 'emoji' | 'gif'
+  hideGifTab?: boolean
+  title?: string
 }
 
 // 1. Comprehensive Categorized Emoji Packs
@@ -225,8 +228,11 @@ export const EmojiAndGifPicker: React.FC<EmojiAndGifPickerProps> = ({
   onSelectEmoji,
   onSelectGif,
   onClose,
+  initialTab = 'emoji',
+  hideGifTab = false,
+  title,
 }) => {
-  const [activeTab, setActiveTab] = useState<'emoji' | 'gif'>('emoji')
+  const [activeTab, setActiveTab] = useState<'emoji' | 'gif'>(initialTab)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('smileys')
   const [recentEmojis, setRecentEmojis] = useState<string[]>([])
@@ -288,39 +294,48 @@ export const EmojiAndGifPicker: React.FC<EmojiAndGifPickerProps> = ({
     >
       {/* Header: Tabs & Close */}
       <div className="flex items-center justify-between pb-2.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e2a42]">
-        <div className="flex items-center gap-1 bg-black/5 dark:bg-black/30 p-0.5 rounded-xl border border-[var(--md-sys-color-outline-variant)]/60 dark:border-white/5">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('emoji')
-              setSearchQuery('')
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'emoji'
-                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
-                : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-[var(--md-sys-color-on-surface)]'
-            }`}
-          >
-            <Smile className="w-3.5 h-3.5" />
-            <span>Emojis</span>
-          </button>
+        {hideGifTab ? (
+          <div className="flex items-center gap-1.5 px-1">
+            <Smile className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+            <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">
+              {title || 'React with Emoji'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 bg-black/5 dark:bg-black/30 p-0.5 rounded-xl border border-[var(--md-sys-color-outline-variant)]/60 dark:border-white/5">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('emoji')
+                setSearchQuery('')
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'emoji'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              <Smile className="w-3.5 h-3.5" />
+              <span>Emojis</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('gif')
-              setSearchQuery('')
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'gif'
-                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
-                : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-[var(--md-sys-color-on-surface)]'
-            }`}
-          >
-            <Film className="w-3.5 h-3.5" />
-            <span>GIFs</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('gif')
+                setSearchQuery('')
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'gif'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              <Film className="w-3.5 h-3.5" />
+              <span>GIFs</span>
+            </button>
+          </div>
+        )}
 
         <button
           type="button"

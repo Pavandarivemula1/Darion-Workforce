@@ -30,6 +30,7 @@ import {
   Forward,
   Pencil,
   Reply,
+  SmilePlus,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -98,6 +99,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [replyingTo, setReplyingTo] = useState<ChatMessageItem | null>(null)
+  const [reactingMessageId, setReactingMessageId] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
@@ -118,6 +120,20 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       }, 2000)
     }
   }
+
+  // Close message reaction picker on outside click or Escape
+  useEffect(() => {
+    const handleGlobalClick = () => setReactingMessageId(null)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setReactingMessageId(null)
+    }
+    window.addEventListener('click', handleGlobalClick)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('click', handleGlobalClick)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
 
   // Load messages whenever active conversation changes
   useEffect(() => {
@@ -1088,12 +1104,23 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               <button
                                 key={emoji}
                                 onClick={() => handleReaction(msg.id, emoji)}
-                                className="p-1 hover:scale-125 transition-transform"
+                                className="p-1 hover:scale-125 transition-transform cursor-pointer"
                                 title={`React ${emoji}`}
                               >
                                 {emoji}
                               </button>
                             ))}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setReactingMessageId(reactingMessageId === msg.id ? null : msg.id)
+                              }}
+                              title="React with any emoji"
+                              className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] hover:scale-120 transition-all cursor-pointer"
+                            >
+                              <SmilePlus className="w-3.5 h-3.5" />
+                            </button>
                             <div className="w-px h-3 bg-[var(--md-sys-color-outline-variant)] dark:bg-slate-700 mx-0.5" />
                             <button
                               onClick={() => {
@@ -1149,6 +1176,26 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               </button>
                             )}
                           </div>
+
+                          {/* Full Emoji Picker Popover Anchored to Message for Reactions */}
+                          {reactingMessageId === msg.id && (
+                            <div
+                              className={`absolute bottom-full ${
+                                isMe ? 'right-0' : 'left-0'
+                              } mb-3 z-50 animate-in fade-in zoom-in-95`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <EmojiAndGifPicker
+                                onSelectEmoji={(emoji) => {
+                                  handleReaction(msg.id, emoji)
+                                  setReactingMessageId(null)
+                                }}
+                                onClose={() => setReactingMessageId(null)}
+                                hideGifTab
+                                title="React with Any Emoji"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Inline Time for Sent GIF cards or Meet cards */}
