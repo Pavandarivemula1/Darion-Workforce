@@ -1,7 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { getCurrentUserFast } from '@/lib/auth/cached'
+import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { sendNotification, sendBulkNotification } from '@/lib/utils/notifications'
 import { revalidatePath } from 'next/cache'
 
@@ -151,13 +150,14 @@ export async function initiateCallAction(params: {
     }
 
     if (recipientIds.length > 0) {
-      await sendBulkNotification(
-        recipientIds,
-        'meet_started',
-        `📞 Incoming ${callType.toUpperCase()} Call: ${callerName}`,
-        `${callerName} is calling you for "${callTitle}". Click to answer.`,
-        `/meet/${room.room_code}`
-      )
+      const notifications = recipientIds.map((uid) => ({
+        userId: uid,
+        type: 'meet_started' as const,
+        title: `📞 Incoming ${callType.toUpperCase()} Call: ${callerName}`,
+        message: `${callerName} is calling you for "${callTitle}". Click to answer.`,
+        link: `/meet/${room.room_code}`,
+      }))
+      await sendBulkNotification(notifications)
     }
 
     revalidatePath('/admin/messages')
@@ -187,32 +187,34 @@ export async function respondToCallAction(params: {
       return { success: true, meetUrl: `/meet/${params.roomCode}` }
     }
 
-    if (params.response === 'decline') {
+    if (params.response === 'decline' && params.callerId) {
       // Send quick notification to caller that call was declined
-      await sendNotification(
-        params.callerId,
-        'chat_message',
-        'Call Declined',
-        'The recipient is currently unavailable.',
-        undefined
-      )
+      await sendNotification({
+        userId: params.callerId,
+        type: 'chat_message',
+        title: 'Call Declined',
+        message: 'The recipient is currently unavailable.',
+      })
       return { success: true }
     }
 
     if (params.response === 'missed') {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', params.callerId)
-        .single()
+      let callerName = 'a teammate'
+      if (params.callerId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', params.callerId)
+          .single()
+        if (profile?.full_name) callerName = profile.full_name
+      }
 
-      await sendNotification(
-        user.id,
-        'chat_message',
-        'Missed Call',
-        `You missed a call from ${profile?.full_name || 'a teammate'}.`,
-        undefined
-      )
+      await sendNotification({
+        userId: user.id,
+        type: 'chat_message',
+        title: 'Missed Call',
+        message: `You missed a call from ${callerName}.`,
+      })
       return { success: true }
     }
 
