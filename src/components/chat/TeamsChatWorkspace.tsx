@@ -32,6 +32,10 @@ import {
   Pencil,
   Reply,
   SmilePlus,
+  Mic,
+  MicOff,
+  Maximize2,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -53,6 +57,8 @@ import { NewChatModal } from './NewChatModal'
 import { NewChannelModal } from './NewChannelModal'
 import { ForwardMessageModal } from './ForwardMessageModal'
 import { EmojiAndGifPicker } from './EmojiAndGifPicker'
+import { ImagePreviewModal } from './ImagePreviewModal'
+import { VoiceNotePlayer } from './VoiceNotePlayer'
 import { soundEffects } from '@/lib/utils/soundEffects'
 
 interface TeamsChatWorkspaceProps {
@@ -103,6 +109,18 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [reactingMessageId, setReactingMessageId] = useState<string | null>(null)
   const [mobileActionMessage, setMobileActionMessage] = useState<ChatMessageItem | null>(null)
 
+  // Image Lightbox Preview State
+  const [previewImage, setPreviewImage] = useState<{
+    url: string
+    fileName?: string
+    fileSize?: number
+  } | null>(null)
+
+  // Voice Note Recording State
+  const [isRecordingVoice, setIsRecordingVoice] = useState<boolean>(false)
+  const [recordingDuration, setRecordingDuration] = useState<number>(0)
+  const [recordingWaveformLevels, setRecordingWaveformLevels] = useState<number[]>([0.3, 0.5, 0.2, 0.7, 0.4, 0.6, 0.3, 0.5])
+
   // Touch Gestures State
   const [swipingMessageId, setSwipingMessageId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<number>(0)
@@ -120,6 +138,16 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const lastTapRef = useRef<{ time: number; msgId: string } | null>(null)
   const hasTriggeredHaptic = useRef<boolean>(false)
   const actionSheetTouchStartRef = useRef<number | null>(null)
+
+  // Audio Recording Refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioStreamRef = useRef<MediaStream | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const waveformSamplesRef = useRef<number[]>([])
 
   const activeConv = conversations.find((c) => c.id === activeConvId)
 
@@ -145,6 +173,183 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     }
     setActionSheetPullOffset(0)
     actionSheetTouchStartRef.current = null
+  }
+
+  // Voice Note Recording Handlers
+  const handleStartVoiceRecording = async () => {
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        alert('Microphone access is not supported by your browser')
+        return
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      audioStreamRef.current = stream
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : 'audio/webm'
+
+      const recorder = new MediaRecorder(stream, { mimeType })
+      mediaRecorderRef.current = recorder
+      audioChunksRef.current = []
+      waveformSamplesRef.current = []
+
+      // Audio analysis for live animated visualizer
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        audioContextRef.current = audioCtx
+        const source = audioCtx.createMediaStreamSource(stream)
+        const analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 64
+        source.connect(analyser)
+        analyserRef.current = analyser
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+        const updateWaveform = () => {
+          if (!analyserRef.current) return
+          analyserRef.current.getByteFrequencyData(dataArray)
+          
+          let sum = 0
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i]
+          }
+          const avg = sum / dataArray.length / 255
+          const normalized = Math.max(0.15, Math.min(1.0, avg * 2.2))
+
+          waveformSamplesRef.current.push(normalized)
+          if (waveformSamplesRef.current.length > 32) {
+            waveformSamplesRef.current.shift()
+          }
+
+          setRecordingWaveformLevels((prev) => {
+            return [...prev.slice(1), normalized]
+          })
+
+          animationFrameRef.current = requestAnimationFrame(updateWaveform)
+        }
+
+        animationFrameRef.current = requestAnimationFrame(updateWaveform)
+      } catch (err) {
+        console.warn('Audio analyser skipped:', err)
+      }
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data)
+        }
+      }
+
+      recorder.start(100)
+      setIsRecordingVoice(true)
+      setRecordingDuration(0)
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1)
+      }, 1000)
+    } catch (err: any) {
+      alert(err.message || 'Microphone access was denied')
+    }
+  }
+
+  const handleStopVoiceRecording = async (shouldSend: boolean) => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {})
+      audioContextRef.current = null
+    }
+
+    const stream = audioStreamRef.current
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop())
+      audioStreamRef.current = null
+    }
+
+    const recorder = mediaRecorderRef.current
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop()
+    }
+
+    const duration = recordingDuration
+    const recordedWaveform = [...waveformSamplesRef.current]
+
+    setIsRecordingVoice(false)
+    setRecordingDuration(0)
+
+    if (shouldSend && activeConvId) {
+      setTimeout(async () => {
+        try {
+          setSending(true)
+          const chunks = audioChunksRef.current
+          if (!chunks.length) return
+
+          const mimeType = recorder?.mimeType || 'audio/webm'
+          const audioBlob = new Blob(chunks, { type: mimeType })
+          const supabase = createClient()
+          const fileName = `voice-${Date.now()}.webm`
+          const filePath = `chat-files/${activeConvId}/${fileName}`
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('chat-attachments')
+            .upload(filePath, audioBlob, { contentType: mimeType })
+
+          let fileUrl = ''
+          if (!uploadError && uploadData) {
+            const { data: publicUrlData } = supabase.storage.from('chat-attachments').getPublicUrl(filePath)
+            fileUrl = publicUrlData.publicUrl
+          } else {
+            fileUrl = URL.createObjectURL(audioBlob)
+          }
+
+          await sendMessageAction({
+            conversationId: activeConvId,
+            content: `🎤 Voice note (${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')})`,
+            messageType: 'file',
+            fileUrl,
+            fileName: 'Voice Note',
+            fileSizeBytes: audioBlob.size,
+            fileType: mimeType,
+            metadata: {
+              isVoiceNote: true,
+              duration,
+              waveform: recordedWaveform.length >= 10 ? recordedWaveform : undefined,
+              replyTo: replyingTo
+                ? {
+                    messageId: replyingTo.id,
+                    senderName: replyingTo.senderName,
+                    content: replyingTo.content,
+                    messageType: replyingTo.messageType,
+                  }
+                : undefined,
+            },
+          })
+          setReplyingTo(null)
+          soundEffects.playMessageSentSound()
+
+          const fresh = await getConversationMessagesAction(activeConvId)
+          setMessages(fresh)
+        } catch (err: any) {
+          alert(err.message || 'Failed to send voice note')
+        } finally {
+          setSending(false)
+          audioChunksRef.current = []
+        }
+      }, 250)
+    } else {
+      audioChunksRef.current = []
+    }
   }
 
   // Touch Gestures Handlers
@@ -1047,6 +1252,18 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   msg.fileUrl?.includes('giphy.gif') ||
                   msg.metadata?.isGif)
 
+              const isAudio =
+                msg.messageType === 'file' &&
+                (msg.fileType?.startsWith('audio/') ||
+                  msg.metadata?.isVoiceNote ||
+                  Boolean(msg.fileUrl?.match(/\.(webm|mp3|m4a|wav|ogg|aac)($|\?)/i)))
+
+              const isImage =
+                msg.messageType === 'file' &&
+                !isGif &&
+                (msg.fileType?.startsWith('image/') ||
+                  Boolean(msg.fileUrl?.match(/\.(jpeg|jpg|png|webp|svg|bmp|heic)($|\?)/i)))
+
               return (
                 <React.Fragment key={msg.id}>
                   {/* Sticky Date Divider */}
@@ -1145,7 +1362,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                         {/* Content Box */}
                         <div
                           className={`relative transition-all select-text max-w-full min-w-0 ${
-                            msg.messageType === 'meet_card' || isGif
+                            msg.messageType === 'meet_card' || isGif || isImage || isAudio
                               ? 'p-0 bg-transparent border-0 shadow-none'
                               : isMe
                               ? 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-primary)] text-white font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent'
@@ -1178,20 +1395,71 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           {/* Live Meet Card / Missed Call Card */}
                           {msg.messageType === 'meet_card' && <ChatMeetCard metadata={msg.metadata} />}
 
-                          {/* Pure Animated GIF Card (Borderless, Frameless, No Title Text) */}
+                          {/* Pure Animated GIF Card (Click to preview fullscreen) */}
                           {isGif && msg.fileUrl && (
-                            <div className="relative group/gif overflow-hidden rounded-2xl shadow-md max-w-full sm:max-w-[280px] my-0.5">
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setPreviewImage({
+                                  url: msg.fileUrl!,
+                                  fileName: msg.fileName || 'GIF Animation',
+                                  fileSize: msg.fileSizeBytes,
+                                })
+                              }}
+                              className="relative group/gif overflow-hidden rounded-2xl shadow-md max-w-full sm:max-w-[280px] my-0.5 cursor-pointer"
+                              title="Click to view full size"
+                            >
                               <img
                                 src={msg.fileUrl}
                                 alt="GIF"
                                 loading="lazy"
-                                className="w-full max-h-[240px] object-cover rounded-2xl hover:scale-[1.02] transition-transform duration-200"
+                                className="w-full max-h-[240px] object-cover rounded-2xl group-hover:scale-[1.02] transition-transform duration-200"
                               />
                             </div>
                           )}
 
+                          {/* Rich Image Card (Click to open full Image Lightbox Preview) */}
+                          {!isGif && isImage && msg.fileUrl && (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setPreviewImage({
+                                  url: msg.fileUrl!,
+                                  fileName: msg.fileName || 'Image Attachment',
+                                  fileSize: msg.fileSizeBytes,
+                                })
+                              }}
+                              className="relative group/img overflow-hidden rounded-2xl shadow-sm border border-[var(--md-sys-color-outline-variant)]/60 dark:border-white/10 max-w-full sm:max-w-[320px] my-1 cursor-pointer bg-black/5 dark:bg-black/20"
+                              title="Click to open image preview"
+                            >
+                              <img
+                                src={msg.fileUrl}
+                                alt={msg.fileName || 'Image'}
+                                loading="lazy"
+                                className="w-full max-h-[260px] object-cover rounded-2xl group-hover:scale-[1.02] transition-transform duration-200"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
+                                <span className="px-3 py-1.5 rounded-xl bg-black/75 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg">
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                  <span>Preview</span>
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Inbuilt Voice Notes / Audio Player */}
+                          {!isGif && isAudio && msg.fileUrl && (
+                            <VoiceNotePlayer
+                              audioUrl={msg.fileUrl}
+                              fileName={msg.fileName || 'Voice Note'}
+                              durationSec={msg.metadata?.duration}
+                              waveform={msg.metadata?.waveform}
+                              isMe={isMe}
+                            />
+                          )}
+
                           {/* Regular File Attachment Card */}
-                          {msg.messageType === 'file' && !isGif && (
+                          {msg.messageType === 'file' && !isGif && !isImage && !isAudio && (
                             <div className={`my-1 p-2.5 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3 shadow-2xs max-w-full min-w-0 overflow-hidden ${
                               isMe
                                 ? 'bg-black/20 dark:bg-black/40 border-white/20 text-white'
@@ -1517,75 +1785,140 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                 </div>
               )}
 
-              <textarea
-                ref={mainInputRef}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSendMessage()
-                  } else if (e.key === 'Escape' && replyingTo) {
-                    e.preventDefault()
-                    setReplyingTo(null)
-                  }
-                }}
-                placeholder={replyingTo ? `Reply to ${replyingTo.senderName}...` : `Message #${activeConv?.name || 'chat'}...`}
-                rows={2}
-                className="w-full bg-transparent text-[13px] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none resize-none px-1 font-normal leading-relaxed"
-              />
+              {/* Live Voice Note Recording Bar */}
+              {isRecordingVoice ? (
+                <div className="flex items-center justify-between gap-2 sm:gap-3 p-1 min-h-[48px] animate-in fade-in select-none">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <span className="w-3 h-3 rounded-full bg-red-500 animate-ping absolute" />
+                      <span className="w-3 h-3 rounded-full bg-red-500 relative" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] sm:text-xs font-bold text-red-500 truncate">
+                        Recording...
+                      </span>
+                      <span className="text-[10px] sm:text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">
+                        {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Composer Toolbar */}
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 dark:border-[#1e293b]/80">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Attach File"
-                    className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 transition-colors"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
+                  {/* Dynamic Fluctuating Soundwave Bars */}
+                  <div className="flex items-center gap-[3px] sm:gap-1 h-6 flex-1 max-w-[120px] sm:max-w-[180px] justify-center px-1 sm:px-2">
+                    {recordingWaveformLevels.map((lvl, i) => (
+                      <div
+                        key={i}
+                        className="w-1 rounded-full bg-red-500 transition-all duration-75"
+                        style={{ height: `${Math.max(20, lvl * 100)}%` }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Cancel & Send Actions */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleStopVoiceRecording(false)}
+                      className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer"
+                      title="Discard recording"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleStopVoiceRecording(true)}
+                      disabled={recordingDuration < 1}
+                      className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-red-600/20 cursor-pointer"
+                      title="Send voice note"
+                    >
+                      <span>Send</span>
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    ref={mainInputRef}
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage()
+                      } else if (e.key === 'Escape' && replyingTo) {
+                        e.preventDefault()
+                        setReplyingTo(null)
+                      }
+                    }}
+                    placeholder={replyingTo ? `Reply to ${replyingTo.senderName}...` : `Message #${activeConv?.name || 'chat'}...`}
+                    rows={2}
+                    className="w-full bg-transparent text-[13px] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none resize-none px-1 font-normal leading-relaxed"
                   />
 
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    title="Insert Emoji"
-                    className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 transition-colors"
-                  >
-                    <Smile className="w-4 h-4" />
-                  </button>
+                  {/* Composer Toolbar */}
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 dark:border-[#1e293b]/80">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Attach File"
+                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
 
-                  <button
-                    type="button"
-                    onClick={() => handleStartCall('video')}
-                    title="Start Live Video Call"
-                    className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15 transition-colors"
-                  >
-                    <Video className="w-4 h-4" />
-                  </button>
-                </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        title="Insert Emoji"
+                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      >
+                        <Smile className="w-4 h-4" />
+                      </button>
 
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 select-none">
-                    Enter ↵ to send
-                  </span>
-                  <button
-                    type="submit"
-                    disabled={!inputText.trim() || sending}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-xs hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all shadow-md shadow-[var(--md-sys-color-primary)]/20"
-                  >
-                    <span>Send</span>
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+                      <button
+                        type="button"
+                        onClick={handleStartVoiceRecording}
+                        title="Record Voice Note"
+                        className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
+                      >
+                        <Mic className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStartCall('video')}
+                        title="Start Live Video Call"
+                        className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15 transition-colors cursor-pointer"
+                      >
+                        <Video className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="hidden sm:inline text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 select-none">
+                        Enter ↵ to send
+                      </span>
+                      <button
+                        type="submit"
+                        disabled={!inputText.trim() || sending}
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-xs hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all shadow-md shadow-[var(--md-sys-color-primary)]/20 cursor-pointer"
+                      >
+                        <span>Send</span>
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Full Emoji & Animated GIF Picker Popover */}
@@ -1867,6 +2200,15 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           const fresh = await getConversationMessagesAction(activeConvId)
           setMessages(fresh)
         }}
+      />
+
+      {/* 5. INBUILT IMAGE PREVIEW LIGHTBOX MODAL */}
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        imageUrl={previewImage?.url || ''}
+        fileName={previewImage?.fileName}
+        fileSize={previewImage?.fileSize}
+        onClose={() => setPreviewImage(null)}
       />
     </div>
   )
