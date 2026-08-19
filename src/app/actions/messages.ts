@@ -80,6 +80,12 @@ export interface ChatMessageItem {
   isPinned: boolean
   status?: 'sending' | 'sent' | 'delivered' | 'seen'
   readBy?: Array<{ userId: string; fullName: string; avatarUrl?: string; readAt: string }>
+  replyTo?: {
+    messageId: string
+    senderName: string
+    content: string
+    messageType?: 'text' | 'meet_card' | 'file' | 'system'
+  }
   replyCount?: number
   reactions: ChatReactionGroup[]
   createdAt: string
@@ -546,6 +552,7 @@ export async function getConversationMessagesAction(
       isPinned: m.is_pinned,
       status: readStatus,
       readBy: readByUsers,
+      replyTo: m.metadata?.replyTo,
       replyCount: replyCountMap.get(m.id) || 0,
       reactions,
       createdAt: m.created_at,
