@@ -44,6 +44,7 @@ import {
   getConversationsListAction,
   getConversationMessagesAction,
   sendMessageAction,
+  uploadChatAttachmentAction,
   toggleReactionAction,
   startInstantMeetInChatAction,
   markConversationAsReadAction,
@@ -297,21 +298,18 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
           const mimeType = recorder?.mimeType || 'audio/webm'
           const audioBlob = new Blob(chunks, { type: mimeType })
-          const supabase = createClient()
           const fileName = `voice-${Date.now()}.webm`
-          const filePath = `chat-files/${activeConvId}/${fileName}`
+          const audioFile = new File([audioBlob], fileName, { type: mimeType })
 
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('chat-attachments')
-            .upload(filePath, audioBlob, { contentType: mimeType })
+          const formData = new FormData()
+          formData.append('file', audioFile)
+          formData.append('conversationId', activeConvId)
 
-          let fileUrl = ''
-          if (!uploadError && uploadData) {
-            const { data: publicUrlData } = supabase.storage.from('chat-attachments').getPublicUrl(filePath)
-            fileUrl = publicUrlData.publicUrl
-          } else {
-            fileUrl = URL.createObjectURL(audioBlob)
+          const uploadRes = await uploadChatAttachmentAction(formData)
+          if (!uploadRes.success || !uploadRes.url) {
+            throw new Error(uploadRes.error || 'Failed to upload voice note')
           }
+          const fileUrl = uploadRes.url
 
           await sendMessageAction({
             conversationId: activeConvId,
@@ -897,29 +895,20 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
     try {
       setSending(true)
-      const supabase = createClient()
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const filePath = `chat-files/${activeConvId}/${fileName}`
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('conversationId', activeConvId)
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('chat-attachments')
-        .upload(filePath, file)
-
-      let fileUrl = ''
-      if (!uploadError && uploadData) {
-        const { data: publicUrlData } = supabase.storage.from('chat-attachments').getPublicUrl(filePath)
-        fileUrl = publicUrlData.publicUrl
-      } else {
-        // Fallback to data URL or dummy if bucket not configured
-        fileUrl = URL.createObjectURL(file)
+      const uploadRes = await uploadChatAttachmentAction(formData)
+      if (!uploadRes.success || !uploadRes.url) {
+        throw new Error(uploadRes.error || 'Failed to upload attachment')
       }
 
       await sendMessageAction({
         conversationId: activeConvId,
         content: `Shared file: ${file.name}`,
         messageType: 'file',
-        fileUrl,
+        fileUrl: uploadRes.url,
         fileName: file.name,
         fileSizeBytes: file.size,
         fileType: file.type,
@@ -1261,14 +1250,16 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
               const isImage =
                 msg.messageType === 'file' &&
                 !isGif &&
-                (msg.fileType?.startsWith('image/') ||
-                  Boolean(msg.fileUrl?.match(/\.(jpeg|jpg|png|webp|svg|bmp|heic)($|\?)/i)))
+                (Boolean(msg.fileType?.startsWith('image/')) ||
+                  Boolean(msg.fileName?.match(/\.(jpeg|jpg|png|webp|svg|gif|bmp|heic|avif)($|\?)/i)) ||
+                  Boolean(msg.fileUrl?.match(/\.(jpeg|jpg|png|webp|svg|gif|bmp|heic|avif)($|\?)/i)) ||
+                  Boolean(msg.metadata?.isImage))
 
               return (
                 <React.Fragment key={msg.id}>
                   {/* Sticky Date Divider */}
                   {!isSameDateAsPrev && (
-                    <div className="flex items-center my-4 gap-3">
+                    <div className="flex items-center my-3 sm:my-4 gap-3">
                       <div className="h-px bg-[var(--md-sys-color-outline-variant)]/60 dark:bg-[#1e293b] flex-1" />
                       <span className="text-[10px] font-bold tracking-wider text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 uppercase px-3 py-0.5 bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] rounded-full shadow-xs">
                         {formatMessageDateGroup(msg.createdAt)}
@@ -1301,9 +1292,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                         transform: swipingMessageId === msg.id ? `translateX(${swipeOffset}px)` : 'translateX(0px)',
                         transition: swipingMessageId === msg.id ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)',
                       }}
-                      className={`flex items-start gap-2.5 group/msg relative transition-all cursor-pointer md:cursor-default ${
+                      className={`flex items-start gap-1.5 md:gap-2.5 group/msg relative transition-all cursor-pointer md:cursor-default ${
                         isMe ? 'flex-row-reverse' : 'flex-row'
-                      } ${isConsecutive ? 'mt-0.5' : 'mt-3.5'}`}
+                      } ${isConsecutive ? 'mt-0.5' : 'mt-2.5 sm:mt-3.5'}`}
                     >
                       {/* Swipe-to-Reply Spring Indicator */}
                       {swipingMessageId === msg.id && Math.abs(swipeOffset) > 4 && (
@@ -1323,8 +1314,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           </div>
                         </div>
                       )}
-                      {/* Avatar Column */}
-                      <div className="w-8 flex-shrink-0 flex items-start justify-center">
+
+                      {/* Avatar Column (Hidden on mobile for ultra-compact screen real estate, visible on md+) */}
+                      <div className="hidden md:flex w-8 flex-shrink-0 items-start justify-center">
                         {!isConsecutive ? (
                           msg.senderAvatarUrl ? (
                             <img
@@ -1346,14 +1338,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       </div>
 
                       {/* Message Bubble Container */}
-                      <div className={`max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[90%] sm:max-w-[80%] md:max-w-[65%] min-w-0 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                         {/* Header info (Only for first message in group) */}
                         {!isConsecutive && (
-                          <div className={`flex items-center gap-1.5 mb-1 px-1 text-[11px] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div className={`flex items-center gap-1.5 mb-1 px-1 text-[10.5px] sm:text-[11px] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                             <span className={`font-bold ${getRoleColor(msg.senderRole)}`}>
                               {isMe ? 'You' : msg.senderName}
                             </span>
-                            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
+                            <span className="text-[9.5px] sm:text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
                               {formatMessageTime(msg.createdAt)}
                             </span>
                           </div>
@@ -1436,8 +1428,19 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 src={msg.fileUrl}
                                 alt={msg.fileName || 'Image'}
                                 loading="lazy"
+                                onError={(e) => {
+                                  const target = e.currentTarget
+                                  target.style.display = 'none'
+                                  const fallback = target.parentElement?.querySelector('.img-fallback')
+                                  if (fallback) fallback.classList.remove('hidden')
+                                }}
                                 className="w-full max-h-[260px] object-cover rounded-2xl group-hover:scale-[1.02] transition-transform duration-200"
                               />
+                              <div className="img-fallback hidden p-4 flex flex-col items-center justify-center gap-2 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                                <ImageIcon className="w-8 h-8 opacity-60 text-[var(--md-sys-color-primary)]" />
+                                <span className="truncate max-w-[200px] font-semibold">{msg.fileName || 'Image Attachment'}</span>
+                                <span className="text-[10.5px] font-bold text-[var(--md-sys-color-primary)] underline">Click to view image</span>
+                              </div>
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
                                 <span className="px-3 py-1.5 rounded-xl bg-black/75 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg">
                                   <Maximize2 className="w-3.5 h-3.5" />
@@ -1536,7 +1539,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           ) : (
                             msg.content &&
                             msg.messageType !== 'meet_card' &&
-                            !isGif && (
+                            !isGif &&
+                            !isImage &&
+                            !isAudio && (
                               <div className="whitespace-pre-wrap break-words [word-break:break-word] overflow-hidden max-w-full">{msg.content}</div>
                             )
                           )}

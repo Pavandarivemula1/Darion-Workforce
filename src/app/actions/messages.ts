@@ -1330,3 +1330,54 @@ export async function setUserPresenceAction(status: 'online' | 'in_meeting' | 'b
       last_seen_at: new Date().toISOString(),
     })
 }
+
+/**
+ * Robust Server-side File / Audio / Image Upload for Chat
+ */
+export async function uploadChatAttachmentAction(formData: FormData): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const user = await getCurrentUserFast()
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    const file = formData.get('file') as File | null
+    const conversationId = (formData.get('conversationId') as string) || 'general'
+    if (!file) return { success: false, error: 'No file provided' }
+
+    const supabase = await getSupabase()
+    const fileExt = file.name.split('.').pop() || 'bin'
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+    const filePath = `chat/${conversationId}/${fileName}`
+
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    let targetBucket = 'chat-attachments'
+    let { data, error } = await supabase.storage
+      .from(targetBucket)
+      .upload(filePath, buffer, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      })
+
+    if (error) {
+      console.warn(`Upload to ${targetBucket} failed, trying meet-files:`, error)
+      targetBucket = 'meet-files'
+      const retry = await supabase.storage
+        .from(targetBucket)
+        .upload(filePath, buffer, {
+          contentType: file.type || 'application/octet-stream',
+          upsert: true,
+        })
+      if (retry.error) {
+        throw new Error(retry.error.message)
+      }
+      data = retry.data
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(targetBucket).getPublicUrl(filePath)
+    return { success: true, url: publicUrlData.publicUrl }
+  } catch (err: any) {
+    console.error('Chat attachment upload error:', err)
+    return { success: false, error: err?.message || 'Failed to upload attachment' }
+  }
+}
