@@ -46,6 +46,7 @@ import { ChatMeetCard } from './ChatMeetCard'
 import { NewChatModal } from './NewChatModal'
 import { NewChannelModal } from './NewChannelModal'
 import { ForwardMessageModal } from './ForwardMessageModal'
+import { soundEffects } from '@/lib/utils/soundEffects'
 
 interface TeamsChatWorkspaceProps {
   currentUserId: string
@@ -142,6 +143,11 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           filter: `conversation_id=eq.${activeConvId}`,
         },
         async (payload) => {
+          // If received from another user, play incoming chime
+          if (payload.new && (payload.new as any).sender_id !== currentUserId) {
+            soundEffects.playNotificationSound()
+          }
+
           // If message is for thread or main feed, refresh messages
           const freshMessages = await getConversationMessagesAction(activeConvId)
           setMessages(freshMessages)
@@ -169,7 +175,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [activeConvId, activeThreadParent])
+  }, [activeConvId, activeThreadParent, currentUserId])
 
   // Load thread replies when parent is selected
   useEffect(() => {
@@ -186,6 +192,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
     const content = inputText.trim()
     setInputText('')
+    soundEffects.playMessageSentSound()
     setSending(true)
 
     try {
@@ -212,6 +219,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
     const content = threadInputText.trim()
     setThreadInputText('')
+    soundEffects.playMessageSentSound()
 
     try {
       await sendMessageAction({
@@ -315,6 +323,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         fileSizeBytes: file.size,
         fileType: file.type,
       })
+      soundEffects.playMessageSentSound()
 
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)

@@ -14,44 +14,7 @@ import {
   Palmtree,
   X,
 } from 'lucide-react'
-
-// Web Audio API synthesized soft chime (no external audio file required)
-function playSoftChime() {
-  try {
-    if (typeof window === 'undefined') return
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioCtx) return
-    const ctx = new AudioCtx()
-
-    const now = ctx.currentTime
-
-    // First tone (587.33 Hz - D5)
-    const osc1 = ctx.createOscillator()
-    const gain1 = ctx.createGain()
-    osc1.type = 'sine'
-    osc1.frequency.setValueAtTime(587.33, now)
-    gain1.gain.setValueAtTime(0.08, now)
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18)
-    osc1.connect(gain1)
-    gain1.connect(ctx.destination)
-    osc1.start(now)
-    osc1.stop(now + 0.18)
-
-    // Second tone (880.00 Hz - A5)
-    const osc2 = ctx.createOscillator()
-    const gain2 = ctx.createGain()
-    osc2.type = 'sine'
-    osc2.frequency.setValueAtTime(880.0, now + 0.08)
-    gain2.gain.setValueAtTime(0.1, now + 0.08)
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.32)
-    osc2.connect(gain2)
-    gain2.connect(ctx.destination)
-    osc2.start(now + 0.08)
-    osc2.stop(now + 0.32)
-  } catch {
-    // AudioContext blocked or not supported
-  }
-}
+import { soundEffects } from '@/lib/utils/soundEffects'
 
 interface ToastNotification extends NotificationItem {
   toastId: string
@@ -109,9 +72,13 @@ export const GlobalPushNotificationManager: React.FC<GlobalPushNotificationManag
 
   const triggerNotification = useCallback(
     (notif: NotificationItem) => {
-      // 1. Play chime if sound enabled
+      // 1. Play high-fidelity sound effect if enabled
       if (soundEnabled) {
-        playSoftChime()
+        if (notif.type === 'meet_started') {
+          soundEffects.playMeetingAlertSound()
+        } else {
+          soundEffects.playNotificationSound()
+        }
       }
 
       // 2. Spawn in-app floating toast
@@ -188,7 +155,7 @@ export const GlobalPushNotificationManager: React.FC<GlobalPushNotificationManag
       setPermissionState(result)
       setShowPermissionBanner(false)
       if (result === 'granted') {
-        playSoftChime()
+        soundEffects.playNotificationSound()
         new Notification('🔔 Notifications Enabled!', {
           body: 'You will receive real-time push alerts for messages, shifts, video meetings, and payments.',
           icon: '/favicon.ico',
