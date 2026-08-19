@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
 import { DynamicSidebar } from '@/components/ui/DynamicSidebar'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import {
   LayoutDashboard,
   Users,
@@ -25,61 +26,94 @@ import {
   KeyRound,
   ChevronRight,
   CheckSquare,
+  Paintbrush,
+  Crown,
 } from 'lucide-react'
 
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { hasModuleAccess, getRoleDisplayName, ROLE_METADATA, UserRole, AppModule } from '@/lib/auth/permissions'
 
 export interface AdminLayoutProps {
   children: React.ReactNode
   adminId?: string
   adminName?: string
   adminAvatarUrl?: string
+  adminRole?: string
 }
 
-export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminId, adminName, adminAvatarUrl }) => {
+export const AdminLayout: React.FC<AdminLayoutProps> = ({ 
+  children, 
+  adminId, 
+  adminName, 
+  adminAvatarUrl,
+  adminRole = 'admin'
+}) => {
   const pathname = usePathname()
+  const branding = useBranding()
   const [isMoreOpen, setIsMoreOpen] = useState(false)
 
-  // Full nav items for desktop sidebar
-  const allNavItems = [
-    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { label: 'Task Reports', href: '/admin/tasks', icon: CheckSquare },
-    { label: 'Video Meets', href: '/admin/meets', icon: Video },
-    { label: 'Candidates', href: '/admin/candidates', icon: Users },
-    { label: 'Shifts', href: '/admin/shifts', icon: Clock },
-    { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
-    { label: 'Timesheet', href: '/admin/timesheet', icon: FileSpreadsheet },
-    { label: 'Leaves', href: '/admin/leaves', icon: Palmtree },
-    { label: 'Payroll', href: '/admin/payroll', icon: Banknote },
-    { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
-    { label: 'Reset Requests', href: '/admin/reset-requests', icon: KeyRound },
-    { label: 'Security', href: '/admin/security', icon: ShieldAlert },
-    { label: 'Profile', href: '/admin/profile', icon: User },
+  // Full raw nav items mapped with their required module key
+  const rawNavItems: Array<{ label: string; href: string; icon: any; module: AppModule }> = [
+    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
+    { label: 'SuperAdmin Console', href: '/admin/superadmin', icon: Crown, module: 'superadmin_console' },
+    { label: 'Task Reports', href: '/admin/tasks', icon: CheckSquare, module: 'tasks' },
+    { label: 'Video Meets', href: '/admin/meets', icon: Video, module: 'meets' },
+    { label: 'Candidates', href: '/admin/candidates', icon: Users, module: 'candidates' },
+    { label: 'Shifts', href: '/admin/shifts', icon: Clock, module: 'shifts' },
+    { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck, module: 'attendance' },
+    { label: 'Timesheet', href: '/admin/timesheet', icon: FileSpreadsheet, module: 'timesheet' },
+    { label: 'Leaves', href: '/admin/leaves', icon: Palmtree, module: 'leaves' },
+    { label: 'Payroll', href: '/admin/payroll', icon: Banknote, module: 'payroll' },
+    { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare, module: 'feedback' },
+    { label: 'Branding Studio', href: '/admin/settings/branding', icon: Paintbrush, module: 'branding' },
+    { label: 'Reset Requests', href: '/admin/reset-requests', icon: KeyRound, module: 'reset_requests' },
+    { label: 'Security', href: '/admin/security', icon: ShieldAlert, module: 'security' },
+    { label: 'Profile', href: '/admin/profile', icon: User, module: 'profile' },
   ]
 
-  // Primary 4 mobile bottom tabs
-  const mobilePrimaryTabs = [
-    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { label: 'Tasks', href: '/admin/tasks', icon: CheckSquare },
-    { label: 'Shifts', href: '/admin/shifts', icon: Clock },
-    { label: 'Payroll', href: '/admin/payroll', icon: Banknote },
+  // Filter nav items based on user role permissions
+  const allNavItems = rawNavItems
+    .filter((item) => hasModuleAccess(adminRole, item.module))
+    .map(({ label, href, icon }) => ({ label, href, icon }))
+
+  // Primary mobile bottom tabs (filtered by permissions)
+  const rawMobilePrimaryTabs: Array<{ label: string; href: string; icon: any; module: AppModule }> = [
+    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
+    { label: 'Console', href: '/admin/superadmin', icon: Crown, module: 'superadmin_console' },
+    { label: 'Tasks', href: '/admin/tasks', icon: CheckSquare, module: 'tasks' },
+    { label: 'Shifts', href: '/admin/shifts', icon: Clock, module: 'shifts' },
+    { label: 'Payroll', href: '/admin/payroll', icon: Banknote, module: 'payroll' },
+    { label: 'Leaves', href: '/admin/leaves', icon: Palmtree, module: 'leaves' },
   ]
 
-  // Secondary items in "More" bottom sheet
-  const moreSheetItems = [
-    { label: 'Daily Task Reports', href: '/admin/tasks', icon: CheckSquare, desc: 'Candidate task logs & blockers' },
-    { label: 'Candidates Directory', href: '/admin/candidates', icon: Users, desc: 'Manage workforce & rates' },
-    { label: 'Video Meets', href: '/admin/meets', icon: Video, desc: 'Host & manage video meetings' },
-    { label: 'Attendance Logs', href: '/admin/attendance', icon: CalendarCheck, desc: 'Live & past clock records' },
-    { label: 'Timesheet Matrix', href: '/admin/timesheet', icon: FileSpreadsheet, desc: 'Weekly candidate matrix' },
-    { label: 'Leave Requests', href: '/admin/leaves', icon: Palmtree, desc: 'Review & approve leaves' },
-    { label: 'Staff Feedback', href: '/admin/feedback', icon: MessageSquare, desc: 'Candidate ratings & comments' },
-    { label: 'Reset Requests', href: '/admin/reset-requests', icon: KeyRound, desc: 'Password & MFA reset queue' },
-    { label: 'Security & 2FA', href: '/admin/security', icon: ShieldAlert, desc: 'Access logs & MFA enforcement' },
-    { label: 'Admin Profile', href: '/admin/profile', icon: User, desc: 'Account settings & credentials' },
+  const mobilePrimaryTabs = rawMobilePrimaryTabs
+    .filter((item) => hasModuleAccess(adminRole, item.module))
+    .slice(0, 4)
+    .map(({ label, href, icon }) => ({ label, href, icon }))
+
+  // Secondary items in "More" bottom sheet (filtered by permissions)
+  const rawMoreSheetItems: Array<{ label: string; href: string; icon: any; desc: string; module: AppModule }> = [
+    { label: 'SuperAdmin Control Console', href: '/admin/superadmin', icon: Crown, desc: 'Telemetry, audit logs & system health', module: 'superadmin_console' },
+    { label: 'Daily Task Reports', href: '/admin/tasks', icon: CheckSquare, desc: 'Candidate task logs & blockers', module: 'tasks' },
+    { label: 'Candidates Directory', href: '/admin/candidates', icon: Users, desc: 'Manage workforce & rates', module: 'candidates' },
+    { label: 'Video Meets', href: '/admin/meets', icon: Video, desc: 'Host & manage video meetings', module: 'meets' },
+    { label: 'Attendance Logs', href: '/admin/attendance', icon: CalendarCheck, desc: 'Live & past clock records', module: 'attendance' },
+    { label: 'Timesheet Matrix', href: '/admin/timesheet', icon: FileSpreadsheet, desc: 'Weekly candidate matrix', module: 'timesheet' },
+    { label: 'Leave Requests', href: '/admin/leaves', icon: Palmtree, desc: 'Review & approve leaves', module: 'leaves' },
+    { label: 'Staff Feedback', href: '/admin/feedback', icon: MessageSquare, desc: 'Candidate ratings & comments', module: 'feedback' },
+    { label: 'Branding & White-Label', href: '/admin/settings/branding', icon: Paintbrush, desc: 'Logos, theme colors & custom domain', module: 'branding' },
+    { label: 'Reset Requests', href: '/admin/reset-requests', icon: KeyRound, desc: 'Password & MFA reset queue', module: 'reset_requests' },
+    { label: 'Security & 2FA', href: '/admin/security', icon: ShieldAlert, desc: 'Access logs & MFA enforcement', module: 'security' },
+    { label: 'Admin Profile', href: '/admin/profile', icon: User, desc: 'Account settings & credentials', module: 'profile' },
   ]
+
+  const moreSheetItems = rawMoreSheetItems
+    .filter((item) => hasModuleAccess(adminRole, item.module))
+    .map(({ label, href, icon, desc }) => ({ label, href, icon, desc }))
 
   const isMoreActive = moreSheetItems.some((item) => pathname === item.href)
+  const roleDisplay = getRoleDisplayName(adminRole)
+  const roleMeta = ROLE_METADATA[(adminRole in ROLE_METADATA ? adminRole : 'admin') as UserRole] || ROLE_METADATA.admin
 
   return (
     <div className="min-h-screen min-h-screen-safe bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row">
@@ -87,24 +121,32 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminId, adm
       <DynamicSidebar
         navItems={allNavItems}
         brandIcon={<ShieldCheck className="w-6 h-6" />}
-        brandName="Darion Workforce"
-        subtitle={adminName || 'System Admin'}
+        brandName={branding.appTitle}
+        brandLogoUrl={branding.logoLightUrl}
+        iconUrl={branding.iconUrl}
+        subtitle={`${adminName || 'Admin'} • ${roleDisplay}`}
         headerAction={<NotificationBell userId={adminId} />}
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
       <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-3 h-14 bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] pt-safe">
         <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
+          {branding.iconUrl ? (
+            <img src={branding.iconUrl} alt={branding.appTitle} className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]" />
+          ) : branding.logoLightUrl ? (
+            <img src={branding.logoLightUrl} alt={branding.appTitle} className="h-7 max-w-[110px] object-contain shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          )}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-xs sm:text-sm tracking-tight text-[var(--md-sys-color-on-surface)] truncate">
-                Darion Workforce
+                {branding.appTitle}
               </span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold uppercase tracking-wider shrink-0">
-                Admin
+              <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0 ${roleMeta.badgeBg} ${roleMeta.badgeText}`}>
+                {roleDisplay}
               </span>
             </div>
             {adminName && (
@@ -255,4 +297,3 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, adminId, adm
     </div>
   )
 }
-

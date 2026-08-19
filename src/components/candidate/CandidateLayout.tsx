@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
 import { DynamicSidebar } from '@/components/ui/DynamicSidebar'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import {
   Clock,
   History,
@@ -33,6 +34,7 @@ export interface CandidateLayoutProps {
 
 export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, candidateId, candidateName, candidateAvatarUrl }) => {
   const pathname = usePathname()
+  const branding = useBranding()
   const [isMoreOpen, setIsMoreOpen] = useState(false)
 
   // Primary desktop & full items
@@ -72,7 +74,9 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
       <DynamicSidebar
         navItems={allNavItems}
         brandIcon={<Clock className="w-6 h-6" />}
-        brandName="Darion Workforce"
+        brandName={branding.appTitle}
+        brandLogoUrl={branding.logoLightUrl}
+        iconUrl={branding.iconUrl}
         subtitle={candidateName || 'Candidate'}
         headerAction={<NotificationBell userId={candidateId} />}
       />
@@ -80,13 +84,19 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
       {/* MNC Sticky Mobile Top Header (< 768px) */}
       <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-3 h-14 bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] pt-safe">
         <Link href="/candidate" className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
-            <Clock className="w-4 h-4" />
-          </div>
+          {branding.iconUrl ? (
+            <img src={branding.iconUrl} alt={branding.appTitle} className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]" />
+          ) : branding.logoLightUrl ? (
+            <img src={branding.logoLightUrl} alt={branding.appTitle} className="h-7 max-w-[110px] object-contain shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
+              <Clock className="w-4 h-4" />
+            </div>
+          )}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-xs sm:text-sm tracking-tight text-[var(--md-sys-color-on-surface)] truncate">
-                Darion Workforce
+                {branding.appTitle}
               </span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold uppercase tracking-wider shrink-0">
                 Candidate
@@ -237,10 +247,8 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
         </div>
       )}
 
-
       {/* Floating Feedback Widget */}
       <FeedbackWidget />
     </div>
   )
 }
-

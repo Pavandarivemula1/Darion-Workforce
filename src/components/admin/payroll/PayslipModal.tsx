@@ -3,6 +3,7 @@
 import React, { useRef } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import {
   CandidatePayrollSummary,
   formatINR,
@@ -11,10 +12,6 @@ import {
 import {
   Printer,
   ShieldCheck,
-  Building2,
-  Calendar,
-  CreditCard,
-  User,
   CheckCircle2,
 } from 'lucide-react'
 
@@ -32,6 +29,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   periodLabel,
 }) => {
   const printRef = useRef<HTMLDivElement>(null)
+  const branding = useBranding()
 
   if (!candidate) return null
 
@@ -52,37 +50,54 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Candidate Salary & Shift Payslip"
-      maxWidth="max-w-3xl"
+      title="Candidate Official Payslip"
+      maxWidth="max-w-4xl"
+      hideFooter={true}
     >
       <div className="flex flex-col gap-6">
-        {/* Printable Payslip Card Document */}
+        {/* Printable Area */}
         <div
           ref={printRef}
           id="printable-payslip"
           className="p-6 sm:p-8 bg-white dark:bg-[#1A1C20] text-black dark:text-white border border-gray-300 dark:border-gray-700 rounded-2xl shadow-sm print:shadow-none print:border-0 print:p-0 print:m-0"
         >
           {/* Header */}
-          <div className="flex items-start justify-between border-b-2 border-primary/40 pb-5 mb-5">
+          <div className="flex items-start justify-between border-b-2 border-[var(--md-sys-color-primary)]/40 pb-5 mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-sm">
-                <ShieldCheck className="w-7 h-7" />
-              </div>
+              {branding.logoLightUrl ? (
+                <img
+                  src={branding.logoLightUrl}
+                  alt={branding.payslip.legalName}
+                  className="h-12 max-w-[160px] object-contain shrink-0"
+                />
+              ) : branding.iconUrl ? (
+                <img
+                  src={branding.iconUrl}
+                  alt={branding.payslip.legalName}
+                  className="w-12 h-12 rounded-xl object-contain shrink-0 border border-gray-300 dark:border-gray-700"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-[var(--md-sys-color-primary)] text-white flex items-center justify-center font-black text-xl shadow-sm">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+              )}
               <div>
-                <h1 className="text-xl font-extrabold tracking-tight uppercase text-blue-900 dark:text-blue-400">
-                  Darion Workforce Solutions
+                <h1 className="text-xl font-extrabold tracking-tight uppercase text-[var(--md-sys-color-primary)] dark:text-blue-400">
+                  {branding.payslip.legalName || branding.appTitle}
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Workforce Operations & Shift Management Division
+                  {branding.payslip.addressLine1 || branding.tagline || 'Workforce Operations Division'}
                 </p>
                 <p className="text-[11px] text-gray-400 font-mono mt-0.5">
-                  CIN: U74999DL2024PTC123456 • payroll@darionworkforce.internal
+                  {branding.payslip.cinNumber ? `CIN/Reg: ${branding.payslip.cinNumber} • ` : ''}
+                  {branding.payslip.taxId ? `Tax ID: ${branding.payslip.taxId} • ` : ''}
+                  {branding.supportEmail}
                 </p>
               </div>
             </div>
 
             <div className="text-right">
-              <span className="inline-block px-3 py-1 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-bold text-xs rounded-full border border-blue-200 dark:border-blue-800">
+              <span className="inline-block px-3 py-1 bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold text-xs rounded-full border border-[var(--md-sys-color-primary)]/20">
                 OFFICIAL PAYSLIP
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-medium">
@@ -108,93 +123,74 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             </div>
             <div>
               <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">Base Hourly Rate</span>
-              <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono text-sm">
+              <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">
                 {formatINR(candidate.hourlyRate)}/hr
               </span>
             </div>
             <div>
-              <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">PAN Number</span>
-              <span className="font-semibold font-mono text-gray-800 dark:text-gray-200">
-                {candidate.panNumber || 'Not Provided'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">Bank Name</span>
-              <span className="font-medium text-gray-800 dark:text-gray-200">{candidate.bankName || 'Direct Disbursement'}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">Account Number</span>
-              <span className="font-mono font-medium text-gray-800 dark:text-gray-200">
-                {candidate.bankAccountNumber ? `••••${candidate.bankAccountNumber.slice(-4)}` : 'N/A'}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">IFSC Code</span>
-              <span className="font-mono font-medium text-gray-800 dark:text-gray-200">{candidate.bankIfsc || 'N/A'}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">UPI ID</span>
-              <span className="font-mono font-medium text-gray-800 dark:text-gray-200">{candidate.upiId || 'N/A'}</span>
-            </div>
-          </div>
-
-          {/* Attendance Summary */}
-          <div className="grid grid-cols-3 gap-3 mb-6 text-center text-xs">
-            <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-              <span className="text-gray-400 text-[11px] font-semibold block">Total Shifts Completed</span>
-              <span className="text-lg font-bold font-mono text-gray-900 dark:text-gray-100">{candidate.approvedShifts}</span>
-            </div>
-            <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-              <span className="text-gray-400 text-[11px] font-semibold block">Net Billable Hours</span>
-              <span className="text-lg font-bold font-mono text-gray-900 dark:text-gray-100">{candidate.totalApprovedHours.toFixed(2)} hrs</span>
-            </div>
-            <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-              <span className="text-gray-400 text-[11px] font-semibold block">Payment Settlement</span>
-              <span className={`text-sm font-bold block mt-1 ${candidate.totalDueAmount === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {candidate.totalDueAmount === 0 ? 'Fully Settled' : 'Payment Due'}
+              <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">Payment Status</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400 uppercase">
+                {candidate.paymentStatus.replace('_', ' ')}
               </span>
             </div>
           </div>
 
-          {/* Earnings & Deductions Breakdown Table */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mb-6">
+          {/* Detailed Hours & Earnings Breakdown Table */}
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
             <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-gray-700">
-                  <th className="py-2.5 px-4">Earnings / Description</th>
-                  <th className="py-2.5 px-4 text-right">Units / Rate</th>
-                  <th className="py-2.5 px-4 text-right">Gross Amount (INR)</th>
+              <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-4">Pay Component / Description</th>
+                  <th className="py-3 px-4 text-center">Computation / Metric</th>
+                  <th className="py-3 px-4 text-right">Payable (INR)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800 font-medium">
                 <tr>
                   <td className="py-3 px-4">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">Shift Base Wages</span>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Regular verified candidate shift hours</p>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">Approved Work Hours</span>
+                    <p className="text-[11px] text-gray-400">Logged shift time approved by admin</p>
                   </td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-600 dark:text-gray-400">
+                  <td className="py-3 px-4 text-center font-mono">
                     {candidate.totalApprovedHours.toFixed(2)} hrs @ {formatINR(candidate.hourlyRate)}/hr
                   </td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-gray-900 dark:text-gray-100">
+                  <td className="py-3 px-4 text-right font-mono font-semibold">
                     {formatINR(candidate.totalGrossPayable)}
                   </td>
                 </tr>
                 <tr>
                   <td className="py-3 px-4">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">Performance Incentive / Overtime</span>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Authorized overshift & special bonuses</p>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">Approved Paid Shifts</span>
+                    <p className="text-[11px] text-gray-400">Total sessions accounted in cycle</p>
                   </td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-600 dark:text-gray-400">—</td>
-                  <td className="py-3 px-4 text-right font-mono font-semibold text-gray-900 dark:text-gray-100">₹0.00</td>
+                  <td className="py-3 px-4 text-center font-mono">
+                    {candidate.approvedShifts} Shift(s)
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono text-gray-500">
+                    —
+                  </td>
                 </tr>
+                {candidate.totalPaidAmount > 0 && (
+                  <tr className="bg-emerald-50/40 dark:bg-emerald-950/20">
+                    <td className="py-3 px-4">
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">Amount Previously Disbursed</span>
+                      <p className="text-[11px] text-emerald-500">Recorded payouts</p>
+                    </td>
+                    <td className="py-3 px-4 text-center font-mono text-emerald-700 dark:text-emerald-300">
+                      Disbursed
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                      {formatINR(candidate.totalPaidAmount)}
+                    </td>
+                  </tr>
+                )}
               </tbody>
               <tfoot>
-                <tr className="bg-blue-50/70 dark:bg-blue-950/40 font-extrabold text-sm border-t-2 border-blue-500/40">
-                  <td className="py-3.5 px-4 text-blue-950 dark:text-blue-200" colSpan={2}>
+                <tr className="bg-[var(--md-sys-color-primary-container)] font-extrabold text-sm border-t-2 border-[var(--md-sys-color-primary)]/40">
+                  <td className="py-3.5 px-4 text-[var(--md-sys-color-on-primary-container)]" colSpan={2}>
                     NET PAYABLE AMOUNT
                   </td>
-                  <td className="py-3.5 px-4 text-right text-blue-950 dark:text-blue-200 font-mono text-base">
+                  <td className="py-3.5 px-4 text-right text-[var(--md-sys-color-on-primary-container)] font-mono text-base">
                     {formatINR(netPayable)}
                   </td>
                 </tr>
@@ -214,13 +210,30 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
           {/* Signature & Verification Footer */}
           <div className="flex items-end justify-between pt-6 border-t border-gray-200 dark:border-gray-700 text-xs">
             <div className="text-[11px] text-gray-400 leading-relaxed max-w-sm">
-              This is a computer-generated official payroll slip generated by Darion Workforce System and does not require physical signature under digital signature compliance.
+              {branding.payslip.disclaimer}
             </div>
-            <div className="text-center">
-              <div className="w-36 border-b border-gray-400 pb-1 mb-1 font-semibold text-[11px] text-gray-700 dark:text-gray-300">
-                Authorized Signatory
-              </div>
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider">Payroll Administrator</span>
+            <div className="text-center flex flex-col items-center">
+              {branding.payslip.stampUrl && (
+                <img
+                  src={branding.payslip.stampUrl}
+                  alt="Official Seal"
+                  className="w-16 h-16 object-contain mb-1 opacity-90"
+                />
+              )}
+              {branding.payslip.signatureUrl ? (
+                <img
+                  src={branding.payslip.signatureUrl}
+                  alt="Authorized Signature"
+                  className="h-10 object-contain mb-1"
+                />
+              ) : (
+                <div className="w-36 border-b border-gray-400 pb-1 mb-1 font-semibold text-[11px] text-gray-700 dark:text-gray-300">
+                  {branding.payslip.signatoryName || 'Authorized Signatory'}
+                </div>
+              )}
+              <span className="text-[10px] text-gray-400 uppercase tracking-wider">
+                {branding.payslip.signatoryTitle || 'Payroll Operations'}
+              </span>
             </div>
           </div>
         </div>

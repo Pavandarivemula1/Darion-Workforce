@@ -28,6 +28,7 @@ import {
   CheckSquare,
 } from 'lucide-react'
 import { formatINR } from '@/lib/utils/payroll'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import {
   type ShiftConfig,
   DEFAULT_FALLBACK_SHIFT,
@@ -104,6 +105,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   todayPayoutAmount = 0,
   assignedShift = DEFAULT_FALLBACK_SHIFT,
 }) => {
+  const branding = useBranding()
   const [workDuration, setWorkDuration] = useState<string>(() =>
     calculateInitialWorkDuration(activeSession, todaySession)
   )
@@ -240,12 +242,13 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
       link.href = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
     }
 
+    const brandTitle = branding.appTitle || 'Workforce'
     if (activeSession) {
       if (isOnBreak) {
-        document.title = `On Break | Darion Workforce`
+        document.title = `On Break | ${brandTitle}`
         setFavicon('#F59E0B') // Amber/Orange
       } else {
-        document.title = `${workDuration} | Darion Workforce`
+        document.title = `${workDuration} | ${brandTitle}`
         if (localOvershiftStatus === 'approved') {
           setFavicon('#3B82F6') // Blue
         } else {
@@ -253,12 +256,17 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         }
       }
     } else {
+      document.title = brandTitle
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
-      if (link) {
-        link.href = '/icon.svg'
-      }
+      if (link) link.href = branding.faviconUrl || '/icon.svg'
     }
-  }, [workDuration, isOnBreak, activeSession, localOvershiftStatus])
+
+    return () => {
+      document.title = brandTitle
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+      if (link) link.href = branding.faviconUrl || '/icon.svg'
+    }
+  }, [activeSession, isOnBreak, workDuration, localOvershiftStatus, branding.appTitle, branding.faviconUrl])
 
   useEffect(() => {
     const checkShift = () => {

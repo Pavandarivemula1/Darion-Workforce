@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendNotification, sendAdminBroadcast } from '@/lib/utils/notifications'
+import { isManagementRole, isAdmin } from '@/lib/auth/permissions'
 
 export interface RequestLeaveInput {
   leave_type: 'casual' | 'sick' | 'paid' | 'unpaid' | 'emergency'
@@ -139,8 +140,8 @@ export async function approveLeaveAction(leaveId: string, adminNotes?: string) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(profile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   // Fetch leave details to notify recipient
@@ -207,8 +208,8 @@ export async function rejectLeaveAction(leaveId: string, adminNotes: string) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(profile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   // Fetch leave details to notify recipient
@@ -265,7 +266,7 @@ export async function deleteLeaveAction(leaveId: string) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!isAdmin(profile?.role)) {
     return { error: 'Access denied. Admin privileges required.' }
   }
 

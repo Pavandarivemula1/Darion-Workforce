@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { TextField } from '@/components/ui/TextField'
 import { Button } from '@/components/ui/Button'
 import { Snackbar } from '@/components/ui/Snackbar'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import { Mail, Lock, Clock, ShieldCheck, ArrowLeft, Send } from 'lucide-react'
 
 const initialLoginState: { error?: string; requiresMfa?: boolean } = {
@@ -29,6 +30,7 @@ const initialMfaResetState: { error?: string; success?: boolean } = {
 }
 
 export default function LoginPage() {
+  const branding = useBranding()
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password')
   const [showMfaReset, setShowMfaReset] = useState(false)
 
@@ -57,18 +59,33 @@ export default function LoginPage() {
       <div className="w-full max-w-md flex flex-col items-center gap-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center mb-1 shadow-2xs">
-            {showMfaReset ? <ShieldCheck className="w-7 h-7" /> : <Clock className="w-7 h-7" />}
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
-            {showMfaReset ? 'Reset MFA' : requiresMfa ? 'Verify Identity' : 'Darion Workforce'}
+          {branding.logoLightUrl ? (
+            <img
+              src={branding.logoLightUrl}
+              alt={branding.appTitle}
+              className="h-12 max-w-[200px] object-contain mb-2"
+            />
+          ) : branding.iconUrl ? (
+            <img
+              src={branding.iconUrl}
+              alt={branding.appTitle}
+              className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] object-contain mb-1 shadow-2xs border border-[var(--md-sys-color-outline-variant)]"
+            />
+          ) : (
+            <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center mb-1 shadow-2xs">
+              {showMfaReset ? <ShieldCheck className="w-7 h-7" /> : <Clock className="w-7 h-7" />}
+            </div>
+          )}
+
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
+            {showMfaReset ? 'Reset MFA' : requiresMfa ? 'Verify Identity' : branding.appTitle}
           </h1>
           <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] px-4">
             {showMfaReset
               ? 'Request an admin to disable your Authenticator App'
               : requiresMfa 
                 ? 'Enter the 6-digit code from your authenticator app' 
-                : 'Darion Workforce \u2022 Sign in to access your workspace'
+                : `${branding.appTitle} • Sign in to access your workspace`
             }
           </p>
         </div>
@@ -114,7 +131,7 @@ export default function LoginPage() {
                      type="button"
                      onClick={() => setShowMfaReset(false)}
                      disabled={isMfaResetPending}
-                     className="text-sm font-medium text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] flex items-center justify-center gap-1 w-full"
+                     className="text-sm font-medium text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] flex items-center justify-center gap-1 w-full cursor-pointer"
                    >
                      <ArrowLeft className="w-4 h-4" /> Back to MFA Verification
                    </button>
@@ -159,7 +176,7 @@ export default function LoginPage() {
                    type="button"
                    onClick={() => setShowMfaReset(true)}
                    disabled={isMfaPending}
-                   className="text-sm font-medium text-[var(--md-sys-color-primary)] hover:underline flex items-center justify-center w-full"
+                   className="text-sm font-medium text-[var(--md-sys-color-primary)] hover:underline flex items-center justify-center w-full cursor-pointer"
                  >
                    Lost your Authenticator App?
                  </button>
@@ -167,7 +184,7 @@ export default function LoginPage() {
                    type="button"
                    onClick={() => window.location.reload()}
                    disabled={isMfaPending}
-                   className="text-sm font-medium text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] flex items-center justify-center gap-1 w-full"
+                   className="text-sm font-medium text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] flex items-center justify-center gap-1 w-full cursor-pointer"
                  >
                    <ArrowLeft className="w-4 h-4" /> Back to Login
                  </button>
@@ -193,13 +210,13 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setLoginMethod('password')}
-                    className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]"
+                    className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
                   >
                     Password
                   </button>
                   <button
                     type="button"
-                    className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+                    className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
                   >
                     Magic Link
                   </button>
@@ -231,14 +248,14 @@ export default function LoginPage() {
               <div className="flex gap-2 p-1 bg-[var(--md-sys-color-surface-container-highest)] rounded-[var(--md-sys-shape-corner-medium)] mb-2">
                 <button
                   type="button"
-                  className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+                  className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
                 >
                   Password
                 </button>
                 <button
                   type="button"
                   onClick={() => setLoginMethod('magic_link')}
-                  className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]"
+                  className="flex-1 py-2 text-sm font-medium rounded-[var(--md-sys-shape-corner-small)] transition-colors text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
                 >
                   Magic Link
                 </button>
@@ -289,7 +306,7 @@ export default function LoginPage() {
 
         {/* Footer info */}
         <div className="text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
-          Protected by Supabase Auth & Row Level Security
+          {branding.tagline || 'Protected by Enterprise Auth & Row Level Security'}
         </div>
       </div>
 

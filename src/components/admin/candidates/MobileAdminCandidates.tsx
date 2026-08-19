@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { CandidateUser } from '@/app/admin/candidates/CandidateManagementClient'
 import { type ShiftConfig, formatShiftTime, DEFAULT_FALLBACK_SHIFT } from '@/lib/utils/shift'
+import { ROLE_METADATA, UserRole } from '@/lib/auth/permissions'
 
 export interface MobileAdminCandidatesProps {
   candidates: CandidateUser[]
@@ -194,7 +195,17 @@ export const MobileAdminCandidates: React.FC<MobileAdminCandidatesProps> = ({
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-xs text-[var(--md-sys-color-on-surface)] truncate">{c.full_name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-xs text-[var(--md-sys-color-on-surface)] truncate">{c.full_name}</p>
+                          {(() => {
+                            const roleMeta = ROLE_METADATA[(c.role in ROLE_METADATA ? c.role : 'candidate') as UserRole] || ROLE_METADATA.candidate
+                            return (
+                              <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${roleMeta.badgeBg} ${roleMeta.badgeText}`}>
+                                {roleMeta.label}
+                              </span>
+                            )
+                          })()}
+                        </div>
                         <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono truncate">
                           {c.email || 'No email'}
                         </p>

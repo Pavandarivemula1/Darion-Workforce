@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canAccessAdminPortal } from '@/lib/auth/permissions'
 import { AdminShiftsClient } from '@/components/admin/shifts/AdminShiftsClient'
 import { DEFAULT_FALLBACK_SHIFT, type ShiftConfig, type ShiftWithCandidateCount } from '@/lib/utils/shift'
 
@@ -11,7 +12,7 @@ export default async function AdminShiftsPage() {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminPortal(user.role)) {
     redirect('/candidate')
   }
 
@@ -39,7 +40,6 @@ export default async function AdminShiftsPage() {
     supabase
       .from('profiles')
       .select('id, full_name, role, hourly_rate, avatar_url, shift_id, created_at')
-      .eq('role', 'candidate')
       .order('created_at', { ascending: false }),
     supabaseAdmin
       .from('attendance')
@@ -54,7 +54,6 @@ export default async function AdminShiftsPage() {
     const { data: fallbackCandidates } = await supabase
       .from('profiles')
       .select('id, full_name, role, hourly_rate, avatar_url, created_at')
-      .eq('role', 'candidate')
       .order('created_at', { ascending: false })
     candidateProfilesList = fallbackCandidates || []
   }
@@ -135,7 +134,12 @@ export default async function AdminShiftsPage() {
   })
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-7xl w-full mx-auto px-2 py-2 sm:p-6 lg:p-8 flex flex-col gap-2.5 sm:gap-6">
         <AdminShiftsClient shifts={shiftsWithCount} candidates={candidateUsers} />
       </main>

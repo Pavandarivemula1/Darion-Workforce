@@ -67,8 +67,9 @@ function parseSessionFromCookies(request: NextRequest): { userId: string; role: 
     }
 
     const role = payload.user_metadata?.role || payload.app_metadata?.role || 'candidate'
-    // Default to true for admins so they don't get locked out, false for candidates
-    const password_changed = payload.user_metadata?.password_changed ?? (role === 'admin')
+    const isManagement = ['admin', 'super_admin', 'hr_manager', 'supervisor', 'auditor'].includes(role)
+    // Default to true for management so they don't get locked out, false for candidates
+    const password_changed = payload.user_metadata?.password_changed ?? isManagement
     
     return { userId: payload.sub, role, password_changed }
   } catch {
@@ -81,6 +82,11 @@ export async function updateSession(request: NextRequest) {
   const session = parseSessionFromCookies(request)
 
   const requestHeaders = new Headers(request.headers)
+
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || ''
+  if (host) {
+    requestHeaders.set('x-tenant-host', host)
+  }
 
   if (session) {
     requestHeaders.set('x-user-id', session.userId)
@@ -104,6 +110,9 @@ export async function updateSession(request: NextRequest) {
   // 2. Authenticated user redirects & role-based access control
   if (session) {
     const { role, password_changed } = session
+    const isManagement = ['admin', 'super_admin', 'hr_manager', 'supervisor', 'auditor'].includes(role)
+    const isFullAdmin = role === 'admin' || role === 'super_admin'
+    const isHR = isFullAdmin || role === 'hr_manager'
     
     // Check MFA status
     const supabase = createServerClient(
@@ -149,26 +158,58 @@ export async function updateSession(request: NextRequest) {
     // Redirect away from force-change-password if already changed
     if (password_changed && pathname.startsWith('/force-change-password')) {
       const url = request.nextUrl.clone()
-      url.pathname = role === 'admin' ? '/admin' : '/candidate'
+      url.pathname = isManagement ? '/admin' : '/candidate'
       return NextResponse.redirect(url)
     }
 
     // Redirect logged-in users away from /login or /
     if (pathname === '/login' || pathname === '/') {
       const url = request.nextUrl.clone()
-      url.pathname = role === 'admin' ? '/admin' : '/candidate'
+      url.pathname = isManagement ? '/admin' : '/candidate'
       return NextResponse.redirect(url)
     }
 
-    // Admin-only routes
-    if (pathname.startsWith('/admin') && role !== 'admin') {
+    // Candidate trying to access admin portal
+    if (pathname.startsWith('/admin') && !isManagement) {
       const url = request.nextUrl.clone()
       url.pathname = '/candidate'
       return NextResponse.redirect(url)
     }
 
-    // Candidate-only routes
-    if (pathname.startsWith('/candidate') && role === 'admin') {
+    // Granular admin route protections:
+    // A. SuperAdmin Console -> Super Admin strictly only
+    if (
+      (pathname.startsWith('/admin/superadmin') || pathname.startsWith('/admin/system')) &&
+      role !== 'super_admin'
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+
+    // B. Branding, Security, and Reset Requests -> Admin/Super Admin only
+    if (
+      (pathname.startsWith('/admin/settings/branding') ||
+        pathname.startsWith('/admin/security') ||
+        pathname.startsWith('/admin/reset-requests')) &&
+      !isFullAdmin
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+
+    // C. Payroll -> Admin, Super Admin, HR Manager, and Auditor only (block supervisor)
+    if (pathname.startsWith('/admin/payroll') && !isHR && role !== 'auditor') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+
+    // Candidate-only portal redirect for pure admin roles (unless testing)
+    if (pathname.startsWith('/candidate') && isFullAdmin) {
+      // Allow admins to preview candidate pages if explicitly requested or redirect to /admin
+      // Keeping redirect for consistency
       const url = request.nextUrl.clone()
       url.pathname = '/admin'
       return NextResponse.redirect(url)

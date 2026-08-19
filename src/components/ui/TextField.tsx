@@ -7,6 +7,7 @@ export interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputEleme
   label?: string
   error?: string
   supportingText?: string
+  helperText?: string
   startIcon?: React.ReactNode
   endIcon?: React.ReactNode
 }
@@ -15,6 +16,7 @@ export const TextField: React.FC<TextFieldProps> = ({
   label,
   error,
   supportingText,
+  helperText,
   startIcon,
   endIcon,
   id,
@@ -26,6 +28,7 @@ export const TextField: React.FC<TextFieldProps> = ({
   const isPassword = props.type === 'password'
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : props.type
   const hasRightElement = endIcon || isPassword
+  const helper = error || supportingText || helperText
 
   return (
     <div className="flex flex-col gap-1 w-full">
@@ -65,7 +68,7 @@ export const TextField: React.FC<TextFieldProps> = ({
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="p-1 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] hover:text-[var(--md-sys-color-on-surface)] transition-colors focus:outline-none"
+              className="p-1 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] hover:text-[var(--md-sys-color-on-surface)] transition-colors focus:outline-none cursor-pointer"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -73,7 +76,7 @@ export const TextField: React.FC<TextFieldProps> = ({
           )}
         </div>
       </div>
-      {(error || supportingText) && (
+      {helper && (
         <span
           className={`text-[11px] px-1 ${
             error
@@ -81,10 +84,9 @@ export const TextField: React.FC<TextFieldProps> = ({
               : 'text-[var(--md-sys-color-on-surface-variant)]'
           }`}
         >
-          {error || supportingText}
+          {helper}
         </span>
       )}
     </div>
   )
 }
-

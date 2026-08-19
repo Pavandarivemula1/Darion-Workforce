@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { isManagementRole, isAdmin } from '@/lib/auth/permissions'
 
 export interface SubmitFeedbackInput {
   type?: 'shift_feedback' | 'suggestion' | 'bug' | 'workplace' | 'general'
@@ -112,8 +113,8 @@ export async function updateFeedbackStatusAction(
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return { error: 'Access denied. Administrator permissions required.' }
+  if (!isManagementRole(profile?.role)) {
+    return { error: 'Access denied. Management permissions required.' }
   }
 
   const updatePayload: {
@@ -160,7 +161,7 @@ export async function deleteFeedbackAction(feedbackId: string) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (!isAdmin(profile?.role)) {
     return { error: 'Access denied. Administrator permissions required.' }
   }
 

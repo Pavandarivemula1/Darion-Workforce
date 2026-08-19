@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendNotification, sendAdminBroadcast } from '@/lib/utils/notifications'
+import { isManagementRole } from '@/lib/auth/permissions'
 
 export type OvershiftActionState = {
   error?: string
@@ -75,9 +76,10 @@ export async function requestOvershiftAction(date: string, requestType: 'now' | 
 }
 
 export async function approveOvershiftAction(
-  prevState: OvershiftActionState,
-  formData: FormData
+  prevState?: OvershiftActionState | null,
+  formData?: FormData
 ): Promise<OvershiftActionState> {
+  if (!formData) return { error: 'FormData is required.' }
   const supabase = await createClient()
 
   const {
@@ -91,8 +93,8 @@ export async function approveOvershiftAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const requestId = formData.get('requestId') as string
@@ -130,9 +132,10 @@ export async function approveOvershiftAction(
 }
 
 export async function rejectOvershiftAction(
-  prevState: OvershiftActionState,
-  formData: FormData
+  prevState?: OvershiftActionState | null,
+  formData?: FormData
 ): Promise<OvershiftActionState> {
+  if (!formData) return { error: 'FormData is required.' }
   const supabase = await createClient()
 
   const {
@@ -146,8 +149,8 @@ export async function rejectOvershiftAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const requestId = formData.get('requestId') as string

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { isManagementRole } from '@/lib/auth/permissions'
 
 export type ShiftActionState = {
   error?: string
@@ -9,7 +10,7 @@ export type ShiftActionState = {
 }
 
 /**
- * Check if the calling user is an authorized admin
+ * Check if the calling user is an authorized management user
  */
 async function verifyAdmin() {
   const supabase = await createClient()
@@ -27,8 +28,8 @@ async function verifyAdmin() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return { supabase, user: null, error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(profile?.role)) {
+    return { supabase, user: null, error: 'Access denied. Management privileges required.' }
   }
 
   return { supabase, user, error: null }

@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canManageSecurity } from '@/lib/auth/permissions'
 import { ResetRequestsClient } from './ResetRequestsClient'
 
 export default async function AdminResetRequestsPage() {
@@ -10,8 +11,8 @@ export default async function AdminResetRequestsPage() {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
-    redirect('/candidate')
+  if (!canManageSecurity(user.role)) {
+    redirect('/admin')
   }
 
   const supabase = await createClient()
@@ -33,7 +34,12 @@ export default async function AdminResetRequestsPage() {
   const safeRequests = error ? [] : (requests || [])
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
         <div className="hidden md:block">
           <h2 className="text-xl sm:text-2xl font-bold">Password Reset Requests</h2>

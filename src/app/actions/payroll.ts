@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { canManagePayroll } from '@/lib/auth/permissions'
 
 export type PayrollActionState = {
   error?: string
@@ -18,7 +19,7 @@ export async function settleCandidatePayrollAction(
 ): Promise<PayrollActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify payroll authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -33,8 +34,8 @@ export async function settleCandidatePayrollAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!canManagePayroll(adminProfile?.role)) {
+    return { error: 'Access denied. Payroll privileges required.' }
   }
 
   const candidateId = formData.get('candidateId') as string
@@ -183,8 +184,8 @@ export async function batchSettlePayrollAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!canManagePayroll(adminProfile?.role)) {
+    return { error: 'Access denied. Payroll privileges required.' }
   }
 
   const candidateIdsJson = formData.get('candidateIds') as string
@@ -315,8 +316,8 @@ export async function markShiftPaymentStatusAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!canManagePayroll(adminProfile?.role)) {
+    return { error: 'Access denied. Payroll privileges required.' }
   }
 
   const shiftId = formData.get('shiftId') as string

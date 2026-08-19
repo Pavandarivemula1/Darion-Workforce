@@ -7,6 +7,7 @@ import { TextField } from '@/components/ui/TextField'
 import { Button } from '@/components/ui/Button'
 import { Snackbar } from '@/components/ui/Snackbar'
 import { Mail, Clock, ShieldCheck } from 'lucide-react'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import { requestPasswordResetAction } from '@/app/actions/forgot-password'
 
 const initialState: { error?: string; success?: boolean } = {
@@ -15,6 +16,7 @@ const initialState: { error?: string; success?: boolean } = {
 }
 
 export default function ForgotPasswordPage() {
+  const branding = useBranding()
   const [state, formAction, isPending] = useActionState(requestPasswordResetAction, initialState)
   const [dismissedError, setDismissedError] = useState<string | null>(null)
   
@@ -28,14 +30,18 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md flex flex-col items-center gap-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
-            <Clock className="w-8 h-8" />
-          </div>
+          {branding.iconUrl ? (
+            <img src={branding.iconUrl} alt={branding.appTitle} className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] object-contain mb-1 shadow-2xs border border-[var(--md-sys-color-outline-variant)]" />
+          ) : (
+            <div className="w-14 h-14 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
+              <Clock className="w-8 h-8" />
+            </div>
+          )}
           <h1 className="text-3xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
             Reset Password
           </h1>
           <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
-            Darion Workforce &bull; Recover your account
+            {branding.appTitle} &bull; Recover your account
           </p>
         </div>
 

@@ -35,7 +35,7 @@ import {
 } from 'lucide-react'
 import { type ShiftConfig, formatShiftTime, DEFAULT_FALLBACK_SHIFT } from '@/lib/utils/shift'
 import { MobileAdminCandidates } from '@/components/admin/candidates/MobileAdminCandidates'
-
+import { ROLE_METADATA, getRoleDisplayName, UserRole } from '@/lib/auth/permissions'
 
 export interface CandidateUser {
   id: string
@@ -191,7 +191,17 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                           </div>
                         )}
                         <div className="flex flex-col">
-                          <span>{c.full_name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span>{c.full_name}</span>
+                            {(() => {
+                              const roleMeta = ROLE_METADATA[(c.role in ROLE_METADATA ? c.role : 'candidate') as UserRole] || ROLE_METADATA.candidate
+                              return (
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${roleMeta.badgeBg} ${roleMeta.badgeText}`}>
+                                  {roleMeta.label}
+                                </span>
+                              )
+                            })()}
+                          </div>
                           {c.email && (
                             <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
                               {c.email}
@@ -367,6 +377,24 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" /> System Role
+                </label>
+                <select
+                  name="role"
+                  defaultValue="candidate"
+                  disabled={isCreating}
+                  className="h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-sm focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+                >
+                  <option value="candidate">Candidate / Employee (Workforce)</option>
+                  <option value="supervisor">Shift Supervisor / Team Lead</option>
+                  <option value="hr_manager">HR &amp; Payroll Manager</option>
+                  <option value="admin">Organization Admin</option>
+                  <option value="auditor">Auditor (Read-Only Observer)</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" /> Assigned Shift Preset
                 </label>
                 <select
@@ -402,7 +430,7 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                   Cancel
                 </button>
                 <Button type="submit" variant="filled" size="md" isLoading={isCreating}>
-                  Create Candidate
+                  Create Staff Member
                 </Button>
               </div>
             </form>
@@ -442,6 +470,24 @@ export const CandidateManagementClient: React.FC<CandidateManagementClientProps>
                 disabled={isEditing}
                 startIcon={<User className="w-4 h-4" />}
               />
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" /> System Role
+                </label>
+                <select
+                  name="role"
+                  defaultValue={editCandidate.role || 'candidate'}
+                  disabled={isEditing}
+                  className="h-10 px-3 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] text-sm focus:outline-none focus:border-[var(--md-sys-color-primary)] cursor-pointer"
+                >
+                  <option value="candidate">Candidate / Employee (Workforce)</option>
+                  <option value="supervisor">Shift Supervisor / Team Lead</option>
+                  <option value="hr_manager">HR &amp; Payroll Manager</option>
+                  <option value="admin">Organization Admin</option>
+                  <option value="auditor">Auditor (Read-Only Observer)</option>
+                </select>
+              </div>
 
               <TextField
                 name="hourlyRate"

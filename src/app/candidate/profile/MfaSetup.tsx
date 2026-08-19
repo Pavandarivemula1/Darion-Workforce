@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { ShieldCheck, QrCode as QrCodeIcon, Smartphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import QRCode from 'react-qr-code'
 
 export function MfaSetup() {
   const supabase = createClient()
+  const branding = useBranding()
   const [factorId, setFactorId] = useState<string | null>(null)
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [verifyCode, setVerifyCode] = useState('')
@@ -30,8 +32,8 @@ export function MfaSetup() {
       const { data, error } = await supabase.auth.mfa.listFactors()
       if (error) throw error
       
-      const totpFactor = data.totp.find(f => f.status === 'verified')
-      setIsEnrolled(!!totpFactor)
+      const verified = data?.totp?.some(f => f.status === 'verified')
+      setIsEnrolled(!!verified)
     } catch (err: any) {
       console.error('Error checking MFA status', err)
     } finally {
@@ -52,10 +54,11 @@ export function MfaSetup() {
         }
       }
 
+      const issuerName = branding.mfaIssuerName || branding.appTitle || 'Workforce'
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
         friendlyName: 'Authenticator App',
-        issuer: 'Darion Workforce'
+        issuer: issuerName
       })
       if (error) throw error
 
@@ -69,7 +72,7 @@ export function MfaSetup() {
           const url = new URL(uri)
           const secret = url.searchParams.get('secret')
           if (secret) {
-            const encodedIssuer = encodeURIComponent('Darion Workforce')
+            const encodedIssuer = encodeURIComponent(issuerName)
             const encodedEmail = encodeURIComponent(email)
             uri = `otpauth://totp/${encodedIssuer}:${encodedEmail}?secret=${secret}&issuer=${encodedIssuer}`
           }

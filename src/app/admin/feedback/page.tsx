@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canAccessAdminPortal } from '@/lib/auth/permissions'
 import { AdminFeedbackClient, FeedbackWithCandidate } from '@/components/admin/feedback/AdminFeedbackClient'
 
 export default async function AdminFeedbackPage() {
@@ -10,7 +11,7 @@ export default async function AdminFeedbackPage() {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminPortal(user.role)) {
     redirect('/candidate')
   }
 
@@ -59,8 +60,8 @@ export default async function AdminFeedbackPage() {
     return {
       id: f.id,
       user_id: f.user_id,
-      type: f.type || 'general',
-      rating: typeof f.rating === 'number' ? f.rating : null,
+      type: f.type || 'shift',
+      rating: f.rating || 5,
       mood: f.mood || null,
       tags: f.tags || [],
       title: f.title || null,
@@ -76,11 +77,15 @@ export default async function AdminFeedbackPage() {
   })
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-7xl w-full mx-auto px-2 py-2 sm:p-6 lg:p-8 flex flex-col gap-2.5 sm:gap-6">
         <AdminFeedbackClient feedbacks={feedbacksList} />
       </main>
     </AdminLayout>
   )
-
 }

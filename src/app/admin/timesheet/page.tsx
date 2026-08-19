@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canAccessAdminPortal } from '@/lib/auth/permissions'
 import { getWeekBoundaries, getKolkataDateKey } from '@/lib/utils/timesheet'
 import { TimesheetClientView } from './TimesheetClientView'
 
@@ -20,7 +21,7 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminPortal(user.role)) {
     redirect('/candidate')
   }
 
@@ -40,7 +41,6 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
     supabase
       .from('profiles')
       .select('id, full_name, role, created_at')
-      .eq('role', 'candidate')
       .order('created_at', { ascending: true }),
     supabase
       .from('attendance')
@@ -53,7 +53,12 @@ export default async function AdminTimesheetPage({ searchParams }: PageProps) {
   const referenceDateIso = getKolkataDateKey(referenceDate.toISOString())
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
         <div className="hidden md:block">
           <h2 className="text-xl sm:text-2xl font-bold">Weekly Timesheet</h2>

@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canAccessAdminPortal } from '@/lib/auth/permissions'
 import { AdminAttendanceClient } from './AdminAttendanceClient'
 
 export interface PageProps {
@@ -23,6 +24,10 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
 
   if (!user) {
     redirect('/login')
+  }
+
+  if (!canAccessAdminPortal(user.role)) {
+    redirect('/candidate')
   }
 
   const supabase = await createClient()
@@ -146,7 +151,12 @@ export default async function AdminAttendancePage({ searchParams }: PageProps) {
   })
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6">
         <AdminAttendanceClient
           candidates={candidates || []}

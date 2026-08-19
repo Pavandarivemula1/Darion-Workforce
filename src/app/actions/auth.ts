@@ -45,13 +45,15 @@ export async function loginAction(
       .eq('id', data.user.id)
       .maybeSingle()
     role = profile?.role || 'candidate'
-    const password_changed = profile?.password_changed ?? (role === 'admin')
+    const isManagement = ['admin', 'super_admin', 'hr_manager', 'supervisor', 'auditor'].includes(role)
+    const password_changed = profile?.password_changed ?? isManagement
 
     // Update user metadata in Supabase Auth so future proxy checks & logins read role directly from JWT (0ms DB cost)
     supabase.auth.updateUser({ data: { role, password_changed } }).catch(() => {})
   }
 
-  if (role === 'admin') {
+  const isManagement = ['admin', 'super_admin', 'hr_manager', 'supervisor', 'auditor'].includes(role)
+  if (isManagement) {
     redirect('/admin')
   } else {
     redirect('/candidate')
@@ -102,12 +104,14 @@ export async function verifyMfaLoginAction(
       .eq('id', user.id)
       .maybeSingle()
     role = profile?.role || 'candidate'
-    const password_changed = profile?.password_changed ?? (role === 'admin')
+    const isManagement = ['admin', 'super_admin', 'hr_manager', 'supervisor', 'auditor'].includes(role)
+    const password_changed = profile?.password_changed ?? isManagement
 
     supabase.auth.updateUser({ data: { role, password_changed } }).catch(() => {})
   }
 
-  if (role === 'admin') {
+  const isManagement = ['admin', 'super_admin', 'hr_manager', 'supervisor', 'auditor'].includes(role)
+  if (isManagement) {
     redirect('/admin')
   } else {
     redirect('/candidate')

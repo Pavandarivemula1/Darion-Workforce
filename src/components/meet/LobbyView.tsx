@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { createAudioLevelDetector } from '@/lib/meet/webrtc'
+import { useBranding } from '@/components/providers/BrandingProvider'
 
 export interface LobbyViewProps {
   roomCode: string
@@ -40,6 +41,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
   initialName = '',
   onJoin,
 }) => {
+  const branding = useBranding()
   const [name, setName] = useState(initialName || 'Guest User')
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
@@ -387,7 +389,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold mb-3">
                 <Radio className="w-3.5 h-3.5 animate-pulse" />
-                Darion Meet
+                {branding.appTitle} Meet
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{roomTitle}</h1>
               <p className="text-sm text-slate-400 mt-1">Ready to join this collaborative session?</p>

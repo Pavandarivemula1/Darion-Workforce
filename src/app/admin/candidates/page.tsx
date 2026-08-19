@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canAccessAdminPortal } from '@/lib/auth/permissions'
 import { CandidateManagementClient } from './CandidateManagementClient'
 
 export default async function AdminCandidatesPage() {
@@ -10,13 +11,13 @@ export default async function AdminCandidatesPage() {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminPortal(user.role)) {
     redirect('/candidate')
   }
 
   const supabase = await createClient()
 
-  // Execute queries concurrently
+  // Execute queries concurrently (fetch candidates, supervisors, hr managers, auditors)
   let [{ data: adminProfile }, { data: candidateProfiles, error: candidateError }, { data: activeSessions }, { data: shiftsData }] = await Promise.all([
     supabase
       .from('profiles')
@@ -26,7 +27,6 @@ export default async function AdminCandidatesPage() {
     supabase
       .from('profiles')
       .select('id, full_name, role, created_at, hourly_rate, avatar_url, phone_number, address, id_number, shift_id')
-      .eq('role', 'candidate')
       .order('created_at', { ascending: true }),
     supabase
       .from('attendance')
@@ -45,7 +45,6 @@ export default async function AdminCandidatesPage() {
     const { data: fallbackProfiles } = await supabase
       .from('profiles')
       .select('id, full_name, role, created_at, hourly_rate, avatar_url, phone_number, address, id_number')
-      .eq('role', 'candidate')
       .order('created_at', { ascending: true })
     candidateProfilesList = fallbackProfiles || []
   }
@@ -55,7 +54,7 @@ export default async function AdminCandidatesPage() {
   const candidateUsers = candidateProfilesList.map((c: any) => ({
     id: c.id,
     full_name: c.full_name,
-    role: c.role,
+    role: c.role || 'candidate',
     created_at: c.created_at,
     hourly_rate: c.hourly_rate || 0,
     avatar_url: c.avatar_url,
@@ -69,11 +68,15 @@ export default async function AdminCandidatesPage() {
   const shifts = shiftsData || []
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6">
         <CandidateManagementClient candidates={candidateUsers} shifts={shifts} />
       </main>
     </AdminLayout>
   )
-
 }

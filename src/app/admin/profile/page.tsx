@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canAccessAdminPortal } from '@/lib/auth/permissions'
 import { Card } from '@/components/ui/Card'
 import { ShieldCheck, Mail, Calendar, Key, Phone, MapPin, FileText } from 'lucide-react'
 import { ProfileAvatarZoom } from '@/components/ui/ProfileAvatarZoom'
@@ -13,7 +14,7 @@ export default async function AdminProfilePage() {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminPortal(user.role)) {
     redirect('/candidate')
   }
 
@@ -28,7 +29,12 @@ export default async function AdminProfilePage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-4xl w-full mx-auto px-2 py-2 sm:p-6 flex flex-col gap-2.5 sm:gap-6">
         {/* DEDICATED PURPOSE-BUILT MOBILE VIEW (< 768px) */}
         <div className="md:hidden">

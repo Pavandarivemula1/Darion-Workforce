@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import { Clock, History, LogOut, LayoutDashboard, User, Banknote, MessageSquare, Palmtree, CheckSquare } from 'lucide-react'
 
 export interface CandidateNavProps {
@@ -13,6 +14,7 @@ export interface CandidateNavProps {
 
 export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
   const pathname = usePathname()
+  const branding = useBranding()
 
   const navItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
@@ -31,12 +33,18 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           {/* Brand & User Info */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
+            {branding.iconUrl ? (
+              <img src={branding.iconUrl} alt={branding.appTitle} className="w-9 h-9 rounded-[var(--md-sys-shape-corner-small)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]" />
+            ) : branding.logoLightUrl ? (
+              <img src={branding.logoLightUrl} alt={branding.appTitle} className="h-8 max-w-[120px] object-contain shrink-0" />
+            ) : (
+              <div className="w-9 h-9 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+            )}
             <div>
               <h1 className="text-sm sm:text-base font-bold text-[var(--md-sys-color-on-surface)] leading-tight">
-                Darion Workforce Candidate
+                {branding.appTitle} Candidate
               </h1>
               {userName && (
                 <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate max-w-[150px] sm:max-w-[220px]">

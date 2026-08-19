@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getKolkataDateKey } from '@/lib/utils/timesheet'
+import { isManagementRole } from '@/lib/auth/permissions'
 
 export interface CreateTaskInput {
   task_date?: string // YYYY-MM-DD
@@ -248,8 +249,8 @@ export async function submitAdminTaskFeedbackAction(taskId: string, feedback: st
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
-    return { error: 'Access denied. Admin role required.' }
+  if (!isManagementRole(profile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const { error } = await supabase

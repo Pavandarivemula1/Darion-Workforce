@@ -3,6 +3,15 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendNotification } from '@/lib/utils/notifications'
+import {
+  isAdmin,
+  isHR,
+  isSupervisor,
+  isManagementRole,
+  canManagePayroll,
+  canManageBranding,
+  canManageSecurity,
+} from '@/lib/auth/permissions'
 
 export type AdminActionState = {
   error?: string
@@ -15,7 +24,7 @@ export async function createCandidateAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify admin/HR authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -30,8 +39,8 @@ export async function createCandidateAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isHR(adminProfile?.role)) {
+    return { error: 'Access denied. HR or Admin privileges required.' }
   }
 
   const email = formData.get('email') as string
@@ -40,6 +49,7 @@ export async function createCandidateAction(
   const hourlyRateStr = formData.get('hourlyRate') as string
   const hourlyRate = parseFloat(hourlyRateStr || '0')
   const shiftId = (formData.get('shiftId') as string) || null
+  const role = (formData.get('role') as string) || 'candidate'
 
   if (!email || !fullName || !password) {
     return { error: 'All fields (Full Name, Email, Password) are required.' }
@@ -72,7 +82,7 @@ export async function createCandidateAction(
     email_confirm: true,
     user_metadata: {
       full_name: fullName,
-      role: 'candidate',
+      role: role,
       password_changed: false,
     },
   })
@@ -86,7 +96,7 @@ export async function createCandidateAction(
     const profileData: any = {
       id: authData.user.id,
       full_name: fullName,
-      role: 'candidate',
+      role: role,
       hourly_rate: isNaN(hourlyRate) ? 0 : Math.max(0, hourlyRate),
       updated_at: new Date().toISOString(),
     }
@@ -129,8 +139,8 @@ export async function updateCandidateHourlyRateAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isHR(adminProfile?.role)) {
+    return { error: 'Access denied. HR or Admin privileges required.' }
   }
 
   const candidateId = formData.get('candidateId') as string
@@ -181,8 +191,8 @@ export async function updateCandidateProfileAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const candidateId = formData.get('candidateId') as string
@@ -193,6 +203,7 @@ export async function updateCandidateProfileAction(
   const idNumber = formData.get('idNumber') as string
   const shiftId = formData.get('shiftId') as string | null
   const avatarFile = formData.get('avatarFile') as File | null
+  const role = formData.get('role') as string | null
   
   if (!candidateId || !fullName) {
     return { error: 'Candidate ID and Full Name are required.' }
@@ -230,6 +241,18 @@ export async function updateCandidateProfileAction(
     updated_at: new Date().toISOString(),
   }
 
+  if (role && isAdmin(adminProfile?.role)) {
+    updateData.role = role
+    try {
+      const adminClient = createAdminClient()
+      await adminClient.auth.admin.updateUserById(candidateId, {
+        user_metadata: { role }
+      })
+    } catch {
+      // Continue even if auth metadata sync encounters issue
+    }
+  }
+
   if (shiftId !== null && shiftId !== undefined) {
     updateData.shift_id = shiftId === 'none' || !shiftId ? null : shiftId
   }
@@ -258,7 +281,6 @@ export async function updateCandidateProfileAction(
   revalidatePath('/admin/attendance')
   revalidatePath('/admin/timesheet')
   revalidatePath('/admin')
-  revalidatePath('/candidate')
   return { success: true }
 }
 
@@ -282,8 +304,8 @@ export async function approveShiftAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const attendanceId = formData.get('attendanceId') as string
@@ -394,8 +416,8 @@ export async function rejectShiftAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const attendanceId = formData.get('attendanceId') as string
@@ -452,7 +474,7 @@ export async function resetCandidatePasswordAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // Verify admin
+  // Verify admin / HR
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -467,8 +489,8 @@ export async function resetCandidatePasswordAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied.' }
+  if (!isHR(adminProfile?.role)) {
+    return { error: 'Access denied. HR or Admin privileges required.' }
   }
 
   const email = formData.get('email') as string
@@ -511,7 +533,7 @@ export async function deleteCandidateAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
+  if (!isAdmin(adminProfile?.role)) {
     return { error: 'Access denied. Admin privileges required.' }
   }
 
@@ -561,7 +583,7 @@ export async function approveMfaResetAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
+  if (!canManageSecurity(adminProfile?.role)) {
     return { error: 'Access denied. Admin privileges required.' }
   }
 
@@ -615,7 +637,7 @@ export async function adminStartWorkAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify management authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -630,8 +652,8 @@ export async function adminStartWorkAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const candidateId = formData.get('candidateId') as string
@@ -709,7 +731,7 @@ export async function adminEndWorkAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify management authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -724,8 +746,8 @@ export async function adminEndWorkAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const attendanceId = formData.get('attendanceId') as string
@@ -845,7 +867,7 @@ export async function adminCreateManualShiftAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify management authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -860,8 +882,8 @@ export async function adminCreateManualShiftAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const candidateId = formData.get('candidateId') as string
@@ -962,7 +984,7 @@ export async function adminUpdateAttendanceAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify management authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -977,8 +999,8 @@ export async function adminUpdateAttendanceAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const attendanceId = formData.get('attendanceId') as string
@@ -1113,7 +1135,7 @@ export async function adminDeleteAttendanceAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
+  if (!isAdmin(adminProfile?.role)) {
     return { error: 'Access denied. Admin privileges required.' }
   }
 
@@ -1149,7 +1171,7 @@ export async function adminAutoCutoffSessionAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify management authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -1164,8 +1186,8 @@ export async function adminAutoCutoffSessionAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   const attendanceId = formData.get('attendanceId') as string
@@ -1275,7 +1297,7 @@ export async function adminResolveAllStaleSessionsAction(
 ): Promise<AdminActionState> {
   const supabase = await createClient()
 
-  // 1. Verify admin authorization
+  // 1. Verify management authorization
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -1290,8 +1312,8 @@ export async function adminResolveAllStaleSessionsAction(
     .eq('id', user.id)
     .single()
 
-  if (adminProfile?.role !== 'admin') {
-    return { error: 'Access denied. Admin privileges required.' }
+  if (!isManagementRole(adminProfile?.role)) {
+    return { error: 'Access denied. Management privileges required.' }
   }
 
   // 2. Fetch all active sessions

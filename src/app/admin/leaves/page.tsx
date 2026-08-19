@@ -1,6 +1,7 @@
 import { createClient, getCurrentUserFast, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { canAccessAdminPortal } from '@/lib/auth/permissions'
 import { AdminLeavesClient, AdminLeaveRecord } from '@/components/admin/leaves/AdminLeavesClient'
 
 export default async function AdminLeavesPage() {
@@ -10,7 +11,7 @@ export default async function AdminLeavesPage() {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdminPortal(user.role)) {
     redirect('/candidate')
   }
 
@@ -73,11 +74,15 @@ export default async function AdminLeavesPage() {
   })
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-7xl w-full mx-auto px-2 py-2 sm:p-6 lg:p-8 flex flex-col gap-2.5 sm:gap-6">
         <AdminLeavesClient leaves={leavesList} />
       </main>
     </AdminLayout>
   )
-
 }

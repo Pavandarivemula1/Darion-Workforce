@@ -2,6 +2,7 @@ import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { AdminPayrollClient } from '@/components/admin/payroll/AdminPayrollClient'
+import { canManagePayroll, isAuditor } from '@/lib/auth/permissions'
 
 export interface PageProps {
   searchParams: Promise<{
@@ -21,8 +22,8 @@ export default async function AdminPayrollPage({ searchParams }: PageProps) {
     redirect('/login')
   }
 
-  if (user.role !== 'admin') {
-    redirect('/candidate')
+  if (!canManagePayroll(user.role) && !isAuditor(user.role)) {
+    redirect('/admin')
   }
 
   const supabase = await createClient()
@@ -106,7 +107,12 @@ export default async function AdminPayrollPage({ searchParams }: PageProps) {
   }))
 
   return (
-    <AdminLayout adminId={user.id} adminName={adminProfile?.full_name || 'Admin'} adminAvatarUrl={adminProfile?.avatar_url}>
+    <AdminLayout 
+      adminId={user.id} 
+      adminName={adminProfile?.full_name || 'Admin'} 
+      adminAvatarUrl={adminProfile?.avatar_url}
+      adminRole={user.role}
+    >
       <main className="max-w-6xl w-full mx-auto px-2 py-2 sm:p-6">
         <AdminPayrollClient
           candidates={safeCandidates}
