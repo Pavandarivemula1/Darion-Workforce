@@ -910,20 +910,60 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                           {/* Inline Time & Read Status for Sent text messages */}
                           {isMe && msg.messageType !== 'meet_card' && (
-                            <div className="flex items-center justify-end gap-1 mt-1 -mb-0.5 text-[9.5px] opacity-75 select-none">
+                            <div className="flex items-center justify-end gap-1.5 mt-1 -mb-0.5 select-none">
                               {(msg.isEdited || msg.metadata?.isEdited) && (
                                 <span className="text-[9px] opacity-70 italic font-medium mr-0.5">(edited)</span>
                               )}
-                              <span>{formatMessageTime(msg.createdAt)}</span>
-                              <CheckCheck className="w-3 h-3 text-white/90" />
+                              <span className="text-[9.5px] opacity-75">{formatMessageTime(msg.createdAt)}</span>
+                              
+                              {/* Prominent Seen vs Delivered Status Indicator */}
+                              {msg.status === 'seen' ? (
+                                <span
+                                  className="inline-flex items-center gap-0.5 text-sky-100 font-bold text-[9px] tracking-tight bg-sky-400/25 px-1.5 py-0.5 rounded-full border border-sky-300/30 shadow-2xs"
+                                  title={
+                                    msg.readBy && msg.readBy.length > 0
+                                      ? `Seen by ${msg.readBy.map((u) => u.fullName).join(', ')}`
+                                      : 'Seen'
+                                  }
+                                >
+                                  <CheckCheck className="w-3 h-3 text-sky-200 stroke-[2.5]" />
+                                  <span>Seen</span>
+                                </span>
+                              ) : msg.status === 'delivered' ? (
+                                <span
+                                  className="inline-flex items-center gap-0.5 text-white/80 font-medium text-[9px] tracking-tight bg-black/10 px-1.5 py-0.5 rounded-full"
+                                  title="Delivered to recipient"
+                                >
+                                  <CheckCheck className="w-3 h-3 text-white/80" />
+                                  <span>Delivered</span>
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-0.5 text-white/70 font-medium text-[9px] tracking-tight"
+                                  title="Sent to cloud"
+                                >
+                                  <Check className="w-3 h-3 text-white/70" />
+                                  <span>Sent</span>
+                                </span>
+                              )}
                             </div>
                           )}
 
                           {/* Inline Time for Sent meet cards */}
                           {isMe && msg.messageType === 'meet_card' && (
-                            <div className="flex items-center justify-end gap-1 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none">
+                            <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none">
                               <span>{formatMessageTime(msg.createdAt)}</span>
-                              <CheckCheck className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
+                              {msg.status === 'seen' ? (
+                                <span className="inline-flex items-center gap-0.5 text-sky-500 dark:text-sky-400 font-bold text-[9px] bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded-full border border-sky-200 dark:border-sky-800/40">
+                                  <CheckCheck className="w-3 h-3 text-sky-500 dark:text-sky-400 stroke-[2.5]" />
+                                  <span>Seen</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 text-slate-400 dark:text-slate-500 font-medium text-[9px]">
+                                  <CheckCheck className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                                  <span>Delivered</span>
+                                </span>
+                              )}
                             </div>
                           )}
 

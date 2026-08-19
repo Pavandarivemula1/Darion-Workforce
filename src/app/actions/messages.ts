@@ -78,6 +78,8 @@ export interface ChatMessageItem {
   metadata?: any
   isEdited: boolean
   isPinned: boolean
+  status?: 'sending' | 'sent' | 'delivered' | 'seen'
+  readBy?: Array<{ userId: string; fullName: string; avatarUrl?: string; readAt: string }>
   replyCount?: number
   reactions: ChatReactionGroup[]
   createdAt: string
@@ -458,6 +460,21 @@ export async function getConversationMessagesAction(
     }
   }
 
+  // Fetch other participants' last_read_at to determine Seen status
+  const { data: otherParticipants } = await supabase
+    .from('chat_participants')
+    .select(`
+      user_id,
+      last_read_at,
+      profiles:user_id (
+        id,
+        full_name,
+        avatar_url
+      )
+    `)
+    .eq('conversation_id', conversationId)
+    .neq('user_id', user.id)
+
   return messages.map((m: any) => {
     const rawReactions = reactionsMap.get(m.id) || []
     const emojiMap = new Map<string, { count: number; hasReacted: boolean; userNames: string[] }>()
@@ -481,6 +498,35 @@ export async function getConversationMessagesAction(
     }))
 
     const sender = m.profiles as any
+    const isMe = m.sender_id === user.id
+    let readStatus: 'sending' | 'sent' | 'delivered' | 'seen' = 'sent'
+    const readByUsers: Array<{ userId: string; fullName: string; avatarUrl?: string; readAt: string }> = []
+
+    if (isMe) {
+      const msgTime = new Date(m.created_at).getTime()
+      if (otherParticipants && otherParticipants.length > 0) {
+        for (const p of otherParticipants) {
+          if (p.last_read_at && new Date(p.last_read_at).getTime() >= msgTime) {
+            const rawProf = p.profiles as any
+            const prof = Array.isArray(rawProf) ? rawProf[0] : rawProf
+            readByUsers.push({
+              userId: p.user_id,
+              fullName: prof?.full_name || 'Team Member',
+              avatarUrl: prof?.avatar_url,
+              readAt: p.last_read_at,
+            })
+          }
+        }
+        if (readByUsers.length > 0) {
+          readStatus = 'seen'
+        } else {
+          readStatus = 'delivered'
+        }
+      } else {
+        readStatus = 'delivered'
+      }
+    }
+
     return {
       id: m.id,
       conversationId: m.conversation_id,
@@ -498,6 +544,8 @@ export async function getConversationMessagesAction(
       metadata: m.metadata,
       isEdited: m.is_edited,
       isPinned: m.is_pinned,
+      status: readStatus,
+      readBy: readByUsers,
       replyCount: replyCountMap.get(m.id) || 0,
       reactions,
       createdAt: m.created_at,
