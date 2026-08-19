@@ -11,7 +11,6 @@ import {
   Video,
   Volume2,
   Radio,
-  Sparkles,
 } from 'lucide-react'
 
 interface GlobalCallManagerProps {
@@ -32,7 +31,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   const outgoingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Resolve current user ID
+  // Resolve user id
   useEffect(() => {
     if (currentUserId) {
       setResolvedUserId(currentUserId)
@@ -57,7 +56,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     outgoingTimeoutRef.current = setTimeout(() => {
-      handleCancelOutgoing()
+      handleCancelOutgoing(true)
     }, 45000)
   }
 
@@ -103,15 +102,48 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     broadcastChannel
       .on('broadcast', { event: 'incoming_call' }, ({ payload }) => {
         if (!payload) return
-        // If message is directed to all or includes current user
         if (!payload.recipientIds || (resolvedUserId && payload.recipientIds.includes(resolvedUserId))) {
           triggerIncomingCall(payload)
         }
       })
       .on('broadcast', { event: 'call_declined' }, ({ payload }) => {
-        if (outgoingCall && payload?.roomCode === outgoingCall.roomCode) {
-          handleCancelOutgoing()
-        }
+        // If our outgoing call was declined by recipient
+        setOutgoingCall((cur) => {
+          if (cur && (!payload?.roomCode || cur.roomCode === payload.roomCode)) {
+            soundEffects.playCallEndedSound()
+            if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
+            if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+            return null
+          }
+          return cur
+        })
+      })
+      .on('broadcast', { event: 'call_cancelled' }, ({ payload }) => {
+        // If caller cancelled/hung up before we answered
+        setIncomingCall((cur) => {
+          if (cur && (!payload?.roomCode || cur.roomCode === payload.roomCode)) {
+            soundEffects.playCallEndedSound()
+            if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
+            return null
+          }
+          return cur
+        })
+      })
+      .on('broadcast', { event: 'call_accepted' }, ({ payload }) => {
+        // If recipient accepted, transition caller to meet room
+        setOutgoingCall((cur) => {
+          if (cur && (!payload?.roomCode || cur.roomCode === payload.roomCode)) {
+            soundEffects.stopRinging()
+            if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
+            if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+            const destUrl = payload.meetUrl || cur.meetUrl
+            setTimeout(() => {
+              router.push(destUrl)
+            }, 100)
+            return null
+          }
+          return cur
+        })
       })
       .subscribe()
 
@@ -158,7 +190,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
       supabase.removeChannel(broadcastChannel)
       if (notifChannel) supabase.removeChannel(notifChannel)
     }
-  }, [resolvedUserId, outgoingCall])
+  }, [resolvedUserId, router])
 
   // Handle Accept Incoming Call
   const handleAcceptIncoming = async () => {
@@ -170,6 +202,19 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     const targetRoom = incomingCall.roomCode
     const targetCaller = incomingCall.callerId
     setIncomingCall(null)
+
+    // Broadcast to caller that call was accepted
+    try {
+      const supabase = createClient()
+      const broadcastChannel = supabase.channel('global-call-signaling')
+      broadcastChannel.send({
+        type: 'broadcast',
+        event: 'call_accepted',
+        payload: { roomCode: targetRoom, meetUrl },
+      })
+    } catch {
+      // Ignored
+    }
 
     await respondToCallAction({
       roomCode: targetRoom,
@@ -189,6 +234,19 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     const cur = incomingCall
     setIncomingCall(null)
 
+    // Broadcast to caller that call was declined
+    try {
+      const supabase = createClient()
+      const broadcastChannel = supabase.channel('global-call-signaling')
+      broadcastChannel.send({
+        type: 'broadcast',
+        event: 'call_declined',
+        payload: { roomCode: cur.roomCode, callerId: cur.callerId },
+      })
+    } catch {
+      // Ignored
+    }
+
     await respondToCallAction({
       roomCode: cur.roomCode,
       callerId: cur.callerId,
@@ -196,13 +254,30 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     })
   }
 
-  // Handle Cancel Outgoing Call
-  const handleCancelOutgoing = () => {
+  // Handle Cancel Outgoing Call (Caller hangs up)
+  const handleCancelOutgoing = (isAutoTimeout = false) => {
     soundEffects.playCallEndedSound()
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+
+    const cur = outgoingCall
     setOutgoingCall(null)
     setOutgoingTimer(0)
+
+    // Broadcast to all receivers that call was cancelled
+    if (cur) {
+      try {
+        const supabase = createClient()
+        const broadcastChannel = supabase.channel('global-call-signaling')
+        broadcastChannel.send({
+          type: 'broadcast',
+          event: 'call_cancelled',
+          payload: { roomCode: cur.roomCode, callerId: cur.callerId },
+        })
+      } catch {
+        // Ignored
+      }
+    }
   }
 
   // Join Meet Room directly from Outgoing Screen
@@ -261,7 +336,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
             </h3>
             <p className="text-xs text-slate-300 mb-8 flex items-center justify-center gap-1.5 font-medium">
               <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span>Ringing loudly... Tap Accept to answer</span>
+              <span>Ringing... Tap Accept to answer</span>
             </p>
 
             {/* Action Buttons: Accept & Decline */}
@@ -334,7 +409,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
             {/* Actions: Cancel & Direct Enter */}
             <div className="w-full flex items-center justify-center gap-4">
               <button
-                onClick={handleCancelOutgoing}
+                onClick={() => handleCancelOutgoing()}
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs tracking-wide shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
                 <PhoneOff className="w-4 h-4" />

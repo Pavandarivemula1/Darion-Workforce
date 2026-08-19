@@ -7,19 +7,16 @@ class SoundEffectsEngine {
   private ctx: AudioContext | null = null
   private ringInterval: any = null
   private isCurrentlyRinging = false
-  private unlocked = false
+  private activeNodes: Array<{ osc: OscillatorNode; gain: GainNode }> = []
 
   constructor() {
     if (typeof window !== 'undefined') {
       const unlock = () => {
         this.unlockAudio()
-        window.removeEventListener('click', unlock)
-        window.removeEventListener('touchstart', unlock)
-        window.removeEventListener('keydown', unlock)
       }
-      window.addEventListener('click', unlock, { once: true })
-      window.addEventListener('touchstart', unlock, { once: true })
-      window.addEventListener('keydown', unlock, { once: true })
+      window.addEventListener('click', unlock, { passive: true })
+      window.addEventListener('touchstart', unlock, { passive: true })
+      window.addEventListener('keydown', unlock, { passive: true })
     }
   }
 
@@ -29,7 +26,6 @@ class SoundEffectsEngine {
       if (ctx && ctx.state === 'suspended') {
         ctx.resume().catch(() => {})
       }
-      this.unlocked = true
     } catch {
       // Ignored
     }
@@ -74,7 +70,7 @@ class SoundEffectsEngine {
       this.unlockAudio()
       const now = ctx.currentTime
 
-      // 1. Subtle upward swoosh chirp
+      // 1. Upward swoosh chirp
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
 
@@ -91,7 +87,7 @@ class SoundEffectsEngine {
       osc.start(now)
       osc.stop(now + 0.1)
 
-      // 2. High sparkle click
+      // 2. Sparkle click
       const osc2 = ctx.createOscillator()
       const gain2 = ctx.createGain()
 
@@ -106,7 +102,7 @@ class SoundEffectsEngine {
       osc2.start(now + 0.04)
       osc2.stop(now + 0.12)
     } catch {
-      // Ignored if audio blocked
+      // Ignored
     }
   }
 
@@ -158,7 +154,7 @@ class SoundEffectsEngine {
       osc3.start(now + 0.16)
       osc3.stop(now + 0.5)
     } catch {
-      // Ignored if audio blocked
+      // Ignored
     }
   }
 
@@ -192,9 +188,10 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Play single burst of LOUD, rich enterprise incoming call ringtone
+   * Play single burst of MODERN MARIMBA / HARMONIC ENTERPRISE CALL RINGTONE
    */
   private playIncomingRingBurst(): void {
+    if (!this.isCurrentlyRinging) return
     const ctx = this.getContext()
     if (!ctx) return
 
@@ -202,33 +199,63 @@ class SoundEffectsEngine {
       this.unlockAudio()
       const now = ctx.currentTime
 
-      // Part A: First High-Clarity Polyphonic Ring (Double pulse)
-      const ringChord = (startTime: number, duration: number) => {
-        const freqs = [587.33, 880.0, 1174.66, 1760.0] // D5, A5, D6, A6 (Loud & resonant)
-        freqs.forEach((freq, idx) => {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
+      // Melodic notes sequence (Marimba Arpeggio)
+      // Phase 1: G4, C5, E5, G5, E5 (C Major chime)
+      // Phase 2: A4, D5, F#5, A5, D5 (D Major chime)
+      const noteSequence = [
+        // Time offset, Frequency, Volume, Decay Duration
+        { t: 0.00, f: 392.00, v: 0.35, d: 0.25 }, // G4
+        { t: 0.12, f: 523.25, v: 0.40, d: 0.28 }, // C5
+        { t: 0.24, f: 659.25, v: 0.45, d: 0.30 }, // E5
+        { t: 0.36, f: 783.99, v: 0.50, d: 0.40 }, // G5 (peak)
+        { t: 0.52, f: 659.25, v: 0.35, d: 0.25 }, // E5
 
-          osc.type = idx % 2 === 0 ? 'sine' : 'triangle'
-          osc.frequency.setValueAtTime(freq, startTime)
+        // Second melodic phrase
+        { t: 0.76, f: 440.00, v: 0.35, d: 0.25 }, // A4
+        { t: 0.88, f: 587.33, v: 0.40, d: 0.28 }, // D5
+        { t: 1.00, f: 739.99, v: 0.45, d: 0.30 }, // F#5
+        { t: 1.12, f: 880.00, v: 0.52, d: 0.45 }, // A5 (peak)
+        { t: 1.28, f: 587.33, v: 0.35, d: 0.30 }, // D5
+      ]
 
-          // LOUD GAIN for ringing alert
-          const targetVol = idx === 0 ? 0.35 : idx === 1 ? 0.45 : idx === 2 ? 0.3 : 0.15
-          gain.gain.setValueAtTime(targetVol, startTime)
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+      noteSequence.forEach(({ t, f, v, d }) => {
+        if (!this.isCurrentlyRinging) return
+        const noteTime = now + t
 
-          osc.connect(gain)
-          gain.connect(ctx.destination)
+        // Fundamental Tone (Sine)
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(f, noteTime)
 
-          osc.start(startTime)
-          osc.stop(startTime + duration)
-        })
-      }
+        gain.gain.setValueAtTime(0.0001, noteTime)
+        gain.gain.exponentialRampToValueAtTime(v, noteTime + 0.015) // Crisp attack
+        gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + d) // Natural marimba decay
 
-      // First ring burst (0.8s)
-      ringChord(now, 0.75)
-      // Second ring burst (0.8s) after 0.25s gap
-      ringChord(now + 0.32, 0.85)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+
+        osc.start(noteTime)
+        osc.stop(noteTime + d)
+
+        // Marimba overtone (Triangle 2x frequency harmonic)
+        const oscOvertone = ctx.createOscillator()
+        const gainOvertone = ctx.createGain()
+        oscOvertone.type = 'triangle'
+        oscOvertone.frequency.setValueAtTime(f * 2, noteTime)
+
+        gainOvertone.gain.setValueAtTime(0.0001, noteTime)
+        gainOvertone.gain.exponentialRampToValueAtTime(v * 0.4, noteTime + 0.01)
+        gainOvertone.gain.exponentialRampToValueAtTime(0.0001, noteTime + (d * 0.6))
+
+        oscOvertone.connect(gainOvertone)
+        gainOvertone.connect(ctx.destination)
+
+        oscOvertone.start(noteTime)
+        oscOvertone.stop(noteTime + d)
+
+        this.activeNodes.push({ osc, gain }, { osc: oscOvertone, gain: gainOvertone })
+      })
     } catch {
       // Ignored
     }
@@ -247,14 +274,17 @@ class SoundEffectsEngine {
     this.ringInterval = setInterval(() => {
       if (this.isCurrentlyRinging) {
         this.playIncomingRingBurst()
+      } else {
+        this.stopRinging()
       }
-    }, 2200)
+    }, 2400)
   }
 
   /**
    * Play single burst of outgoing ringback tone ("tuuuut...")
    */
   private playOutgoingRingbackBurst(): void {
+    if (!this.isCurrentlyRinging) return
     const ctx = this.getContext()
     if (!ctx) return
 
@@ -273,6 +303,8 @@ class SoundEffectsEngine {
         gain.connect(ctx.destination)
         osc.start(now)
         osc.stop(now + 1.3)
+
+        this.activeNodes.push({ osc, gain })
       })
     } catch {
       // Ignored
@@ -292,12 +324,14 @@ class SoundEffectsEngine {
     this.ringInterval = setInterval(() => {
       if (this.isCurrentlyRinging) {
         this.playOutgoingRingbackBurst()
+      } else {
+        this.stopRinging()
       }
     }, 3000)
   }
 
   /**
-   * Stop any active ringer loop
+   * Immediately stops any active ringer loop and silences all oscillators
    */
   public stopRinging(): void {
     this.isCurrentlyRinging = false
@@ -305,6 +339,23 @@ class SoundEffectsEngine {
       clearInterval(this.ringInterval)
       this.ringInterval = null
     }
+
+    // Instantly mute and stop all active nodes
+    try {
+      this.activeNodes.forEach(({ osc, gain }) => {
+        try {
+          gain.gain.setValueAtTime(0, 0)
+          gain.disconnect()
+          osc.stop()
+          osc.disconnect()
+        } catch {
+          // Node may have already ended
+        }
+      })
+    } catch {
+      // Ignored
+    }
+    this.activeNodes = []
   }
 
   /**
