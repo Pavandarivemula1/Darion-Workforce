@@ -102,18 +102,20 @@ export async function initiateCallAction(params: {
       if (convData?.name) conversationName = convData.name
     }
 
-    // 3. Insert interactive call card into conversation message feed
+    // 3. Insert interactive call card into conversation message feed (initial status: ringing)
     await supabase.from('chat_messages').insert({
       conversation_id: effectiveConvId,
       sender_id: user.id,
       message_type: 'meet_card',
-      content: `started an incoming ${callType} call: "${callTitle}"`,
+      content: `calling... (${callType})`,
       metadata: {
         roomId: room.id,
         roomCode: room.room_code,
         title: callTitle,
         hostName: callerName,
+        callerId: user.id,
         callType,
+        status: 'ringing',
         startedAt: room.started_at,
         meetUrl: `/meet/${room.room_code}`,
       },
@@ -170,12 +172,12 @@ export async function initiateCallAction(params: {
 }
 
 /**
- * Respond to an incoming ringing call (accept, decline, missed)
+ * Respond to an incoming ringing call (accept, decline, missed, cancelled)
  */
 export async function respondToCallAction(params: {
   roomCode: string
-  callerId: string
-  response: 'accept' | 'decline' | 'missed'
+  callerId?: string
+  response: 'accept' | 'decline' | 'missed' | 'cancelled'
 }): Promise<{ success: boolean; meetUrl?: string; error?: string }> {
   try {
     const user = await getCurrentUserFast()
@@ -183,19 +185,59 @@ export async function respondToCallAction(params: {
 
     const supabase = await getSupabase()
 
+    // 1. Update matching chat_messages status based on call outcome
+    const { data: msgs } = await supabase
+      .from('chat_messages')
+      .select('id, metadata')
+      .contains('metadata', { roomCode: params.roomCode })
+
+    if (msgs && msgs.length > 0) {
+      for (const m of msgs) {
+        const prevMeta = m.metadata || {}
+        let updatedContent = 'connected live call'
+        let updatedStatus = 'connected'
+
+        if (params.response === 'accept') {
+          updatedContent = `started a live ${prevMeta.callType || 'video'} meeting`
+          updatedStatus = 'connected'
+        } else if (params.response === 'decline') {
+          updatedContent = `declined ${prevMeta.callType || 'video'} call`
+          updatedStatus = 'declined'
+        } else if (params.response === 'missed') {
+          updatedContent = `missed ${prevMeta.callType || 'video'} call`
+          updatedStatus = 'missed'
+        } else if (params.response === 'cancelled') {
+          updatedContent = `cancelled ${prevMeta.callType || 'video'} call`
+          updatedStatus = 'cancelled'
+        }
+
+        await supabase
+          .from('chat_messages')
+          .update({
+            content: updatedContent,
+            metadata: {
+              ...prevMeta,
+              status: updatedStatus,
+              endedAt: new Date().toISOString(),
+            },
+          })
+          .eq('id', m.id)
+      }
+    }
+
     if (params.response === 'accept') {
+      revalidatePath('/admin/messages')
+      revalidatePath('/candidate/messages')
       return { success: true, meetUrl: `/meet/${params.roomCode}` }
     }
 
     if (params.response === 'decline' && params.callerId) {
-      // Send quick notification to caller that call was declined
       await sendNotification({
         userId: params.callerId,
         type: 'chat_message',
         title: 'Call Declined',
         message: 'The recipient is currently unavailable.',
       })
-      return { success: true }
     }
 
     if (params.response === 'missed') {
@@ -215,9 +257,10 @@ export async function respondToCallAction(params: {
         title: 'Missed Call',
         message: `You missed a call from ${callerName}.`,
       })
-      return { success: true }
     }
 
+    revalidatePath('/admin/messages')
+    revalidatePath('/candidate/messages')
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message }

@@ -277,6 +277,12 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
       } catch {
         // Ignored
       }
+
+      respondToCallAction({
+        roomCode: cur.roomCode,
+        callerId: cur.callerId,
+        response: 'cancelled',
+      }).catch(() => {})
     }
   }
 
