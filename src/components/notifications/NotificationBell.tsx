@@ -55,7 +55,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId, clas
 
     fetchUserNotificationsAction().then((res) => {
       if (isMounted && res?.notifications) {
-        setNotifications(res.notifications)
+        setNotifications(res.notifications.filter((n) => n.type !== 'chat_message'))
       }
     })
 
@@ -74,6 +74,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId, clas
         },
         (payload) => {
           const newNotif = payload.new as NotificationItem
+          if (newNotif.type === 'chat_message') return
           setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)])
 
           // Native Desktop Notification if permitted

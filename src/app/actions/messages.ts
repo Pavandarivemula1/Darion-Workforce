@@ -694,32 +694,9 @@ export async function sendMessageAction(payload: {
       .eq('conversation_id', effectiveConvId)
       .neq('user_id', user.id)
 
-    if (participants && participants.length > 0) {
-      const senderName = (newMsg as any)?.profiles?.full_name || 'Team Member'
-      let previewText = payload.content || 'Sent a message'
-      if (payload.messageType === 'file') {
-        previewText = `📎 Sent file: ${payload.fileName || 'Attachment'}`
-      } else if (payload.messageType === 'meet_card') {
-        previewText = `📹 Started a live video meeting`
-      }
-
-      const notifs = participants.map((p: any) => ({
-        userId: p.user_id,
-        title: `Message from ${senderName}`,
-        message: previewText.slice(0, 100),
-        type: 'chat_message' as const,
-        link: `/admin/messages?c=${effectiveConvId}`,
-        metadata: {
-          conversationId: effectiveConvId,
-          messageId: newMsg.id,
-          senderId: user.id,
-        },
-      }))
-
-      await sendBulkNotification(notifs)
-    }
+    // Chat messages are delivered real-time via WebSockets and toast alerts without polluting persistent notifications table
   } catch (notifErr) {
-    console.error('Error dispatching chat notifications:', notifErr)
+    console.error('Error handling chat dispatch:', notifErr)
   }
 
   // Revalidate paths

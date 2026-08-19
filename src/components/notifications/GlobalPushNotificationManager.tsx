@@ -87,10 +87,11 @@ export const GlobalPushNotificationManager: React.FC<GlobalPushNotificationManag
 
       setToasts((prev) => [newToast, ...prev.slice(0, 3)]) // keep max 4 toasts on screen
 
-      // Auto dismiss after 6.5s
+      // Auto dismiss: 4.5s for chat messages (it disappears as soon as you see it), 6.5s for others
+      const dismissDuration = notif.type === 'chat_message' ? 4500 : 6500
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.toastId !== toastId))
-      }, 6500)
+      }, dismissDuration)
 
       // 3. Trigger native OS desktop push notification if granted
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -136,7 +137,69 @@ export const GlobalPushNotificationManager: React.FC<GlobalPushNotificationManag
         },
         (payload) => {
           const item = payload.new as NotificationItem
+          if (item.type === 'chat_message') return // Chat messages use direct ephemeral toasts
           triggerNotification(item)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+        },
+        async (payload) => {
+          const newMsg = payload.new as any
+          if (!newMsg || newMsg.sender_id === currentUserId) return
+
+          // If current window is already inside this active conversation, skip toast
+          if (typeof window !== 'undefined') {
+            const currentUrl = window.location.href
+            if (currentUrl.includes(`c=${newMsg.conversation_id}`)) {
+              return
+            }
+          }
+
+          // Verify user is a participant of this conversation
+          const { data: part } = await supabase
+            .from('chat_participants')
+            .select('user_id')
+            .eq('conversation_id', newMsg.conversation_id)
+            .eq('user_id', currentUserId)
+            .maybeSingle()
+
+          if (!part) return
+
+          // Fetch sender full name
+          const { data: senderProf } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', newMsg.sender_id)
+            .maybeSingle()
+
+          const senderName = senderProf?.full_name || 'Teammate'
+          let snippet = newMsg.content || 'Sent an attachment'
+          if (newMsg.message_type === 'file') {
+            snippet = `📎 ${newMsg.file_name || 'Shared a file'}`
+          } else if (newMsg.message_type === 'meet_card') {
+            snippet = '📹 Live video meeting'
+          }
+
+          const targetLink =
+            typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+              ? `/admin/messages?c=${newMsg.conversation_id}`
+              : `/candidate/messages?c=${newMsg.conversation_id}`
+
+          triggerNotification({
+            id: newMsg.id,
+            userId: currentUserId,
+            title: `Message from ${senderName}`,
+            message: snippet.slice(0, 95),
+            type: 'chat_message',
+            link: targetLink,
+            read: false,
+            created_at: newMsg.created_at,
+          })
         }
       )
       .subscribe()
