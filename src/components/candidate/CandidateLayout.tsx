@@ -17,6 +17,8 @@ import {
   X,
   Banknote,
   MessageSquare,
+  MessagesSquare,
+  CalendarDays,
   Palmtree,
   Video,
   ChevronRight,
@@ -24,6 +26,7 @@ import {
 } from 'lucide-react'
 import { FeedbackWidget } from './FeedbackWidget'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { GlobalPushNotificationManager } from '@/components/notifications/GlobalPushNotificationManager'
 
 export interface CandidateLayoutProps {
   children: React.ReactNode
@@ -36,10 +39,13 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
   const pathname = usePathname()
   const branding = useBranding()
   const [isMoreOpen, setIsMoreOpen] = useState(false)
+  const isFullBleed = pathname.startsWith('/candidate/messages') || pathname.startsWith('/candidate/calendar')
 
   // Primary desktop & full items
   const allNavItems = [
     { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
+    { label: 'Teams Chat', href: '/candidate/messages', icon: MessagesSquare },
+    { label: 'Calendar', href: '/candidate/calendar', icon: CalendarDays },
     { label: 'Daily Tasks', href: '/candidate/tasks', icon: CheckSquare },
     { label: 'Video Meets', href: '/candidate/meets', icon: Video },
     { label: 'Attendance', href: '/candidate/attendance', icon: History },
@@ -52,15 +58,19 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
   // Primary 4 mobile bottom tabs
   const mobilePrimaryTabs = [
     { label: 'Home', href: '/candidate', icon: LayoutDashboard },
+    { label: 'Chat', href: '/candidate/messages', icon: MessagesSquare },
+    { label: 'Calendar', href: '/candidate/calendar', icon: CalendarDays },
     { label: 'Tasks', href: '/candidate/tasks', icon: CheckSquare },
-    { label: 'Attendance', href: '/candidate/attendance', icon: History },
-    { label: 'Earnings', href: '/candidate/payroll', icon: Banknote },
   ]
 
   // Secondary items in "More" bottom sheet
   const moreSheetItems = [
+    { label: 'Teams Chat', href: '/candidate/messages', icon: MessagesSquare, desc: 'Real-time DMs & channels' },
+    { label: 'Workforce Calendar', href: '/candidate/calendar', icon: CalendarDays, desc: 'Shifts, meets & schedule' },
     { label: 'Daily Task Logs', href: '/candidate/tasks', icon: CheckSquare, desc: 'Report & track completed tasks' },
     { label: 'Video Meets', href: '/candidate/meets', icon: Video, desc: 'Join video meetings & recordings' },
+    { label: 'Attendance Logs', href: '/candidate/attendance', icon: History, desc: 'View clock history & hours' },
+    { label: 'Earnings & Payslips', href: '/candidate/payroll', icon: Banknote, desc: 'View daily pay & payouts' },
     { label: 'Leave Requests', href: '/candidate/leaves', icon: Palmtree, desc: 'Apply & track time off' },
     { label: 'Shift Feedback', href: '/candidate/feedback', icon: MessageSquare, desc: 'Submit ratings & remarks' },
     { label: 'Account Profile', href: '/candidate/profile', icon: User, desc: 'Personal details & MFA security' },
@@ -128,8 +138,8 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
       </header>
 
       {/* Main Content Container */}
-      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300">
-        <div className="max-w-7xl w-full mx-auto px-2 py-2 sm:p-5 lg:p-8 flex-1 pb-20 md:pb-8 relative">
+      <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isFullBleed ? 'h-screen md:h-screen overflow-hidden' : ''}`}>
+        <div className={isFullBleed ? 'w-full h-full flex-1 flex flex-col p-0 pb-16 md:pb-0 relative overflow-hidden' : 'max-w-7xl w-full mx-auto px-2 py-2 sm:p-5 lg:p-8 flex-1 pb-20 md:pb-8 relative'}>
           {children}
         </div>
       </main>
@@ -249,6 +259,9 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
 
       {/* Floating Feedback Widget */}
       <FeedbackWidget />
+
+      {/* Global Push & In-App Notification Manager */}
+      <GlobalPushNotificationManager userId={candidateId} />
     </div>
   )
 }

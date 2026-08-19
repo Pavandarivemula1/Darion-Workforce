@@ -12,6 +12,15 @@ export type NotificationType =
   | 'leave_requested'
   | 'leave_status'
   | 'mfa_reset'
+  | 'chat_message'
+  | 'chat_mention'
+  | 'meet_started'
+  | 'calendar_event'
+  | 'payroll_settled'
+  | 'shift_assigned'
+  | 'task_assigned'
+  | 'task_completed'
+  | 'feedback_received'
   | 'general'
 
 export interface NotificationItem {
@@ -120,5 +129,40 @@ export async function sendAdminBroadcast({
   } catch (err: any) {
     console.error('[sendAdminBroadcast exception]:', err)
     return { success: false, error: err?.message || 'Failed to broadcast notification' }
+  }
+}
+
+/**
+ * Dispatches bulk notifications to multiple users.
+ */
+export async function sendBulkNotification(
+  notifications: SendNotificationParams[]
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  if (!notifications || notifications.length === 0) {
+    return { success: true, count: 0 }
+  }
+
+  try {
+    const adminClient = createAdminClient()
+    const payload = notifications.map((n) => ({
+      user_id: n.userId,
+      title: n.title,
+      message: n.message,
+      type: n.type || 'general',
+      link: n.link || null,
+      metadata: n.metadata || {},
+      read: false,
+    }))
+
+    const { error: insertErr } = await adminClient.from('notifications').insert(payload)
+    if (insertErr) {
+      console.error('[sendBulkNotification error]:', insertErr)
+      return { success: false, error: insertErr.message }
+    }
+
+    return { success: true, count: payload.length }
+  } catch (err: any) {
+    console.error('[sendBulkNotification exception]:', err)
+    return { success: false, error: err?.message || 'Failed to dispatch bulk notifications' }
   }
 }

@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { canManagePayroll } from '@/lib/auth/permissions'
+import { sendNotification, sendBulkNotification } from '@/lib/utils/notifications'
 
 export type PayrollActionState = {
   error?: string
@@ -150,6 +151,25 @@ export async function settleCandidatePayrollAction(
     // Even if settlement record table doesn't exist yet, the shifts are marked paid
   }
 
+  // Dispatch push notification to candidate
+  try {
+    await sendNotification({
+      userId: candidateId,
+      title: '💰 Payroll Payment Settled',
+      message: `Your payment of $${netPaid.toFixed(2)} (${targetShifts.length} shift${targetShifts.length === 1 ? '' : 's'}) has been settled via ${paymentMethod.toUpperCase()}.`,
+      type: 'payroll_settled',
+      link: '/candidate/payroll',
+      metadata: {
+        netPaid,
+        shiftCount: targetShifts.length,
+        paymentMethod,
+        paymentReference,
+      },
+    })
+  } catch (err) {
+    console.error('Error dispatching payroll notification:', err)
+  }
+
   revalidatePath('/admin/payroll')
   revalidatePath('/admin/attendance')
   revalidatePath('/admin/timesheet')
@@ -280,6 +300,25 @@ export async function batchSettlePayrollAction(
   })
 
   await adminClient.from('payroll_settlements').insert(settlementInserts)
+
+  // Dispatch bulk notifications to all settled candidates
+  try {
+    const notifs = settlementInserts.map((item) => ({
+      userId: item.user_id,
+      title: '💰 Payroll Payment Settled',
+      message: `Your payment of $${Number(item.net_paid).toFixed(2)} (${item.shift_count} shift${item.shift_count === 1 ? '' : 's'}) has been settled via ${item.payment_method.toUpperCase()}.`,
+      type: 'payroll_settled' as const,
+      link: '/candidate/payroll',
+      metadata: {
+        netPaid: item.net_paid,
+        shiftCount: item.shift_count,
+        paymentMethod: item.payment_method,
+      },
+    }))
+    await sendBulkNotification(notifs)
+  } catch (err) {
+    console.error('Error dispatching batch payroll notifications:', err)
+  }
 
   revalidatePath('/admin/payroll')
   revalidatePath('/admin/attendance')

@@ -165,6 +165,22 @@
   height: 100dvh;
 }
 
+/* Custom modern thin scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 0px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
 /* Hide scrollbar for clean horizontal tab strips */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

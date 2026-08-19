@@ -10,6 +10,8 @@ export type AppModule =
   | 'dashboard'
   | 'superadmin_console'
   | 'tasks'
+  | 'messages'
+  | 'calendar'
   | 'meets'
   | 'candidates'
   | 'shifts'
@@ -91,6 +93,8 @@ export const ROLE_MODULE_ACCESS: Record<UserRole, AppModule[]> = {
     'dashboard',
     'superadmin_console',
     'tasks',
+    'messages',
+    'calendar',
     'meets',
     'candidates',
     'shifts',
@@ -107,6 +111,8 @@ export const ROLE_MODULE_ACCESS: Record<UserRole, AppModule[]> = {
   admin: [
     'dashboard',
     'tasks',
+    'messages',
+    'calendar',
     'meets',
     'candidates',
     'shifts',
@@ -123,6 +129,8 @@ export const ROLE_MODULE_ACCESS: Record<UserRole, AppModule[]> = {
   hr_manager: [
     'dashboard',
     'tasks',
+    'messages',
+    'calendar',
     'meets',
     'candidates',
     'shifts',
@@ -136,6 +144,8 @@ export const ROLE_MODULE_ACCESS: Record<UserRole, AppModule[]> = {
   supervisor: [
     'dashboard',
     'tasks',
+    'messages',
+    'calendar',
     'meets',
     'candidates',
     'shifts',
@@ -148,6 +158,8 @@ export const ROLE_MODULE_ACCESS: Record<UserRole, AppModule[]> = {
   candidate: [
     'dashboard',
     'tasks',
+    'messages',
+    'calendar',
     'meets',
     'attendance',
     'leaves',
@@ -158,6 +170,8 @@ export const ROLE_MODULE_ACCESS: Record<UserRole, AppModule[]> = {
   auditor: [
     'dashboard',
     'tasks',
+    'messages',
+    'calendar',
     'candidates',
     'attendance',
     'timesheet',

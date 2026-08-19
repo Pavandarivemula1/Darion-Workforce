@@ -21,6 +21,8 @@ import {
   X,
   Clock,
   MessageSquare,
+  MessagesSquare,
+  CalendarDays,
   Palmtree,
   Video,
   KeyRound,
@@ -31,6 +33,7 @@ import {
 } from 'lucide-react'
 
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { GlobalPushNotificationManager } from '@/components/notifications/GlobalPushNotificationManager'
 import { hasModuleAccess, getRoleDisplayName, ROLE_METADATA, UserRole, AppModule } from '@/lib/auth/permissions'
 
 export interface AdminLayoutProps {
@@ -51,10 +54,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const pathname = usePathname()
   const branding = useBranding()
   const [isMoreOpen, setIsMoreOpen] = useState(false)
+  const isFullBleed = pathname.startsWith('/admin/messages') || pathname.startsWith('/admin/calendar')
 
   // Full raw nav items mapped with their required module key
   const rawNavItems: Array<{ label: string; href: string; icon: any; module: AppModule }> = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
+    { label: 'Teams Chat', href: '/admin/messages', icon: MessagesSquare, module: 'messages' },
+    { label: 'Calendar', href: '/admin/calendar', icon: CalendarDays, module: 'calendar' },
     { label: 'SuperAdmin Console', href: '/admin/superadmin', icon: Crown, module: 'superadmin_console' },
     { label: 'Task Reports', href: '/admin/tasks', icon: CheckSquare, module: 'tasks' },
     { label: 'Video Meets', href: '/admin/meets', icon: Video, module: 'meets' },
@@ -79,6 +85,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   // Primary mobile bottom tabs (filtered by permissions)
   const rawMobilePrimaryTabs: Array<{ label: string; href: string; icon: any; module: AppModule }> = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
+    { label: 'Chat', href: '/admin/messages', icon: MessagesSquare, module: 'messages' },
+    { label: 'Calendar', href: '/admin/calendar', icon: CalendarDays, module: 'calendar' },
     { label: 'Console', href: '/admin/superadmin', icon: Crown, module: 'superadmin_console' },
     { label: 'Tasks', href: '/admin/tasks', icon: CheckSquare, module: 'tasks' },
     { label: 'Shifts', href: '/admin/shifts', icon: Clock, module: 'shifts' },
@@ -93,6 +101,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   // Secondary items in "More" bottom sheet (filtered by permissions)
   const rawMoreSheetItems: Array<{ label: string; href: string; icon: any; desc: string; module: AppModule }> = [
+    { label: 'Teams Chat & Channels', href: '/admin/messages', icon: MessagesSquare, desc: 'Real-time DMs & team channels', module: 'messages' },
+    { label: 'Workforce Calendar', href: '/admin/calendar', icon: CalendarDays, desc: 'Master schedule & event planning', module: 'calendar' },
     { label: 'SuperAdmin Control Console', href: '/admin/superadmin', icon: Crown, desc: 'Telemetry, audit logs & system health', module: 'superadmin_console' },
     { label: 'Daily Task Reports', href: '/admin/tasks', icon: CheckSquare, desc: 'Candidate task logs & blockers', module: 'tasks' },
     { label: 'Candidates Directory', href: '/admin/candidates', icon: Users, desc: 'Manage workforce & rates', module: 'candidates' },
@@ -175,8 +185,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       </header>
 
       {/* Main Content Container */}
-      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300">
-        <div className="max-w-7xl w-full mx-auto px-2 py-2 sm:p-5 lg:p-8 flex-1 pb-20 md:pb-8 relative">
+      <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isFullBleed ? 'h-screen md:h-screen overflow-hidden' : ''}`}>
+        <div className={isFullBleed ? 'w-full h-full flex-1 flex flex-col p-0 pb-16 md:pb-0 relative overflow-hidden' : 'max-w-7xl w-full mx-auto px-2 py-2 sm:p-5 lg:p-8 flex-1 pb-20 md:pb-8 relative'}>
           {children}
         </div>
       </main>
@@ -294,6 +304,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         </div>
       )}
 
+      {/* Global Push & In-App Notification Manager */}
+      <GlobalPushNotificationManager userId={adminId} />
     </div>
   )
 }
