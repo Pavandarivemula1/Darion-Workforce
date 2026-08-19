@@ -9,12 +9,9 @@ import {
   Phone,
   PhoneOff,
   Video,
-  Mic,
   Volume2,
-  X,
-  User,
-  Sparkles,
   Radio,
+  Sparkles,
 } from 'lucide-react'
 
 interface GlobalCallManagerProps {
@@ -35,7 +32,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   const outgoingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Resolve user id
+  // Resolve current user ID
   useEffect(() => {
     if (currentUserId) {
       setResolvedUserId(currentUserId)
@@ -47,82 +44,121 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     })
   }, [currentUserId])
 
-  // Listen for outgoing call triggers dispatched locally
+  // Start outgoing call handler
+  const startOutgoingCall = (payload: CallSessionPayload) => {
+    setOutgoingCall(payload)
+    setOutgoingTimer(0)
+    soundEffects.startRingingOutgoing()
+
+    if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+    outgoingIntervalRef.current = setInterval(() => {
+      setOutgoingTimer((prev) => prev + 1)
+    }, 1000)
+
+    if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
+    outgoingTimeoutRef.current = setTimeout(() => {
+      handleCancelOutgoing()
+    }, 45000)
+  }
+
+  // Start incoming call handler (Loud Ringing)
+  const triggerIncomingCall = (incoming: CallSessionPayload) => {
+    // Don't ring if the caller is ourselves
+    if (resolvedUserId && incoming.callerId === resolvedUserId) return
+
+    setIncomingCall(incoming)
+    soundEffects.startRingingIncoming()
+
+    if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
+    incomingTimeoutRef.current = setTimeout(() => {
+      handleDeclineIncoming('missed')
+    }, 40000)
+  }
+
+  // 1. Listen for local events dispatched from Chat / Anywhere in UI
   useEffect(() => {
-    const handleStartOutgoing = (e: CustomEvent<CallSessionPayload>) => {
-      const payload = e.detail
-      setOutgoingCall(payload)
-      setOutgoingTimer(0)
-      soundEffects.startRingingOutgoing()
-
-      // Start timer
-      outgoingIntervalRef.current = setInterval(() => {
-        setOutgoingTimer((prev) => prev + 1)
-      }, 1000)
-
-      // Auto cancel after 40s if no answer
-      outgoingTimeoutRef.current = setTimeout(() => {
-        handleCancelOutgoing('No answer. Call ended.')
-      }, 40000)
+    const handleStartOutgoingEvent = (e: CustomEvent<CallSessionPayload>) => {
+      if (e.detail) startOutgoingCall(e.detail)
     }
 
-    window.addEventListener('start-outgoing-call' as any, handleStartOutgoing)
-    return () => {
-      window.removeEventListener('start-outgoing-call' as any, handleStartOutgoing)
+    const handleTriggerIncomingEvent = (e: CustomEvent<CallSessionPayload>) => {
+      if (e.detail) triggerIncomingCall(e.detail)
     }
-  }, [])
 
-  // Listen for real-time incoming call signals via Supabase notifications table
-  useEffect(() => {
-    if (!resolvedUserId) return
-
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`call-signaling-${resolvedUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${resolvedUserId}`,
-        },
-        (payload) => {
-          const item = payload.new as any
-          if (item.type === 'meet_started') {
-            // Parse roomCode from link
-            const meetUrl = item.link || ''
-            const roomCode = meetUrl.replace('/meet/', '') || 'dar-video'
-
-            const incoming: CallSessionPayload = {
-              callId: item.id,
-              roomCode,
-              callerId: '',
-              callerName: item.title?.replace('📞 Incoming VIDEO Call: ', '').replace('📞 Incoming AUDIO Call: ', '') || 'Team Member',
-              conversationId: '',
-              callType: item.title?.includes('AUDIO') ? 'audio' : 'video',
-              meetUrl: item.link || `/meet/${roomCode}`,
-              startedAt: new Date().toISOString(),
-            }
-
-            // Trigger incoming call ringing screen
-            setIncomingCall(incoming)
-            soundEffects.startRingingIncoming()
-
-            // 35s auto-missed timeout
-            if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
-            incomingTimeoutRef.current = setTimeout(() => {
-              handleDeclineIncoming('missed')
-            }, 35000)
-          }
-        }
-      )
-      .subscribe()
+    window.addEventListener('start-outgoing-call' as any, handleStartOutgoingEvent)
+    window.addEventListener('trigger-incoming-call' as any, handleTriggerIncomingEvent)
 
     return () => {
-      supabase.removeChannel(channel)
+      window.removeEventListener('start-outgoing-call' as any, handleStartOutgoingEvent)
+      window.removeEventListener('trigger-incoming-call' as any, handleTriggerIncomingEvent)
     }
   }, [resolvedUserId])
+
+  // 2. Real-time Supabase Signaling (Broadcast + Database triggers)
+  useEffect(() => {
+    const supabase = createClient()
+
+    // Global Call Signaling Broadcast Channel (Ultra-fast direct WebRTC signaling)
+    const broadcastChannel = supabase.channel('global-call-signaling')
+    broadcastChannel
+      .on('broadcast', { event: 'incoming_call' }, ({ payload }) => {
+        if (!payload) return
+        // If message is directed to all or includes current user
+        if (!payload.recipientIds || (resolvedUserId && payload.recipientIds.includes(resolvedUserId))) {
+          triggerIncomingCall(payload)
+        }
+      })
+      .on('broadcast', { event: 'call_declined' }, ({ payload }) => {
+        if (outgoingCall && payload?.roomCode === outgoingCall.roomCode) {
+          handleCancelOutgoing()
+        }
+      })
+      .subscribe()
+
+    // Database notifications table change listener
+    let notifChannel: any = null
+    if (resolvedUserId) {
+      notifChannel = supabase
+        .channel(`call-notifs-${resolvedUserId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${resolvedUserId}`,
+          },
+          (payload) => {
+            const item = payload.new as any
+            if (item?.type === 'meet_started') {
+              const meetUrl = item.link || ''
+              const roomCode = meetUrl.replace('/meet/', '') || 'dar-video'
+
+              const incoming: CallSessionPayload = {
+                callId: item.id,
+                roomCode,
+                callerId: item.metadata?.callerId || '',
+                callerName: item.title?.replace(/📞 Incoming (VIDEO|AUDIO) Call: /i, '') || 'Team Member',
+                callerAvatar: item.metadata?.callerAvatar || '',
+                callerRole: item.metadata?.callerRole || '',
+                conversationId: item.metadata?.conversationId || '',
+                callType: item.title?.includes('AUDIO') ? 'audio' : 'video',
+                meetUrl: item.link || `/meet/${roomCode}`,
+                startedAt: new Date().toISOString(),
+              }
+
+              triggerIncomingCall(incoming)
+            }
+          }
+        )
+        .subscribe()
+    }
+
+    return () => {
+      supabase.removeChannel(broadcastChannel)
+      if (notifChannel) supabase.removeChannel(notifChannel)
+    }
+  }, [resolvedUserId, outgoingCall])
 
   // Handle Accept Incoming Call
   const handleAcceptIncoming = async () => {
@@ -131,11 +167,13 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
 
     const meetUrl = incomingCall.meetUrl
+    const targetRoom = incomingCall.roomCode
+    const targetCaller = incomingCall.callerId
     setIncomingCall(null)
 
     await respondToCallAction({
-      roomCode: incomingCall.roomCode,
-      callerId: incomingCall.callerId,
+      roomCode: targetRoom,
+      callerId: targetCaller,
       response: 'accept',
     })
 
@@ -159,7 +197,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   }
 
   // Handle Cancel Outgoing Call
-  const handleCancelOutgoing = (msg?: string) => {
+  const handleCancelOutgoing = () => {
     soundEffects.playCallEndedSound()
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
@@ -167,7 +205,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     setOutgoingTimer(0)
   }
 
-  // Join Meet from Outgoing Call directly
+  // Join Meet Room directly from Outgoing Screen
   const handleJoinOutgoingRoom = () => {
     if (!outgoingCall) return
     soundEffects.stopRinging()
@@ -181,25 +219,34 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
   return (
     <>
-      {/* 1. HIGH-PRIORITY INCOMING CALL MODAL OVERLAY */}
+      {/* 1. LOUD, HIGH-PRIORITY INCOMING CALL POPUP OVERLAY */}
       {incomingCall && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#2a3854] rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center overflow-hidden">
-            {/* Ambient Animated Ripple Halo */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-              <div className="w-64 h-64 rounded-full bg-emerald-500 animate-ping duration-1000" />
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg animate-in fade-in duration-150 select-none">
+          <div className="relative w-full max-w-sm bg-[#0d1424] border-2 border-emerald-500/60 rounded-3xl p-7 shadow-[0_0_60px_rgba(16,185,129,0.35)] flex flex-col items-center text-center overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Ambient Pulsing Radar Aura */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-25">
+              <div className="w-72 h-72 rounded-full bg-emerald-500 animate-ping duration-1000" />
             </div>
 
-            {/* Top Indicator */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-6 animate-pulse">
-              <Radio className="w-3.5 h-3.5" />
+            {/* Top Live Call Header Pill with Soundwave animation */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-6 animate-pulse shadow-sm">
+              <Radio className="w-3.5 h-3.5 text-emerald-400" />
               <span>Incoming {incomingCall.callType.toUpperCase()} Call</span>
+              
+              {/* Equalizer audio bars */}
+              <div className="flex items-center gap-0.5 ml-1 h-3">
+                <span className="w-1 bg-emerald-400 rounded-full animate-bounce duration-300" style={{ height: '70%' }} />
+                <span className="w-1 bg-emerald-400 rounded-full animate-bounce duration-500" style={{ height: '100%' }} />
+                <span className="w-1 bg-emerald-400 rounded-full animate-bounce duration-400" style={{ height: '50%' }} />
+              </div>
             </div>
 
-            {/* Caller Avatar with Pulsing Radar Rings */}
+            {/* Caller Avatar with Animated Ripple Rings */}
             <div className="relative mb-5">
-              <div className="absolute -inset-3 rounded-full bg-emerald-500/25 animate-pulse" />
-              <div className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border-4 border-[var(--md-sys-color-surface)] dark:border-[#141b2b] flex items-center justify-center text-white text-3xl font-bold shadow-xl overflow-hidden">
+              <div className="absolute -inset-4 rounded-full bg-emerald-500/30 animate-pulse duration-700" />
+              <div className="absolute -inset-8 rounded-full bg-emerald-500/10 animate-ping duration-1000" />
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border-4 border-emerald-400/80 flex items-center justify-center text-white text-3xl font-bold shadow-2xl overflow-hidden">
                 {incomingCall.callerAvatar ? (
                   <img src={incomingCall.callerAvatar} alt={incomingCall.callerName} className="w-full h-full object-cover" />
                 ) : (
@@ -208,42 +255,45 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
               </div>
             </div>
 
-            {/* Caller Info */}
-            <h3 className="text-xl font-bold text-[var(--md-sys-color-on-surface)] dark:text-white mb-1">
+            {/* Caller Identity */}
+            <h3 className="text-2xl font-black text-white mb-1 tracking-tight">
               {incomingCall.callerName}
             </h3>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 mb-8">
-              Ringing... Click accept to join the live video session.
+            <p className="text-xs text-slate-300 mb-8 flex items-center justify-center gap-1.5 font-medium">
+              <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <span>Ringing loudly... Tap Accept to answer</span>
             </p>
 
             {/* Action Buttons: Accept & Decline */}
-            <div className="w-full flex items-center justify-center gap-8">
+            <div className="w-full flex items-center justify-around px-4">
               {/* Decline Button */}
               <div className="flex flex-col items-center gap-2">
                 <button
                   onClick={() => handleDeclineIncoming('decline')}
-                  className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  className="w-18 h-18 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center justify-center shadow-[0_0_25px_rgba(225,29,72,0.5)] hover:shadow-rose-500/70 transition-all cursor-pointer"
                   title="Decline Call"
+                  aria-label="Decline Call"
                 >
-                  <PhoneOff className="w-7 h-7" />
+                  <PhoneOff className="w-8 h-8" />
                 </button>
-                <span className="text-xs font-semibold text-rose-400">Decline</span>
+                <span className="text-xs font-bold text-rose-400 uppercase tracking-wide">Decline</span>
               </div>
 
               {/* Accept Button */}
               <div className="flex flex-col items-center gap-2">
                 <button
                   onClick={handleAcceptIncoming}
-                  className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all animate-bounce cursor-pointer"
+                  className="w-18 h-18 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.7)] hover:shadow-emerald-400/90 transition-all animate-bounce cursor-pointer"
                   title="Accept Call"
+                  aria-label="Accept Call"
                 >
                   {incomingCall.callType === 'video' ? (
-                    <Video className="w-7 h-7" />
+                    <Video className="w-8 h-8" />
                   ) : (
-                    <Phone className="w-7 h-7" />
+                    <Phone className="w-8 h-8" />
                   )}
                 </button>
-                <span className="text-xs font-semibold text-emerald-400">Accept</span>
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Accept</span>
               </div>
             </div>
           </div>
@@ -252,18 +302,19 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
       {/* 2. OUTGOING CALL OVERLAY (RINGING SCREEN FOR CALLER) */}
       {outgoingCall && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#2a3854] rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center overflow-hidden">
-            {/* Top Indicator */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-bold uppercase tracking-wider mb-6">
-              <Radio className="w-3.5 h-3.5 animate-pulse" />
-              <span>Outgoing {outgoingCall.callType.toUpperCase()} Call</span>
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg animate-in fade-in duration-150 select-none">
+          <div className="relative w-full max-w-sm bg-[#0d1424] border-2 border-blue-500/50 rounded-3xl p-7 shadow-[0_0_50px_rgba(59,130,246,0.3)] flex flex-col items-center text-center overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Top Outgoing Live Pill */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-400 text-xs font-bold uppercase tracking-wider mb-6">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-blue-400" />
+              <span>Calling {outgoingCall.callType.toUpperCase()}</span>
             </div>
 
-            {/* Target Avatar with Outgoing Wave Animation */}
+            {/* Target Avatar with Outgoing Wave Ripple */}
             <div className="relative mb-5">
-              <div className="absolute -inset-3 rounded-full bg-blue-500/20 animate-ping duration-1000" />
-              <div className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border-4 border-[var(--md-sys-color-surface)] dark:border-[#141b2b] flex items-center justify-center text-white text-3xl font-bold shadow-xl overflow-hidden">
+              <div className="absolute -inset-4 rounded-full bg-blue-500/25 animate-ping duration-1000" />
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border-4 border-blue-400/80 flex items-center justify-center text-white text-3xl font-bold shadow-2xl overflow-hidden">
                 {outgoingCall.callerAvatar ? (
                   <img src={outgoingCall.callerAvatar} alt={outgoingCall.callerName} className="w-full h-full object-cover" />
                 ) : (
@@ -272,27 +323,27 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
               </div>
             </div>
 
-            {/* Recipient & Call Details */}
-            <h3 className="text-xl font-bold text-[var(--md-sys-color-on-surface)] dark:text-white mb-1">
+            {/* Recipient & Duration */}
+            <h3 className="text-2xl font-black text-white mb-1 tracking-tight">
               {outgoingCall.conversationName || outgoingCall.callerName}
             </h3>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 mb-8 font-mono">
+            <p className="text-xs text-slate-400 mb-8 font-mono">
               Ringing... {Math.floor(outgoingTimer / 60)}:{(outgoingTimer % 60).toString().padStart(2, '0')}
             </p>
 
             {/* Actions: Cancel & Direct Enter */}
-            <div className="w-full flex items-center justify-center gap-6">
+            <div className="w-full flex items-center justify-center gap-4">
               <button
-                onClick={() => handleCancelOutgoing('Call cancelled by caller')}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs tracking-wide shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                onClick={handleCancelOutgoing}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs tracking-wide shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
                 <PhoneOff className="w-4 h-4" />
-                <span>Cancel Call</span>
+                <span>Cancel</span>
               </button>
 
               <button
                 onClick={handleJoinOutgoingRoom}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-xs tracking-wide shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs tracking-wide shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
                 <Video className="w-4 h-4" />
                 <span>Enter Room</span>

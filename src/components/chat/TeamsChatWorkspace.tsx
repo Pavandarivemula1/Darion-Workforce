@@ -286,12 +286,21 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         throw new Error(res.error || 'Failed to initiate call')
       }
 
-      // Dispatch outgoing ringing screen
+      // Dispatch outgoing ringing screen locally
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('start-outgoing-call', { detail: res.callPayload })
         )
       }
+
+      // Broadcast to all clients in real-time
+      const supabase = createClient()
+      const callChannel = supabase.channel('global-call-signaling')
+      callChannel.send({
+        type: 'broadcast',
+        event: 'incoming_call',
+        payload: res.callPayload,
+      })
 
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)

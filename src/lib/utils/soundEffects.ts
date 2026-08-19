@@ -7,6 +7,33 @@ class SoundEffectsEngine {
   private ctx: AudioContext | null = null
   private ringInterval: any = null
   private isCurrentlyRinging = false
+  private unlocked = false
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      const unlock = () => {
+        this.unlockAudio()
+        window.removeEventListener('click', unlock)
+        window.removeEventListener('touchstart', unlock)
+        window.removeEventListener('keydown', unlock)
+      }
+      window.addEventListener('click', unlock, { once: true })
+      window.addEventListener('touchstart', unlock, { once: true })
+      window.addEventListener('keydown', unlock, { once: true })
+    }
+  }
+
+  public unlockAudio(): void {
+    try {
+      const ctx = this.getContext()
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {})
+      }
+      this.unlocked = true
+    } catch {
+      // Ignored
+    }
+  }
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null
@@ -44,6 +71,7 @@ class SoundEffectsEngine {
     if (!ctx) return
 
     try {
+      this.unlockAudio()
       const now = ctx.currentTime
 
       // 1. Subtle upward swoosh chirp
@@ -54,7 +82,7 @@ class SoundEffectsEngine {
       osc.frequency.setValueAtTime(420, now)
       osc.frequency.exponentialRampToValueAtTime(880, now + 0.07)
 
-      gain.gain.setValueAtTime(0.06, now)
+      gain.gain.setValueAtTime(0.12, now)
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
 
       osc.connect(gain)
@@ -69,7 +97,7 @@ class SoundEffectsEngine {
 
       osc2.type = 'triangle'
       osc2.frequency.setValueAtTime(1320, now + 0.04)
-      gain2.gain.setValueAtTime(0.04, now + 0.04)
+      gain2.gain.setValueAtTime(0.08, now + 0.04)
       gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.12)
 
       osc2.connect(gain2)
@@ -91,6 +119,7 @@ class SoundEffectsEngine {
     if (!ctx) return
 
     try {
+      this.unlockAudio()
       const now = ctx.currentTime
 
       // Note 1: D5 (587.33 Hz)
@@ -98,7 +127,7 @@ class SoundEffectsEngine {
       const gain1 = ctx.createGain()
       osc1.type = 'sine'
       osc1.frequency.setValueAtTime(587.33, now)
-      gain1.gain.setValueAtTime(0.09, now)
+      gain1.gain.setValueAtTime(0.2, now)
       gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.22)
       osc1.connect(gain1)
       gain1.connect(ctx.destination)
@@ -110,7 +139,7 @@ class SoundEffectsEngine {
       const gain2 = ctx.createGain()
       osc2.type = 'sine'
       osc2.frequency.setValueAtTime(880.0, now + 0.09)
-      gain2.gain.setValueAtTime(0.11, now + 0.09)
+      gain2.gain.setValueAtTime(0.25, now + 0.09)
       gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.38)
       osc2.connect(gain2)
       gain2.connect(ctx.destination)
@@ -122,7 +151,7 @@ class SoundEffectsEngine {
       const gain3 = ctx.createGain()
       osc3.type = 'sine'
       osc3.frequency.setValueAtTime(1174.66, now + 0.16)
-      gain3.gain.setValueAtTime(0.07, now + 0.16)
+      gain3.gain.setValueAtTime(0.18, now + 0.16)
       gain3.gain.exponentialRampToValueAtTime(0.0005, now + 0.5)
       osc3.connect(gain3)
       gain3.connect(ctx.destination)
@@ -142,6 +171,7 @@ class SoundEffectsEngine {
     if (!ctx) return
 
     try {
+      this.unlockAudio()
       const now = ctx.currentTime
       const notes = [659.25, 783.99, 987.77, 1318.51] // E5 -> G5 -> B5 -> E6
       notes.forEach((freq, i) => {
@@ -149,7 +179,7 @@ class SoundEffectsEngine {
         const gain = ctx.createGain()
         osc.type = 'sine'
         osc.frequency.setValueAtTime(freq, now + i * 0.07)
-        gain.gain.setValueAtTime(0.08, now + i * 0.07)
+        gain.gain.setValueAtTime(0.22, now + i * 0.07)
         gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.28)
         osc.connect(gain)
         gain.connect(ctx.destination)
@@ -162,61 +192,63 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Play single burst of incoming call ringtone
+   * Play single burst of LOUD, rich enterprise incoming call ringtone
    */
   private playIncomingRingBurst(): void {
     const ctx = this.getContext()
     if (!ctx) return
 
     try {
+      this.unlockAudio()
       const now = ctx.currentTime
-      // Harmonic European/Modern Enterprise Dual-Chime (C5: 523.25Hz + G5: 783.99Hz followed by E5: 659.25Hz + C6: 1046.5Hz)
-      const chord1 = [523.25, 783.99]
-      chord1.forEach((freq) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, now)
-        gain.gain.setValueAtTime(0.12, now)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.start(now)
-        osc.stop(now + 0.45)
-      })
 
-      const chord2 = [659.25, 1046.5]
-      chord2.forEach((freq) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, now + 0.35)
-        gain.gain.setValueAtTime(0.14, now + 0.35)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.95)
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.start(now + 0.35)
-        osc.stop(now + 0.95)
-      })
+      // Part A: First High-Clarity Polyphonic Ring (Double pulse)
+      const ringChord = (startTime: number, duration: number) => {
+        const freqs = [587.33, 880.0, 1174.66, 1760.0] // D5, A5, D6, A6 (Loud & resonant)
+        freqs.forEach((freq, idx) => {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+
+          osc.type = idx % 2 === 0 ? 'sine' : 'triangle'
+          osc.frequency.setValueAtTime(freq, startTime)
+
+          // LOUD GAIN for ringing alert
+          const targetVol = idx === 0 ? 0.35 : idx === 1 ? 0.45 : idx === 2 ? 0.3 : 0.15
+          gain.gain.setValueAtTime(targetVol, startTime)
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+
+          osc.start(startTime)
+          osc.stop(startTime + duration)
+        })
+      }
+
+      // First ring burst (0.8s)
+      ringChord(now, 0.75)
+      // Second ring burst (0.8s) after 0.25s gap
+      ringChord(now + 0.32, 0.85)
     } catch {
       // Ignored
     }
   }
 
   /**
-   * Start looping Incoming Call Ringtone
+   * Start looping Loud Incoming Call Ringtone
    */
   public startRingingIncoming(): void {
     if (!this.isSoundEnabled()) return
     this.stopRinging()
     this.isCurrentlyRinging = true
+    this.unlockAudio()
 
     this.playIncomingRingBurst()
     this.ringInterval = setInterval(() => {
       if (this.isCurrentlyRinging) {
         this.playIncomingRingBurst()
       }
-    }, 2400)
+    }, 2200)
   }
 
   /**
@@ -227,6 +259,7 @@ class SoundEffectsEngine {
     if (!ctx) return
 
     try {
+      this.unlockAudio()
       const now = ctx.currentTime
       const freqs = [440, 480] // Standard telecommunications tone
       freqs.forEach((f) => {
@@ -234,12 +267,12 @@ class SoundEffectsEngine {
         const gain = ctx.createGain()
         osc.type = 'sine'
         osc.frequency.setValueAtTime(f, now)
-        gain.gain.setValueAtTime(0.05, now)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2)
+        gain.gain.setValueAtTime(0.18, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3)
         osc.connect(gain)
         gain.connect(ctx.destination)
         osc.start(now)
-        osc.stop(now + 1.2)
+        osc.stop(now + 1.3)
       })
     } catch {
       // Ignored
@@ -253,13 +286,14 @@ class SoundEffectsEngine {
     if (!this.isSoundEnabled()) return
     this.stopRinging()
     this.isCurrentlyRinging = true
+    this.unlockAudio()
 
     this.playOutgoingRingbackBurst()
     this.ringInterval = setInterval(() => {
       if (this.isCurrentlyRinging) {
         this.playOutgoingRingbackBurst()
       }
-    }, 3200)
+    }, 3000)
   }
 
   /**
@@ -283,13 +317,14 @@ class SoundEffectsEngine {
     if (!ctx) return
 
     try {
+      this.unlockAudio()
       const now = ctx.currentTime
       for (let i = 0; i < 3; i++) {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.type = 'sine'
         osc.frequency.setValueAtTime(480, now + i * 0.16)
-        gain.gain.setValueAtTime(0.08, now + i * 0.16)
+        gain.gain.setValueAtTime(0.2, now + i * 0.16)
         gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.16 + 0.1)
         osc.connect(gain)
         gain.connect(ctx.destination)
