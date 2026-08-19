@@ -1197,7 +1197,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         </header>
 
         {/* Messages Feed (THE ONLY SCROLLABLE ELEMENT) */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-3 sm:py-4 space-y-1 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3.5 sm:px-5 md:px-6 py-3 sm:py-4 space-y-1 overscroll-contain">
           {loadingMessages ? (
             <div className="h-full flex flex-col items-center justify-center gap-2 text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">
               <div className="w-6 h-6 border-2 border-[var(--md-sys-color-primary)] border-t-transparent rounded-full animate-spin" />
@@ -1293,7 +1293,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                         transition: swipingMessageId === msg.id ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)',
                       }}
                       className={`flex items-start gap-1.5 md:gap-2.5 group/msg relative transition-all cursor-pointer md:cursor-default ${
-                        isMe ? 'flex-row-reverse' : 'flex-row'
+                        isMe
+                          ? 'flex-row-reverse pl-6 sm:pl-10 md:pl-0 pr-0.5 sm:pr-0'
+                          : 'flex-row pr-6 sm:pr-10 md:pr-0 pl-1.5 sm:pl-0'
                       } ${isConsecutive ? 'mt-0.5' : 'mt-2.5 sm:mt-3.5'}`}
                     >
                       {/* Swipe-to-Reply Spring Indicator */}
@@ -1338,10 +1340,10 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       </div>
 
                       {/* Message Bubble Container */}
-                      <div className={`max-w-[90%] sm:max-w-[80%] md:max-w-[65%] min-w-0 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[88%] sm:max-w-[78%] md:max-w-[65%] min-w-0 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                         {/* Header info (Only for first message in group) */}
                         {!isConsecutive && (
-                          <div className={`flex items-center gap-1.5 mb-1 px-1 text-[10.5px] sm:text-[11px] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div className={`flex items-center gap-1.5 mb-1 px-1.5 text-[10.5px] sm:text-[11px] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                             <span className={`font-bold ${getRoleColor(msg.senderRole)}`}>
                               {isMe ? 'You' : msg.senderName}
                             </span>
