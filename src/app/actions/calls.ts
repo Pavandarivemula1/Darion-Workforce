@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient, getCurrentUserFast } from '@/lib/supabase/server'
+import { createClient, createAdminClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { sendNotification, sendBulkNotification } from '@/lib/utils/notifications'
 import { revalidatePath } from 'next/cache'
 
@@ -40,6 +40,7 @@ export async function initiateCallAction(params: {
     if (!user) throw new Error('Unauthorized')
 
     const supabase = await getSupabase()
+    const adminClient = createAdminClient()
     const callType = params.callType || 'video'
 
     // 1. Fetch caller profile details
@@ -58,7 +59,7 @@ export async function initiateCallAction(params: {
     const roomCode = `dar-${callType}-${randomSuffix}`
     const callTitle = params.title || `Call with ${callerName}`
 
-    const { data: room, error: roomError } = await supabase
+    const { data: room, error: roomError } = await adminClient
       .from('meet_rooms')
       .insert({
         title: callTitle,
@@ -84,7 +85,7 @@ export async function initiateCallAction(params: {
 
     if (effectiveConvId.startsWith('default-')) {
       const slug = effectiveConvId.replace('default-', '')
-      const { data: existingChannel } = await supabase
+      const { data: existingChannel } = await adminClient
         .from('chat_conversations')
         .select('id, name')
         .eq('slug', slug)
@@ -94,7 +95,7 @@ export async function initiateCallAction(params: {
         conversationName = existingChannel.name
       }
     } else {
-      const { data: convData } = await supabase
+      const { data: convData } = await adminClient
         .from('chat_conversations')
         .select('name')
         .eq('id', effectiveConvId)
@@ -103,7 +104,7 @@ export async function initiateCallAction(params: {
     }
 
     // 3. Insert interactive call card into conversation message feed (initial status: ringing)
-    await supabase.from('chat_messages').insert({
+    await adminClient.from('chat_messages').insert({
       conversation_id: effectiveConvId,
       sender_id: user.id,
       message_type: 'meet_card',
@@ -140,7 +141,7 @@ export async function initiateCallAction(params: {
     if (params.targetUserId && params.targetUserId !== user.id) {
       recipientIds = [params.targetUserId]
     } else {
-      const { data: participants } = await supabase
+      const { data: participants } = await adminClient
         .from('chat_participants')
         .select('user_id')
         .eq('conversation_id', effectiveConvId)
@@ -183,13 +184,13 @@ export async function respondToCallAction(params: {
     const user = await getCurrentUserFast()
     if (!user) throw new Error('Unauthorized')
 
-    const supabase = await getSupabase()
+    const adminClient = createAdminClient()
 
-    // 1. Update matching chat_messages status based on call outcome
-    const { data: msgs } = await supabase
+    // 1. Update matching chat_messages status based on call outcome using adminClient (bypasses RLS)
+    const { data: msgs } = await adminClient
       .from('chat_messages')
       .select('id, metadata')
-      .contains('metadata', { roomCode: params.roomCode })
+      .filter('metadata->>roomCode', 'eq', params.roomCode)
 
     if (msgs && msgs.length > 0) {
       for (const m of msgs) {
@@ -211,7 +212,7 @@ export async function respondToCallAction(params: {
           updatedStatus = 'cancelled'
         }
 
-        await supabase
+        await adminClient
           .from('chat_messages')
           .update({
             content: updatedContent,
@@ -243,7 +244,7 @@ export async function respondToCallAction(params: {
     if (params.response === 'missed') {
       let callerName = 'a teammate'
       if (params.callerId) {
-        const { data: profile } = await supabase
+        const { data: profile } = await adminClient
           .from('profiles')
           .select('full_name')
           .eq('id', params.callerId)
