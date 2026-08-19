@@ -288,12 +288,22 @@ export const EmojiAndGifPicker: React.FC<EmojiAndGifPickerProps> = ({
   }, [searchQuery])
 
   return (
-    <div
-      ref={containerRef}
-      className="w-[340px] sm:w-[380px] h-[390px] flex flex-col bg-[var(--md-sys-color-surface-container-high)]/98 dark:bg-[#0e1626]/98 backdrop-blur-xl border border-[var(--md-sys-color-outline-variant)] dark:border-[#22304a] shadow-2xl rounded-2xl p-3 z-50 animate-in fade-in zoom-in-95 select-none"
-    >
-      {/* Header: Tabs & Close */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e2a42]">
+    <>
+      {/* Mobile Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs sm:hidden z-40 animate-in fade-in duration-150"
+        onClick={onClose}
+      />
+
+      <div
+        ref={containerRef}
+        className="fixed inset-x-0 bottom-0 sm:relative sm:inset-auto w-full sm:w-[380px] h-[54vh] sm:h-[390px] max-h-[480px] flex flex-col bg-[var(--md-sys-color-surface-container-high)]/98 dark:bg-[#0e1626]/98 backdrop-blur-xl border-t sm:border border-[var(--md-sys-color-outline-variant)] dark:border-[#22304a] shadow-2xl rounded-t-3xl sm:rounded-2xl p-3 sm:p-3.5 z-50 animate-in slide-in-from-bottom sm:slide-in-from-bottom-2 duration-200 select-none pb-safe"
+      >
+        {/* Mobile Pull Drag Handle */}
+        <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20 mx-auto mb-2 sm:hidden shrink-0" />
+
+        {/* Header: Tabs & Close */}
+        <div className="flex items-center justify-between pb-2.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e2a42]">
         {hideGifTab ? (
           <div className="flex items-center gap-1.5 px-1">
             <Smile className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
@@ -502,5 +512,6 @@ export const EmojiAndGifPicker: React.FC<EmojiAndGifPickerProps> = ({
         </div>
       )}
     </div>
-  )
+  </>
+)
 }

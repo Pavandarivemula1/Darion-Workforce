@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Users,
   ChevronRight,
+  ChevronLeft,
   X,
   Phone,
   Sparkles,
@@ -100,6 +101,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [editText, setEditText] = useState('')
   const [replyingTo, setReplyingTo] = useState<ChatMessageItem | null>(null)
   const [reactingMessageId, setReactingMessageId] = useState<string | null>(null)
+  const [mobileActionMessage, setMobileActionMessage] = useState<ChatMessageItem | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
@@ -774,12 +776,15 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12] relative">
         {/* Chat Top Header */}
         <header className="px-4 py-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)]/90 dark:bg-[#0c111d]/90 backdrop-blur-md flex items-center justify-between gap-3 z-10">
-          <div className="flex items-center gap-3 truncate">
+          <div className="flex items-center gap-2 sm:gap-3 truncate">
+            {/* Ruled Mobile Back Button */}
             <button
               onClick={() => setShowMobileSidebar(true)}
-              className="md:hidden p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] dark:text-slate-400 dark:hover:bg-slate-800"
+              className="md:hidden flex items-center gap-0.5 px-2 py-1.5 -ml-2 rounded-xl text-[var(--md-sys-color-primary)] font-bold text-xs hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all shrink-0 cursor-pointer"
+              title="Back to conversations"
             >
-              <MessageSquare className="w-4 h-4" />
+              <ChevronLeft className="w-5 h-5" />
+              <span className="text-[11px] font-bold">Chats</span>
             </button>
 
             <div className="flex items-center gap-2.5 truncate">
@@ -900,7 +905,12 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                     /* User Message Row */
                     <div
                       id={`chat-msg-${msg.id}`}
-                      className={`flex items-start gap-2.5 group/msg relative transition-all ${
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                          setMobileActionMessage(msg)
+                        }
+                      }}
+                      className={`flex items-start gap-2.5 group/msg relative transition-all cursor-pointer md:cursor-default ${
                         isMe ? 'flex-row-reverse' : 'flex-row'
                       } ${isConsecutive ? 'mt-0.5' : 'mt-3.5'}`}
                     >
@@ -1382,79 +1392,211 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         </div>
       </main>
 
-      {/* 3. RIGHT COLLAPSIBLE THREAD SIDEBAR */}
+      {/* 3. RIGHT COLLAPSIBLE THREAD SIDEBAR / MOBILE THREAD DRAWER */}
       {activeThreadParent && (
-        <aside className="w-80 flex-shrink-0 border-l border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] flex flex-col z-20 animate-in slide-in-from-right-10 duration-200">
-          <div className="p-3.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 flex items-center justify-between bg-[var(--md-sys-color-surface-container)] dark:bg-[#0e1424]">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-              <h3 className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">Thread Discussion</h3>
-            </div>
-            <button
-              onClick={() => setActiveThreadParent(null)}
-              className="p-1 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <>
+          {/* Mobile Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-in fade-in"
+            onClick={() => setActiveThreadParent(null)}
+          />
 
-          {/* Parent Message Header */}
-          <div className="p-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#141b2b]">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`font-bold text-xs ${getRoleColor(activeThreadParent.senderRole)}`}>
-                {activeThreadParent.senderName}
-              </span>
-              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
-                {formatMessageTime(activeThreadParent.createdAt)}
-              </span>
-            </div>
-            <p className="text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-200">{activeThreadParent.content}</p>
-          </div>
+          <aside className="fixed inset-x-0 bottom-0 top-12 md:top-auto md:bottom-auto md:relative md:inset-auto w-full md:w-80 flex-shrink-0 border-t md:border-t-0 md:border-l border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] flex flex-col z-50 animate-in slide-in-from-bottom md:slide-in-from-right-10 duration-200 rounded-t-3xl md:rounded-none shadow-2xl">
+            {/* Mobile Drag Pill */}
+            <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20 mx-auto mt-2 mb-1 md:hidden shrink-0" />
 
-          {/* Thread Replies List */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-3 bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12]">
-            {threadMessages.length === 0 ? (
-              <div className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic">
-                No replies yet. Be the first to reply!
+            <div className="p-3.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 flex items-center justify-between bg-[var(--md-sys-color-surface-container)] dark:bg-[#0e1424]">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                <h3 className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">Thread Discussion</h3>
               </div>
-            ) : (
-              threadMessages.map((tMsg) => (
-                <div key={tMsg.id} className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#151d2c] border border-[var(--md-sys-color-outline-variant)] dark:border-[#222e44]">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className={`font-semibold text-xs ${getRoleColor(tMsg.senderRole)}`}>
-                      {tMsg.senderName}
-                    </span>
-                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
-                      {formatMessageTime(tMsg.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-200 whitespace-pre-wrap">{tMsg.content}</p>
-                </div>
-              ))
-            )}
-            <div ref={threadEndRef} />
-          </div>
-
-          {/* Thread Reply Composer */}
-          <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d]">
-            <form onSubmit={handleSendThreadReply} className="flex gap-2">
-              <input
-                type="text"
-                value={threadInputText}
-                onChange={(e) => setThreadInputText(e.target.value)}
-                placeholder="Reply in thread..."
-                className="flex-1 px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-100 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)]"
-              />
               <button
-                type="submit"
-                disabled={!threadInputText.trim()}
-                className="p-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 disabled:opacity-40 shadow-sm"
+                onClick={() => setActiveThreadParent(null)}
+                className="p-1 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
-            </form>
+            </div>
+
+            {/* Parent Message Header */}
+            <div className="p-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#141b2b]">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`font-bold text-xs ${getRoleColor(activeThreadParent.senderRole)}`}>
+                  {activeThreadParent.senderName}
+                </span>
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
+                  {formatMessageTime(activeThreadParent.createdAt)}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-200">{activeThreadParent.content}</p>
+            </div>
+
+            {/* Thread Replies List */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-3 bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12]">
+              {threadMessages.length === 0 ? (
+                <div className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic">
+                  No replies yet. Be the first to reply!
+                </div>
+              ) : (
+                threadMessages.map((tMsg) => (
+                  <div key={tMsg.id} className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#151d2c] border border-[var(--md-sys-color-outline-variant)] dark:border-[#222e44]">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className={`font-semibold text-xs ${getRoleColor(tMsg.senderRole)}`}>
+                        {tMsg.senderName}
+                      </span>
+                      <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
+                        {formatMessageTime(tMsg.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-200 whitespace-pre-wrap">{tMsg.content}</p>
+                  </div>
+                ))
+              )}
+              <div ref={threadEndRef} />
+            </div>
+
+            {/* Thread Reply Composer */}
+            <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] pb-safe">
+              <form onSubmit={handleSendThreadReply} className="flex gap-2">
+                <input
+                  type="text"
+                  value={threadInputText}
+                  onChange={(e) => setThreadInputText(e.target.value)}
+                  placeholder="Reply in thread..."
+                  className="flex-1 px-3 py-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-100 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)]"
+                />
+                <button
+                  type="submit"
+                  disabled={!threadInputText.trim()}
+                  className="p-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all cursor-pointer shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          </aside>
+        </>
+      )}
+
+      {/* 4. NATIVE-GRADE MOBILE MESSAGE ACTION BOTTOM SHEET */}
+      {mobileActionMessage && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 md:hidden animate-in fade-in duration-150"
+            onClick={() => setMobileActionMessage(null)}
+          />
+          <div className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-[var(--md-sys-color-surface-container-high)]/98 dark:bg-[#0e1626]/98 backdrop-blur-xl border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#22304a] shadow-2xl rounded-t-3xl p-4 animate-in slide-in-from-bottom duration-200 select-none pb-safe">
+            <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20 mx-auto mb-3.5" />
+
+            {/* Quick Emoji Reaction Bar */}
+            <div className="flex items-center justify-around py-2 px-1 bg-black/5 dark:bg-black/30 rounded-2xl border border-[var(--md-sys-color-outline-variant)]/60 dark:border-white/5 mb-3">
+              {['👍', '❤️', '😂', '🔥', '🎉', '👏'].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => {
+                    handleReaction(mobileActionMessage.id, emoji)
+                    setMobileActionMessage(null)
+                  }}
+                  className="p-1.5 text-2xl hover:scale-125 active:scale-95 transition-transform"
+                >
+                  {emoji}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const targetId = mobileActionMessage.id
+                  setMobileActionMessage(null)
+                  setReactingMessageId(targetId)
+                }}
+                className="p-1.5 text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center justify-center w-9 h-9 rounded-full bg-black/5 dark:bg-white/10"
+              >
+                <SmilePlus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Action Items List with 44px+ Touch Ergonomics */}
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setReplyingTo(mobileActionMessage)
+                  setMobileActionMessage(null)
+                  mainInputRef.current?.focus()
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+              >
+                <Reply className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                <span>Reply in Chat</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveThreadParent(mobileActionMessage)
+                  setMobileActionMessage(null)
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+              >
+                <MessageCircle className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                <span>Reply in Thread</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleCopyMessage(mobileActionMessage.id, mobileActionMessage.content || '')
+                  setMobileActionMessage(null)
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+              >
+                <Copy className="w-4 h-4 text-emerald-500" />
+                <span>Copy Message Text</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleOpenForward(mobileActionMessage)
+                  setMobileActionMessage(null)
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+              >
+                <Forward className="w-4 h-4 text-sky-500" />
+                <span>Forward Message</span>
+              </button>
+
+              {mobileActionMessage.senderId === currentUserId && mobileActionMessage.messageType === 'text' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleStartEdit(mobileActionMessage)
+                    setMobileActionMessage(null)
+                  }}
+                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+                >
+                  <Pencil className="w-4 h-4 text-amber-500" />
+                  <span>Edit Message</span>
+                </button>
+              )}
+
+              {(mobileActionMessage.senderId === currentUserId || currentUserRole === 'admin' || currentUserRole === 'superadmin') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteMessage(mobileActionMessage.id)
+                    setMobileActionMessage(null)
+                  }}
+                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 active:bg-red-500/20 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Message</span>
+                </button>
+              )}
+            </div>
           </div>
-        </aside>
+        </>
       )}
 
       {/* Modals */}
