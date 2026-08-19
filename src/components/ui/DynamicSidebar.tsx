@@ -4,12 +4,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
+import { getUnreadMessagesCountAction } from '@/app/actions/messages'
+import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, ChevronRight, LogOut, LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   label: string
   href: string
   icon: LucideIcon
+  badge?: number | string
 }
 
 export interface DynamicSidebarProps {
@@ -41,8 +44,19 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH)
   const [isMounted, setIsMounted] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0)
   
   const sidebarRef = useRef<HTMLElement>(null)
+
+  // Fetch and track live unread messages count
+  const refreshUnreadCount = useCallback(async () => {
+    try {
+      const count = await getUnreadMessagesCountAction()
+      setUnreadMsgCount(count)
+    } catch {
+      // ignore
+    }
+  }, [])
 
   useEffect(() => {
     setIsMounted(true)
@@ -50,7 +64,40 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
     if (stored) {
       setSidebarWidth(parseInt(stored, 10))
     }
-  }, [])
+
+    refreshUnreadCount()
+
+    // Real-time Supabase subscription for incoming messages
+    const supabase = createClient()
+    const channel = supabase
+      .channel('sidebar-unread-messages')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_messages' },
+        () => {
+          refreshUnreadCount()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_participants' },
+        () => {
+          refreshUnreadCount()
+        }
+      )
+      .subscribe()
+
+    // Local custom event listener
+    const handleLocalUpdate = () => {
+      refreshUnreadCount()
+    }
+    window.addEventListener('unread-messages-count-updated', handleLocalUpdate)
+
+    return () => {
+      supabase.removeChannel(channel)
+      window.removeEventListener('unread-messages-count-updated', handleLocalUpdate)
+    }
+  }, [refreshUnreadCount])
 
   const startResizing = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -176,6 +223,9 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || (item.href !== '/admin' && item.href !== '/candidate' && pathname.startsWith(item.href))
+          const isMessagesRoute = item.href.includes('/messages')
+          const effectiveBadge = item.badge !== undefined ? item.badge : isMessagesRoute ? unreadMsgCount : undefined
+          const hasBadge = effectiveBadge !== undefined && Number(effectiveBadge) > 0
           
           return (
             <div key={item.href} className="relative group">
@@ -188,16 +238,33 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
               >
-                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[var(--md-sys-color-primary)]' : ''}`} />
+                <div className="relative flex items-center justify-center">
+                  <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[var(--md-sys-color-primary)]' : ''}`} />
+                  
+                  {/* Collapsed Badge Pill */}
+                  {isCollapsed && hasBadge && (
+                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center px-1 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-[9px] font-black shadow-xs">
+                      {Number(effectiveBadge) > 9 ? '9+' : effectiveBadge}
+                    </span>
+                  )}
+                </div>
+
                 {!isCollapsed && (
                   <span className="ml-3 truncate">{item.label}</span>
+                )}
+
+                {/* Expanded Badge Pill */}
+                {!isCollapsed && hasBadge && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center px-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-[10px] font-black shadow-xs">
+                    {Number(effectiveBadge) > 99 ? '99+' : effectiveBadge}
+                  </span>
                 )}
               </Link>
               
               {/* Tooltip for Collapsed State */}
               {isCollapsed && isMounted && !isResizing && (
                 <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-[var(--md-sys-color-on-surface)] text-[var(--md-sys-color-surface)] text-xs font-medium rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 pointer-events-none">
-                  {item.label}
+                  {item.label} {hasBadge && `(${effectiveBadge})`}
                   <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-4 border-y-transparent border-r-4 border-r-[var(--md-sys-color-on-surface)]" />
                 </div>
               )}

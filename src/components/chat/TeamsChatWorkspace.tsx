@@ -108,12 +108,21 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     let isMounted = true
     setLoadingMessages(true)
 
+    // Optimistically zero out unreadCount on active conversation
+    setConversations((prev) =>
+      prev.map((c) => (c.id === activeConvId ? { ...c, unreadCount: 0 } : c))
+    )
+
     getConversationMessagesAction(activeConvId)
       .then((msgs) => {
         if (isMounted) {
           setMessages(msgs)
           setLoadingMessages(false)
-          markConversationAsReadAction(activeConvId)
+          markConversationAsReadAction(activeConvId).then(() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('unread-messages-count-updated'))
+            }
+          })
         }
       })
       .catch((err) => {
@@ -199,6 +208,33 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       supabase.removeChannel(callBroadcastChannel)
     }
   }, [activeConvId, activeThreadParent, currentUserId])
+
+  // Real-time Conversation List unread count listener
+  useEffect(() => {
+    const supabase = createClient()
+    const globalChannel = supabase
+      .channel('chat-global-sidebar-unread')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+        },
+        async (payload) => {
+          const newMsg = payload.new as any
+          if (newMsg && newMsg.conversation_id !== activeConvId && newMsg.sender_id !== currentUserId) {
+            const freshConvs = await getConversationsListAction()
+            setConversations(freshConvs)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(globalChannel)
+    }
+  }, [activeConvId, currentUserId])
 
   // Load thread replies when parent is selected
   useEffect(() => {

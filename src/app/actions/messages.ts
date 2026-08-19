@@ -283,6 +283,14 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
       }
     }
 
+    // Calculate accurate unread messages count for this conversation
+    const convMessages = (lastMessages || []).filter((m: any) => m.conversation_id === conv.id)
+    const unreadCount = convMessages.filter(
+      (m: any) =>
+        m.sender_id !== user.id &&
+        new Date(m.created_at).getTime() > new Date(lastReadAt).getTime()
+    ).length
+
     return {
       id: conv.id,
       type: conv.type,
@@ -294,7 +302,7 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
       lastMessageAt: conv.last_message_at || conv.created_at,
       lastMessageSnippet: lastSnippet,
       lastMessageSenderName: (lastMsg?.profiles as any)?.full_name || '',
-      unreadCount: 0, // Computed in real-time or via last_read_at
+      unreadCount,
       isPinned: partInfo?.is_pinned || false,
       isMuted: partInfo?.is_muted || false,
       otherParticipant,
@@ -310,6 +318,40 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
     })
   } catch (err) {
     return defaultFallbackChannels
+  }
+}
+
+/**
+ * Get total unread messages count for the current user
+ */
+export async function getUnreadMessagesCountAction(): Promise<number> {
+  const user = await getCurrentUserFast()
+  if (!user) return 0
+
+  const supabase = await getSupabase()
+  try {
+    const { data: userParticipations } = await supabase
+      .from('chat_participants')
+      .select('conversation_id, last_read_at')
+      .eq('user_id', user.id)
+
+    if (!userParticipations || userParticipations.length === 0) return 0
+
+    let totalUnread = 0
+    for (const p of userParticipations) {
+      const lastRead = p.last_read_at || '1970-01-01T00:00:00.000Z'
+      const { count } = await supabase
+        .from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('conversation_id', p.conversation_id)
+        .neq('sender_id', user.id)
+        .gt('created_at', lastRead)
+
+      totalUnread += count || 0
+    }
+    return totalUnread
+  } catch {
+    return 0
   }
 }
 

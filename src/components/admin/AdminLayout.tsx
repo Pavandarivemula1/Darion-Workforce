@@ -201,20 +201,23 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           {mobilePrimaryTabs.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+            const isMessages = item.href.includes('/messages')
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 prefetch={true}
-                className={`flex flex-col items-center justify-center h-full gap-0.5 transition-all active:scale-90 ${
+                className={`flex flex-col items-center justify-center h-full gap-0.5 transition-all active:scale-90 relative ${
                   isActive
                     ? 'text-[var(--md-sys-color-primary)] font-bold'
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
                 }`}
               >
-                <div className={`p-1 rounded-full transition-all ${isActive ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] px-3' : ''}`}>
-                  <Icon className="w-4 h-4" />
+                <div className="relative">
+                  <div className={`p-1 rounded-full transition-all ${isActive ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] px-3' : ''}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
                 </div>
                 <span className="text-[10px] tracking-tight">{item.label}</span>
               </Link>
