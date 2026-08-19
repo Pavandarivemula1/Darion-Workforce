@@ -853,6 +853,13 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                 (new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime() < 5 * 60 * 1000)
               )
 
+              const isGif =
+                msg.messageType === 'file' &&
+                (msg.fileType === 'image/gif' ||
+                  msg.fileUrl?.includes('.gif') ||
+                  msg.fileUrl?.includes('giphy.gif') ||
+                  msg.metadata?.isGif)
+
               return (
                 <React.Fragment key={msg.id}>
                   {/* Sticky Date Divider */}
@@ -920,7 +927,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                         {/* Content Box */}
                         <div
                           className={`relative transition-all select-text ${
-                            msg.messageType === 'meet_card'
+                            msg.messageType === 'meet_card' || isGif
                               ? 'p-0 bg-transparent border-0 shadow-none'
                               : isMe
                               ? 'px-3.5 py-2 text-[13px] leading-[1.55] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-normal rounded-2xl rounded-tr-xs shadow-md border border-[var(--md-sys-color-primary)]/40'
@@ -953,44 +960,37 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           {/* Live Meet Card / Missed Call Card */}
                           {msg.messageType === 'meet_card' && <ChatMeetCard metadata={msg.metadata} />}
 
-                          {/* File / GIF Card */}
-                          {msg.messageType === 'file' && (
-                            msg.fileType === 'image/gif' ||
-                            msg.fileUrl?.includes('.gif') ||
-                            msg.fileUrl?.includes('giphy.gif') ||
-                            msg.metadata?.isGif ? (
-                              <div className="my-1.5 overflow-hidden rounded-2xl border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 max-w-[280px] shadow-sm bg-black/5 dark:bg-black/30">
-                                <img
-                                  src={msg.fileUrl}
-                                  alt={msg.fileName || 'GIF'}
-                                  loading="lazy"
-                                  className="w-full max-h-[220px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200"
-                                />
-                                {msg.content && msg.content !== msg.fileName && (
-                                  <div className="p-1.5 text-[11px] font-semibold text-center opacity-85 truncate">
-                                    {msg.content}
-                                  </div>
-                                )}
+                          {/* Pure Animated GIF Card (Borderless, Frameless, No Title Text) */}
+                          {isGif && msg.fileUrl && (
+                            <div className="relative group/gif overflow-hidden rounded-2xl shadow-md max-w-[280px] my-0.5">
+                              <img
+                                src={msg.fileUrl}
+                                alt="GIF"
+                                loading="lazy"
+                                className="w-full max-h-[240px] object-cover rounded-2xl hover:scale-[1.02] transition-transform duration-200"
+                              />
+                            </div>
+                          )}
+
+                          {/* Regular File Attachment Card */}
+                          {msg.messageType === 'file' && !isGif && (
+                            <div className="my-1 p-2.5 rounded-xl bg-black/5 dark:bg-black/20 border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 truncate">
+                                <FileText className="w-4 h-4 flex-shrink-0 text-[var(--md-sys-color-primary)]" />
+                                <span className="font-semibold truncate text-[var(--md-sys-color-on-surface)] dark:text-slate-100">{msg.fileName || 'Attachment'}</span>
                               </div>
-                            ) : (
-                              <div className="my-1 p-2.5 rounded-xl bg-black/5 dark:bg-black/20 border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 truncate">
-                                  <FileText className="w-4 h-4 flex-shrink-0 text-[var(--md-sys-color-primary)]" />
-                                  <span className="font-semibold truncate text-[var(--md-sys-color-on-surface)] dark:text-slate-100">{msg.fileName || 'Attachment'}</span>
-                                </div>
-                                {msg.fileUrl && (
-                                  <a
-                                    href={msg.fileUrl}
-                                    download
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="p-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors text-[var(--md-sys-color-on-surface)] dark:text-white"
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                  </a>
-                                )}
-                              </div>
-                            )
+                              {msg.fileUrl && (
+                                <a
+                                  href={msg.fileUrl}
+                                  download
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors text-[var(--md-sys-color-on-surface)] dark:text-white"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                            </div>
                           )}
 
                           {/* Regular Text & Inline Edit Mode */}
@@ -1031,13 +1031,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             </div>
                           ) : (
                             msg.content &&
-                            msg.messageType !== 'meet_card' && (
+                            msg.messageType !== 'meet_card' &&
+                            !isGif && (
                               <div className="whitespace-pre-wrap break-words">{msg.content}</div>
                             )
                           )}
 
-                          {/* Inline Time & Read Status for Sent text messages */}
-                          {isMe && msg.messageType !== 'meet_card' && (
+                          {/* Inline Time & Read Status for Sent text & file messages */}
+                          {isMe && msg.messageType !== 'meet_card' && !isGif && (
                             <div className="flex items-center justify-end gap-1.5 mt-1 -mb-0.5 select-none">
                               {(msg.isEdited || msg.metadata?.isEdited) && (
                                 <span className="text-[9px] opacity-70 italic font-medium mr-0.5">(edited)</span>
@@ -1074,31 +1075,6 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                   <span>Sent</span>
                                 </span>
                               )}
-                            </div>
-                          )}
-
-                          {/* Inline Time for Sent meet cards */}
-                          {isMe && msg.messageType === 'meet_card' && (
-                            <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none">
-                              <span>{formatMessageTime(msg.createdAt)}</span>
-                              {msg.status === 'seen' ? (
-                                <span className="inline-flex items-center gap-0.5 text-sky-500 dark:text-sky-400 font-bold text-[9px] bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded-full border border-sky-200 dark:border-sky-800/40">
-                                  <CheckCheck className="w-3 h-3 text-sky-500 dark:text-sky-400 stroke-[2.5]" />
-                                  <span>Seen</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-0.5 text-slate-400 dark:text-slate-500 font-medium text-[9px]">
-                                  <CheckCheck className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                                  <span>Delivered</span>
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Inline Time & Edited Status for Received text messages */}
-                          {!isMe && msg.messageType !== 'meet_card' && (msg.isEdited || msg.metadata?.isEdited) && (
-                            <div className="flex items-center gap-1 mt-1 -mb-0.5 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic select-none">
-                              <span>(edited)</span>
                             </div>
                           )}
 
@@ -1174,6 +1150,31 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             )}
                           </div>
                         </div>
+
+                        {/* Inline Time for Sent GIF cards or Meet cards */}
+                        {isMe && (msg.messageType === 'meet_card' || isGif) && (
+                          <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none">
+                            <span>{formatMessageTime(msg.createdAt)}</span>
+                            {msg.status === 'seen' ? (
+                              <span className="inline-flex items-center gap-0.5 text-sky-500 dark:text-sky-400 font-bold text-[9px] bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded-full border border-sky-200 dark:border-sky-800/40">
+                                <CheckCheck className="w-3 h-3 text-sky-500 dark:text-sky-400 stroke-[2.5]" />
+                                <span>Seen</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-slate-400 dark:text-slate-500 font-medium text-[9px]">
+                                <CheckCheck className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                                <span>Delivered</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Inline Time & Edited Status for Received text messages */}
+                        {!isMe && msg.messageType !== 'meet_card' && (msg.isEdited || msg.metadata?.isEdited) && (
+                          <div className="flex items-center gap-1 mt-1 -mb-0.5 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic select-none">
+                            <span>(edited)</span>
+                          </div>
+                        )}
 
                         {/* Reactions List */}
                         {msg.reactions.length > 0 && (
