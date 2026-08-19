@@ -1890,27 +1890,6 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               />
                             </div>
                           )}
-                          {/* Inline Time & Seen Status for ALL Sent Messages */}
-                        {isMe && (
-                          <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none px-1">
-                            {(msg.isEdited || msg.metadata?.isEdited) && <span className="italic">(edited)</span>}
-                            <span>{formatMessageTime(msg.createdAt)}</span>
-                            {msg.status === 'seen' ? (
-                              <span
-                                className="inline-flex items-center gap-0.5 text-sky-500 dark:text-sky-400 font-bold text-[9px] bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded-full border border-sky-200 dark:border-sky-800/40"
-                                title={`Seen by ${msg.readBy?.map((r) => r.fullName).join(', ') || 'recipient'}`}
-                              >
-                                <CheckCheck className="w-3 h-3 text-sky-500 dark:text-sky-400 stroke-[2.5]" />
-                                <span>Seen</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-0.5 text-slate-400 dark:text-slate-500 font-medium text-[9px]">
-                                <CheckCheck className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                                <span>Delivered</span>
-                              </span>
-                            )}
-                          </div>
-                        )}
                         </div>
 
                         {/* Reactions List */}
