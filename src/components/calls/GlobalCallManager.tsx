@@ -24,11 +24,13 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   const [incomingCall, setIncomingCall] = useState<CallSessionPayload | null>(null)
   // Outgoing Call State
   const [outgoingCall, setOutgoingCall] = useState<CallSessionPayload | null>(null)
+  const [outgoingStatus, setOutgoingStatus] = useState<'calling' | 'ringing'>('calling')
   const [outgoingTimer, setOutgoingTimer] = useState(0)
 
   const incomingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const ringingTransitionRef = useRef<NodeJS.Timeout | null>(null)
   const broadcastChannelRef = useRef<any>(null)
 
   // Resolve user id
@@ -46,8 +48,15 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   // Start outgoing call handler
   const startOutgoingCall = (payload: CallSessionPayload) => {
     setOutgoingCall(payload)
+    setOutgoingStatus('calling')
     setOutgoingTimer(0)
     soundEffects.startRingingOutgoing()
+
+    // Transition from Calling... to Ringing...
+    if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
+    ringingTransitionRef.current = setTimeout(() => {
+      setOutgoingStatus('ringing')
+    }, 1500)
 
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
     outgoingIntervalRef.current = setInterval(() => {
@@ -67,6 +76,15 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
     setIncomingCall(incoming)
     soundEffects.startRingingIncoming()
+
+    // Notify caller that recipient device is ringing
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.send({
+        type: 'broadcast',
+        event: 'call_ringing',
+        payload: { roomCode: incoming.roomCode },
+      })
+    }
 
     if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
     incomingTimeoutRef.current = setTimeout(() => {
@@ -108,11 +126,16 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
           triggerIncomingCall(payload)
         }
       })
+      .on('broadcast', { event: 'call_ringing' }, ({ payload }) => {
+        // When recipient is ringing, switch caller status immediately to 'ringing'
+        setOutgoingStatus('ringing')
+      })
       .on('broadcast', { event: 'call_declined' }, ({ payload }) => {
         // When declined, cancel outgoing screen immediately
         soundEffects.playCallEndedSound()
         if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
         if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+        if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
         setOutgoingCall(null)
         setOutgoingTimer(0)
       })
@@ -127,6 +150,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
         soundEffects.stopRinging()
         if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
         if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+        if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
         setOutgoingCall(null)
         if (payload?.meetUrl) {
           router.push(payload.meetUrl)
@@ -238,6 +262,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     soundEffects.playCallEndedSound()
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+    if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
 
     const cur = outgoingCall
     setOutgoingCall(null)
@@ -267,6 +292,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     soundEffects.stopRinging()
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+    if (ringingTransitionRef.current) clearTimeout(ringingTransitionRef.current)
 
     const url = outgoingCall.meetUrl
     setOutgoingCall(null)
@@ -275,7 +301,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
   return (
     <>
-      {/* 1. ELEGANT, RULED ENTERPRISE INCOMING CALL MODAL (NO CHEAP/FLASHY EFFECTS) */}
+      {/* 1. ELEGANT, RULED ENTERPRISE INCOMING CALL MODAL */}
       {incomingCall && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150 select-none">
           <div className="relative w-full max-w-[340px] bg-[#0d1424]/95 border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center text-white overflow-hidden">
@@ -348,10 +374,10 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
         <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150 select-none">
           <div className="relative w-full max-w-[340px] bg-[#0d1424]/95 border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center text-white overflow-hidden">
             
-            {/* Top Outgoing Pill */}
+            {/* Top Outgoing Status Pill */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-slate-300 text-[11px] font-semibold uppercase tracking-wider mb-6">
-              <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-              <span>Calling {outgoingCall.callType.toUpperCase()}...</span>
+              <span className={`w-2 h-2 rounded-full ${outgoingStatus === 'calling' ? 'bg-blue-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
+              <span>{outgoingStatus === 'calling' ? `Calling ${outgoingCall.callType.toUpperCase()}...` : 'Ringing...'}</span>
             </div>
 
             {/* Target Avatar */}
@@ -365,12 +391,14 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
               </div>
             </div>
 
-            {/* Recipient & Timer */}
+            {/* Recipient & Status / Timer */}
             <h3 className="text-xl font-bold text-white mb-1 tracking-tight">
               {outgoingCall.conversationName || outgoingCall.callerName}
             </h3>
             <p className="text-xs text-slate-400 font-mono mb-8">
-              {Math.floor(outgoingTimer / 60)}:{(outgoingTimer % 60).toString().padStart(2, '0')}
+              {outgoingStatus === 'calling'
+                ? 'Connecting...'
+                : `Ringing • ${Math.floor(outgoingTimer / 60)}:${(outgoingTimer % 60).toString().padStart(2, '0')}`}
             </p>
 
             {/* Actions: Cancel & Direct Join */}

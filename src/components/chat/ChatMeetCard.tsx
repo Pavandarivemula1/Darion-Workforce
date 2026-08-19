@@ -19,7 +19,7 @@ interface ChatMeetCardProps {
     hostName?: string
     callerId?: string
     callType?: 'video' | 'audio'
-    status?: 'ringing' | 'connected' | 'missed' | 'declined' | 'cancelled'
+    status?: 'calling' | 'ringing' | 'connected' | 'missed' | 'declined' | 'cancelled'
     startedAt?: string
     endedAt?: string
     meetUrl?: string
@@ -113,20 +113,28 @@ export const ChatMeetCard: React.FC<ChatMeetCardProps> = ({ metadata }) => {
     )
   }
 
-  // 2. ACTIVE RINGING IN-PROGRESS (RULED ENTERPRISE UI)
-  if (status === 'ringing') {
+  // 2. ACTIVE CALLING OR RINGING IN-PROGRESS (RULED ENTERPRISE UI)
+  if (status === 'calling' || status === 'ringing') {
+    const isCalling = status === 'calling'
+
     return (
-      <div className="w-[310px] sm:w-[330px] rounded-2xl bg-white dark:bg-[#111827] border border-amber-200 dark:border-amber-500/30 shadow-sm p-3.5 flex items-center justify-between gap-3 text-slate-800 dark:text-slate-100 select-none">
+      <div className={`w-[310px] sm:w-[330px] rounded-2xl bg-white dark:bg-[#111827] border ${
+        isCalling ? 'border-blue-200 dark:border-blue-500/30' : 'border-amber-200 dark:border-amber-500/30'
+      } shadow-sm p-3.5 flex items-center justify-between gap-3 text-slate-800 dark:text-slate-100 select-none`}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 dark:text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-100 dark:border-amber-900/30">
-            <Radio className="w-5 h-5 animate-pulse text-amber-500" />
+          <div className={`w-10 h-10 rounded-xl ${
+            isCalling
+              ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500 dark:text-blue-400 border-blue-100 dark:border-blue-900/30'
+              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-500 dark:text-amber-400 border-amber-100 dark:border-amber-900/30'
+          } flex items-center justify-center flex-shrink-0 border`}>
+            <Radio className={`w-5 h-5 animate-pulse ${isCalling ? 'text-blue-500' : 'text-amber-500'}`} />
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping flex-shrink-0" />
-              <span className="text-[10px] font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase">
-                Ringing...
+              <span className={`w-1.5 h-1.5 rounded-full animate-ping flex-shrink-0 ${isCalling ? 'bg-blue-500' : 'bg-amber-500'}`} />
+              <span className={`text-[10px] font-bold tracking-wider uppercase ${isCalling ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {isCalling ? 'Calling...' : 'Ringing...'}
               </span>
               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                 • {callType.toUpperCase()}
@@ -136,7 +144,7 @@ export const ChatMeetCard: React.FC<ChatMeetCardProps> = ({ metadata }) => {
               {meetTitle}
             </h4>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-              Calling {hostName}...
+              {isCalling ? `Connecting to ${hostName}...` : `Ringing on ${hostName}'s device...`}
             </p>
           </div>
         </div>
