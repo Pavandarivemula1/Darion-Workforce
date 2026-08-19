@@ -733,11 +733,11 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                           {/* Quick Action Floating Toolbar */}
                           <div
-                            className={`absolute -top-3.5 ${
-                              isMe ? 'left-2' : 'right-2'
-                            } opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto transition-all duration-150 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container)] dark:bg-[#1a2336] border border-[var(--md-sys-color-outline-variant)] dark:border-slate-700 shadow-lg text-xs z-10`}
+                            className={`absolute -top-4 ${
+                              isMe ? 'right-0' : 'left-0'
+                            } opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto transition-all duration-150 flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container)] dark:bg-[#1a2336] border border-[var(--md-sys-color-outline-variant)] dark:border-slate-700 shadow-xl text-xs z-30 whitespace-nowrap`}
                           >
-                            {COMMON_EMOJIS.slice(0, 4).map((emoji) => (
+                            {COMMON_EMOJIS.slice(0, 3).map((emoji) => (
                               <button
                                 key={emoji}
                                 onClick={() => handleReaction(msg.id, emoji)}
@@ -747,10 +747,11 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 {emoji}
                               </button>
                             ))}
+                            <div className="w-px h-3 bg-[var(--md-sys-color-outline-variant)] dark:bg-slate-700 mx-0.5" />
                             <button
                               onClick={() => setActiveThreadParent(msg)}
                               title="Reply in thread"
-                              className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors ml-0.5"
+                              className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] transition-colors"
                             >
                               <MessageCircle className="w-3.5 h-3.5" />
                             </button>
