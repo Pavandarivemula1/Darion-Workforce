@@ -34,6 +34,7 @@ import {
 
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { GlobalPushNotificationManager } from '@/components/notifications/GlobalPushNotificationManager'
+import { GlobalCallManager } from '@/components/calls/GlobalCallManager'
 import { hasModuleAccess, getRoleDisplayName, ROLE_METADATA, UserRole, AppModule } from '@/lib/auth/permissions'
 
 export interface AdminLayoutProps {
@@ -306,6 +307,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
       {/* Global Push & In-App Notification Manager */}
       <GlobalPushNotificationManager userId={adminId} />
+
+      {/* Global Call Ringing & High-Priority Overlays */}
+      <GlobalCallManager currentUserId={adminId} />
     </div>
   )
 }

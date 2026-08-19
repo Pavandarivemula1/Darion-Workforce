@@ -41,6 +41,7 @@ import {
   markConversationAsReadAction,
   deleteMessageAction,
 } from '@/app/actions/messages'
+import { initiateCallAction } from '@/app/actions/calls'
 import { useBranding } from '@/components/providers/BrandingProvider'
 import { ChatMeetCard } from './ChatMeetCard'
 import { NewChatModal } from './NewChatModal'
@@ -270,20 +271,32 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     setIsForwardOpen(true)
   }
 
-  // Start Instant Video Meet in Chat
-  const handleStartMeet = async () => {
+  // Start Realtime Outgoing Ringing Call
+  const handleStartCall = async (callType: 'video' | 'audio' = 'video') => {
     if (!activeConvId || startingMeet) return
     try {
       setStartingMeet(true)
-      const meet = await startInstantMeetInChatAction(
-        activeConvId,
-        `Quick Sync in ${activeConv?.name || 'Chat'}`
-      )
+      const res = await initiateCallAction({
+        conversationId: activeConvId,
+        callType,
+        title: `${callType === 'video' ? 'Live Video' : 'Voice'} Call in ${activeConv?.name || 'Chat'}`,
+      })
+
+      if (!res.success || !res.callPayload) {
+        throw new Error(res.error || 'Failed to initiate call')
+      }
+
+      // Dispatch outgoing ringing screen
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('start-outgoing-call', { detail: res.callPayload })
+        )
+      }
+
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
-      window.open(meet.meetUrl, '_blank')
     } catch (err: any) {
-      alert(err.message || 'Failed to start meeting')
+      alert(err.message || 'Failed to start call')
     } finally {
       setStartingMeet(false)
     }
@@ -584,12 +597,21 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           {/* Action Bar */}
           <div className="flex items-center gap-2">
             <button
-              onClick={handleStartMeet}
+              onClick={() => handleStartCall('audio')}
               disabled={startingMeet}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] font-semibold text-xs tracking-wide transition-all shadow-xs active:scale-95 disabled:opacity-50"
+              title="Start Voice Call"
+              className="p-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] transition-all shadow-2xs active:scale-95 disabled:opacity-50"
+            >
+              <Phone className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+            </button>
+
+            <button
+              onClick={() => handleStartCall('video')}
+              disabled={startingMeet}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] font-semibold text-xs tracking-wide transition-all shadow-2xs active:scale-95 disabled:opacity-50"
             >
               <Video className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="hidden sm:inline">Start Call</span>
+              <span className="hidden sm:inline">Video Call</span>
             </button>
           </div>
         </header>
@@ -883,8 +905,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                   <button
                     type="button"
-                    onClick={handleStartMeet}
-                    title="Quick Live Meet"
+                    onClick={() => handleStartCall('video')}
+                    title="Start Live Video Call"
                     className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15 transition-colors"
                   >
                     <Video className="w-4 h-4" />

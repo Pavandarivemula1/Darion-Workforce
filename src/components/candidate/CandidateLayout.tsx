@@ -27,6 +27,7 @@ import {
 import { FeedbackWidget } from './FeedbackWidget'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { GlobalPushNotificationManager } from '@/components/notifications/GlobalPushNotificationManager'
+import { GlobalCallManager } from '@/components/calls/GlobalCallManager'
 
 export interface CandidateLayoutProps {
   children: React.ReactNode
@@ -262,6 +263,9 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
 
       {/* Global Push & In-App Notification Manager */}
       <GlobalPushNotificationManager userId={candidateId} />
+
+      {/* Global Call Ringing & High-Priority Overlays */}
+      <GlobalCallManager currentUserId={candidateId} />
     </div>
   )
 }

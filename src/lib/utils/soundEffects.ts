@@ -5,6 +5,8 @@
 
 class SoundEffectsEngine {
   private ctx: AudioContext | null = null
+  private ringInterval: any = null
+  private isCurrentlyRinging = false
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null
@@ -49,7 +51,6 @@ class SoundEffectsEngine {
       const gain = ctx.createGain()
 
       osc.type = 'sine'
-      // Sweep upward from 400Hz to 840Hz
       osc.frequency.setValueAtTime(420, now)
       osc.frequency.exponentialRampToValueAtTime(880, now + 0.07)
 
@@ -155,6 +156,146 @@ class SoundEffectsEngine {
         osc.start(now + i * 0.07)
         osc.stop(now + i * 0.07 + 0.28)
       })
+    } catch {
+      // Ignored
+    }
+  }
+
+  /**
+   * Play single burst of incoming call ringtone
+   */
+  private playIncomingRingBurst(): void {
+    const ctx = this.getContext()
+    if (!ctx) return
+
+    try {
+      const now = ctx.currentTime
+      // Harmonic European/Modern Enterprise Dual-Chime (C5: 523.25Hz + G5: 783.99Hz followed by E5: 659.25Hz + C6: 1046.5Hz)
+      const chord1 = [523.25, 783.99]
+      chord1.forEach((freq) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq, now)
+        gain.gain.setValueAtTime(0.12, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now)
+        osc.stop(now + 0.45)
+      })
+
+      const chord2 = [659.25, 1046.5]
+      chord2.forEach((freq) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq, now + 0.35)
+        gain.gain.setValueAtTime(0.14, now + 0.35)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.95)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now + 0.35)
+        osc.stop(now + 0.95)
+      })
+    } catch {
+      // Ignored
+    }
+  }
+
+  /**
+   * Start looping Incoming Call Ringtone
+   */
+  public startRingingIncoming(): void {
+    if (!this.isSoundEnabled()) return
+    this.stopRinging()
+    this.isCurrentlyRinging = true
+
+    this.playIncomingRingBurst()
+    this.ringInterval = setInterval(() => {
+      if (this.isCurrentlyRinging) {
+        this.playIncomingRingBurst()
+      }
+    }, 2400)
+  }
+
+  /**
+   * Play single burst of outgoing ringback tone ("tuuuut...")
+   */
+  private playOutgoingRingbackBurst(): void {
+    const ctx = this.getContext()
+    if (!ctx) return
+
+    try {
+      const now = ctx.currentTime
+      const freqs = [440, 480] // Standard telecommunications tone
+      freqs.forEach((f) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(f, now)
+        gain.gain.setValueAtTime(0.05, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now)
+        osc.stop(now + 1.2)
+      })
+    } catch {
+      // Ignored
+    }
+  }
+
+  /**
+   * Start looping Outgoing Call Ringback Tone
+   */
+  public startRingingOutgoing(): void {
+    if (!this.isSoundEnabled()) return
+    this.stopRinging()
+    this.isCurrentlyRinging = true
+
+    this.playOutgoingRingbackBurst()
+    this.ringInterval = setInterval(() => {
+      if (this.isCurrentlyRinging) {
+        this.playOutgoingRingbackBurst()
+      }
+    }, 3200)
+  }
+
+  /**
+   * Stop any active ringer loop
+   */
+  public stopRinging(): void {
+    this.isCurrentlyRinging = false
+    if (this.ringInterval) {
+      clearInterval(this.ringInterval)
+      this.ringInterval = null
+    }
+  }
+
+  /**
+   * Play Call Disconnected / Ended 3-pip tone
+   */
+  public playCallEndedSound(): void {
+    this.stopRinging()
+    if (!this.isSoundEnabled()) return
+    const ctx = this.getContext()
+    if (!ctx) return
+
+    try {
+      const now = ctx.currentTime
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(480, now + i * 0.16)
+        gain.gain.setValueAtTime(0.08, now + i * 0.16)
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.16 + 0.1)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now + i * 0.16)
+        osc.stop(now + i * 0.16 + 0.1)
+      }
     } catch {
       // Ignored
     }
