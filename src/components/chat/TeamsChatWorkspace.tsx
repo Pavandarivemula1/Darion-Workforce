@@ -103,12 +103,178 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [reactingMessageId, setReactingMessageId] = useState<string | null>(null)
   const [mobileActionMessage, setMobileActionMessage] = useState<ChatMessageItem | null>(null)
 
+  // Touch Gestures State
+  const [swipingMessageId, setSwipingMessageId] = useState<string | null>(null)
+  const [swipeOffset, setSwipeOffset] = useState<number>(0)
+  const [heartBursts, setHeartBursts] = useState<Array<{ id: string; msgId: string; x: number; y: number }>>([])
+  const [actionSheetPullOffset, setActionSheetPullOffset] = useState<number>(0)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mainInputRef = useRef<HTMLTextAreaElement>(null)
 
+  const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null)
+  const isHorizontalSwipe = useRef<boolean>(false)
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const lastTapRef = useRef<{ time: number; msgId: string } | null>(null)
+  const hasTriggeredHaptic = useRef<boolean>(false)
+  const actionSheetTouchStartRef = useRef<number | null>(null)
+
   const activeConv = conversations.find((c) => c.id === activeConvId)
+
+  // Action Sheet Pull Down Handlers
+  const handleActionSheetTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      actionSheetTouchStartRef.current = e.touches[0].clientY
+    }
+  }
+
+  const handleActionSheetTouchMove = (e: React.TouchEvent) => {
+    if (actionSheetTouchStartRef.current !== null && e.touches.length === 1) {
+      const deltaY = e.touches[0].clientY - actionSheetTouchStartRef.current
+      if (deltaY > 0) {
+        setActionSheetPullOffset(deltaY)
+      }
+    }
+  }
+
+  const handleActionSheetTouchEnd = () => {
+    if (actionSheetPullOffset > 60) {
+      setMobileActionMessage(null)
+    }
+    setActionSheetPullOffset(0)
+    actionSheetTouchStartRef.current = null
+  }
+
+  // Touch Gestures Handlers
+  const handleTouchStart = (msg: ChatMessageItem, e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+    isHorizontalSwipe.current = false
+    hasTriggeredHaptic.current = false
+
+    // Long press timer (420ms) for action sheet
+    longPressTimer.current = setTimeout(() => {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(25)
+        }
+      } catch {}
+      setMobileActionMessage(msg)
+      touchStartPos.current = null
+    }, 420)
+  }
+
+  const handleTouchMove = (msg: ChatMessageItem, isMe: boolean, e: React.TouchEvent) => {
+    if (!touchStartPos.current || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - touchStartPos.current.x
+    const deltaY = touch.clientY - touchStartPos.current.y
+
+    // Cancel long press if finger moved
+    if (Math.hypot(deltaX, deltaY) > 8 && longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+
+    // Determine swipe direction
+    if (!isHorizontalSwipe.current) {
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+        // Vertical scroll -> cancel swipe
+        touchStartPos.current = null
+        setSwipingMessageId(null)
+        setSwipeOffset(0)
+        return
+      } else if (Math.abs(deltaX) > 8) {
+        isHorizontalSwipe.current = true
+      }
+    }
+
+    if (isHorizontalSwipe.current) {
+      // Calculate responsive swipe offset
+      // If received (left-aligned): swipe right (+deltaX)
+      // If sent (right-aligned): swipe left (-deltaX)
+      let offset = 0
+      if (!isMe && deltaX > 0) {
+        offset = Math.min(deltaX * 0.45, 60)
+      } else if (isMe && deltaX < 0) {
+        offset = Math.max(deltaX * 0.45, -60)
+      }
+
+      setSwipingMessageId(msg.id)
+      setSwipeOffset(offset)
+
+      // Haptic tick on threshold reached
+      if (Math.abs(offset) >= 40 && !hasTriggeredHaptic.current) {
+        hasTriggeredHaptic.current = true
+        try {
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(12)
+          }
+        } catch {}
+      }
+    }
+  }
+
+  const handleTouchEnd = (msg: ChatMessageItem, isMe: boolean, e: React.TouchEvent) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+
+    const currentOffset = swipingMessageId === msg.id ? swipeOffset : 0
+    const passedThreshold = Math.abs(currentOffset) >= 40
+
+    if (passedThreshold) {
+      // Trigger Quote Reply
+      setReplyingTo(msg)
+      mainInputRef.current?.focus()
+    } else if (touchStartPos.current) {
+      // Check for Double-Tap Heart Reaction
+      const now = Date.now()
+      const touchDuration = now - touchStartPos.current.time
+      if (touchDuration < 280) {
+        if (
+          lastTapRef.current &&
+          now - lastTapRef.current.time < 320 &&
+          lastTapRef.current.msgId === msg.id
+        ) {
+          // Double Tap Triggered!
+          handleReaction(msg.id, '❤️')
+          try {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              navigator.vibrate([10, 30, 15])
+            }
+          } catch {}
+
+          // Add floating heart particle burst
+          const burstId = `burst-${Date.now()}`
+          const touchX = touchStartPos.current?.x || (typeof window !== 'undefined' ? window.innerWidth / 2 : 100)
+          const touchY = touchStartPos.current?.y || 200
+          setHeartBursts((prev) => [
+            ...prev,
+            { id: burstId, msgId: msg.id, x: touchX, y: touchY },
+          ])
+          setTimeout(() => {
+            setHeartBursts((prev) => prev.filter((b) => b.id !== burstId))
+          }, 800)
+
+          lastTapRef.current = null
+        } else {
+          lastTapRef.current = { time: now, msgId: msg.id }
+        }
+      }
+    }
+
+    // Reset touch and swipe
+    touchStartPos.current = null
+    setSwipingMessageId(null)
+    setSwipeOffset(0)
+    isHorizontalSwipe.current = false
+    hasTriggeredHaptic.current = false
+  }
 
   // Scroll to original message when quoted reply bubble is clicked
   const scrollToMessage = (targetId: string) => {
@@ -773,9 +939,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       </aside>
 
       {/* 2. MAIN ACTIVE CHAT STREAM */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12] relative">
-        {/* Chat Top Header */}
-        <header className="px-4 py-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)]/90 dark:bg-[#0c111d]/90 backdrop-blur-md flex items-center justify-between gap-3 z-10">
+      <main className="flex-1 flex flex-col min-w-0 h-full max-h-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12] relative">
+        {/* Chat Top Header (Pinned & Fixed) */}
+        <header className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)]/95 dark:bg-[#0c111d]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-2 sm:gap-3 truncate">
             {/* Ruled Mobile Back Button */}
             <button
@@ -836,8 +1002,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           </div>
         </header>
 
-        {/* Messages Feed */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-1">
+        {/* Messages Feed (THE ONLY SCROLLABLE ELEMENT) */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-3 sm:py-4 space-y-1 overscroll-contain">
           {loadingMessages ? (
             <div className="h-full flex flex-col items-center justify-center gap-2 text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">
               <div className="w-6 h-6 border-2 border-[var(--md-sys-color-primary)] border-t-transparent rounded-full animate-spin" />
@@ -902,18 +1068,44 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       </span>
                     </div>
                   ) : (
-                    /* User Message Row */
+                    /* User Message Row with Touch Gestures */
                     <div
                       id={`chat-msg-${msg.id}`}
+                      onTouchStart={(e) => handleTouchStart(msg, e)}
+                      onTouchMove={(e) => handleTouchMove(msg, isMe, e)}
+                      onTouchEnd={(e) => handleTouchEnd(msg, isMe, e)}
+                      onTouchCancel={(e) => handleTouchEnd(msg, isMe, e)}
                       onClick={() => {
                         if (typeof window !== 'undefined' && window.innerWidth < 768) {
                           setMobileActionMessage(msg)
                         }
                       }}
+                      style={{
+                        transform: swipingMessageId === msg.id ? `translateX(${swipeOffset}px)` : 'translateX(0px)',
+                        transition: swipingMessageId === msg.id ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)',
+                      }}
                       className={`flex items-start gap-2.5 group/msg relative transition-all cursor-pointer md:cursor-default ${
                         isMe ? 'flex-row-reverse' : 'flex-row'
                       } ${isConsecutive ? 'mt-0.5' : 'mt-3.5'}`}
                     >
+                      {/* Swipe-to-Reply Spring Indicator */}
+                      {swipingMessageId === msg.id && Math.abs(swipeOffset) > 4 && (
+                        <div
+                          className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10 ${
+                            isMe ? 'right-full mr-2' : 'left-full ml-2'
+                          }`}
+                        >
+                          <div
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-75 ${
+                              Math.abs(swipeOffset) >= 40
+                                ? 'bg-[var(--md-sys-color-primary)] text-white scale-110'
+                                : 'bg-[var(--md-sys-color-surface-container-high)] dark:bg-slate-800 text-[var(--md-sys-color-primary)] scale-90 opacity-80'
+                            }`}
+                          >
+                            <Reply className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </div>
+                        </div>
+                      )}
                       {/* Avatar Column */}
                       <div className="w-8 flex-shrink-0 flex items-start justify-center">
                         {!isConsecutive ? (
@@ -1293,8 +1485,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Bottom Composer */}
-        <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d]">
+        {/* Bottom Composer (Pinned & Fixed) */}
+        <div className="p-2.5 sm:p-3 border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] shrink-0 sticky bottom-0 z-20 pb-safe">
           <form onSubmit={handleSendMessage} className="relative flex flex-col gap-1.5">
             <div className="relative rounded-2xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]/20 transition-all p-3 shadow-xs">
               
@@ -1408,6 +1600,17 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             )}
           </form>
         </div>
+
+        {/* Floating Heart Particle Bursts */}
+        {heartBursts.map((b) => (
+          <div
+            key={b.id}
+            className="fixed z-[99999] pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-50 fade-out-0 duration-700 text-3xl select-none"
+            style={{ left: b.x, top: b.y }}
+          >
+            ❤️
+          </div>
+        ))}
       </main>
 
       {/* 3. RIGHT COLLAPSIBLE THREAD SIDEBAR / MOBILE THREAD DRAWER */}
@@ -1503,8 +1706,22 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 md:hidden animate-in fade-in duration-150"
             onClick={() => setMobileActionMessage(null)}
           />
-          <div className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-[var(--md-sys-color-surface-container-high)]/98 dark:bg-[#0e1626]/98 backdrop-blur-xl border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#22304a] shadow-2xl rounded-t-3xl p-4 animate-in slide-in-from-bottom duration-200 select-none pb-safe">
-            <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20 mx-auto mb-3.5" />
+          <div
+            style={{
+              transform: actionSheetPullOffset > 0 ? `translateY(${actionSheetPullOffset}px)` : undefined,
+              transition: actionSheetPullOffset > 0 ? 'none' : 'transform 0.2s ease-out',
+            }}
+            className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-[var(--md-sys-color-surface-container-high)]/98 dark:bg-[#0e1626]/98 backdrop-blur-xl border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#22304a] shadow-2xl rounded-t-3xl p-4 animate-in slide-in-from-bottom duration-200 select-none pb-safe"
+          >
+            {/* Pull-to-Dismiss Drag Handle Area */}
+            <div
+              onTouchStart={handleActionSheetTouchStart}
+              onTouchMove={handleActionSheetTouchMove}
+              onTouchEnd={handleActionSheetTouchEnd}
+              className="w-full py-1 mb-2.5 flex items-center justify-center cursor-grab active:cursor-grabbing"
+            >
+              <div className="w-10 h-1.5 rounded-full bg-black/25 dark:bg-white/25" />
+            </div>
 
             {/* Quick Emoji Reaction Bar */}
             <div className="flex items-center justify-around py-2 px-1 bg-black/5 dark:bg-black/30 rounded-2xl border border-[var(--md-sys-color-outline-variant)]/60 dark:border-white/5 mb-3">

@@ -287,6 +287,33 @@ export const EmojiAndGifPicker: React.FC<EmojiAndGifPickerProps> = ({
     )
   }, [searchQuery])
 
+  // Mobile Pull-to-Dismiss Gesture
+  const [pullDownOffset, setPullDownOffset] = useState(0)
+  const pullStartRef = useRef<number | null>(null)
+
+  const handleHandleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      pullStartRef.current = e.touches[0].clientY
+    }
+  }
+
+  const handleHandleTouchMove = (e: React.TouchEvent) => {
+    if (pullStartRef.current !== null && e.touches.length === 1) {
+      const deltaY = e.touches[0].clientY - pullStartRef.current
+      if (deltaY > 0) {
+        setPullDownOffset(deltaY)
+      }
+    }
+  }
+
+  const handleHandleTouchEnd = () => {
+    if (pullDownOffset > 65) {
+      onClose()
+    }
+    setPullDownOffset(0)
+    pullStartRef.current = null
+  }
+
   return (
     <>
       {/* Mobile Backdrop */}
@@ -297,10 +324,21 @@ export const EmojiAndGifPicker: React.FC<EmojiAndGifPickerProps> = ({
 
       <div
         ref={containerRef}
+        style={{
+          transform: pullDownOffset > 0 ? `translateY(${pullDownOffset}px)` : undefined,
+          transition: pullDownOffset > 0 ? 'none' : 'transform 0.2s ease-out',
+        }}
         className="fixed inset-x-0 bottom-0 sm:relative sm:inset-auto w-full sm:w-[380px] h-[54vh] sm:h-[390px] max-h-[480px] flex flex-col bg-[var(--md-sys-color-surface-container-high)]/98 dark:bg-[#0e1626]/98 backdrop-blur-xl border-t sm:border border-[var(--md-sys-color-outline-variant)] dark:border-[#22304a] shadow-2xl rounded-t-3xl sm:rounded-2xl p-3 sm:p-3.5 z-50 animate-in slide-in-from-bottom sm:slide-in-from-bottom-2 duration-200 select-none pb-safe"
       >
-        {/* Mobile Pull Drag Handle */}
-        <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20 mx-auto mb-2 sm:hidden shrink-0" />
+        {/* Mobile Pull Drag Handle Area */}
+        <div
+          onTouchStart={handleHandleTouchStart}
+          onTouchMove={handleHandleTouchMove}
+          onTouchEnd={handleHandleTouchEnd}
+          className="w-full py-1 sm:hidden flex items-center justify-center cursor-grab active:cursor-grabbing"
+        >
+          <div className="w-10 h-1.5 rounded-full bg-black/25 dark:bg-white/25" />
+        </div>
 
         {/* Header: Tabs & Close */}
         <div className="flex items-center justify-between pb-2.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e2a42]">

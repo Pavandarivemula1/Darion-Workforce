@@ -127,7 +127,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const roleMeta = ROLE_METADATA[(adminRole in ROLE_METADATA ? adminRole : 'admin') as UserRole] || ROLE_METADATA.admin
 
   return (
-    <div className="min-h-screen min-h-screen-safe bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row">
+    <div className={`min-h-screen min-h-screen-safe bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row ${isFullBleed ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : ''}`}>
       {/* Desktop Dynamic Sidebar Navigation */}
       <DynamicSidebar
         navItems={allNavItems}
@@ -140,7 +140,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
-      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-3 h-14 bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] pt-safe">
+      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-3 h-14 shrink-0 bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] pt-safe">
         <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
           {branding.iconUrl ? (
             <img src={branding.iconUrl} alt={branding.appTitle} className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]" />
@@ -186,8 +186,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       </header>
 
       {/* Main Content Container */}
-      <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isFullBleed ? 'h-screen md:h-screen overflow-hidden' : ''}`}>
-        <div className={isFullBleed ? 'w-full h-full flex-1 flex flex-col p-0 pb-16 md:pb-0 relative overflow-hidden' : 'max-w-7xl w-full mx-auto px-2 py-2 sm:p-5 lg:p-8 flex-1 pb-20 md:pb-8 relative'}>
+      <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isFullBleed ? 'h-full overflow-hidden' : ''}`}>
+        <div className={isFullBleed ? 'w-full h-full flex-1 flex flex-col p-0 pb-14 md:pb-0 relative overflow-hidden' : 'max-w-7xl w-full mx-auto px-2 py-2 sm:p-5 lg:p-8 flex-1 pb-20 md:pb-8 relative'}>
           {children}
         </div>
       </main>
