@@ -956,8 +956,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             msg.messageType === 'meet_card' || isGif
                               ? 'p-0 bg-transparent border-0 shadow-none'
                               : isMe
-                              ? 'px-3.5 py-2 text-[13px] leading-[1.55] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-normal rounded-2xl rounded-tr-xs shadow-md border border-[var(--md-sys-color-primary)]/40'
-                              : 'px-3.5 py-2 text-[13px] leading-[1.55] bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#151d2c] dark:text-slate-100 dark:border-[#222e44] rounded-2xl rounded-tl-xs shadow-xs font-normal'
+                              ? 'px-4 py-2.5 text-[13.5px] leading-relaxed bg-[var(--md-sys-color-primary)] text-white font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent'
+                              : 'px-4 py-2.5 text-[13.5px] leading-relaxed bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#131c2e] dark:text-slate-100 dark:border-[#202d46] rounded-2xl rounded-tl-xs shadow-2xs font-normal'
                           }`}
                         >
                           {/* In-Chat Quoted Tagging / Reply Bubble */}
@@ -967,13 +967,13 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 e.stopPropagation()
                                 scrollToMessage((msg.replyTo || msg.metadata?.replyTo).messageId)
                               }}
-                              className={`mb-2 p-2 rounded-xl border-l-4 cursor-pointer transition-all active:scale-[0.98] text-left select-none ${
+                              className={`mb-2 p-2.5 rounded-xl border-l-[3.5px] cursor-pointer transition-all active:scale-[0.98] text-left select-none shadow-2xs ${
                                 isMe
                                   ? 'bg-black/20 dark:bg-black/40 border-white/90 hover:bg-black/30 text-white'
-                                  : 'bg-black/5 dark:bg-slate-800/80 border-[var(--md-sys-color-primary)] hover:bg-black/10 dark:hover:bg-slate-800 text-[var(--md-sys-color-on-surface)]'
+                                  : 'bg-black/5 dark:bg-slate-800/80 border-[var(--md-sys-color-primary)] hover:bg-black/10 dark:hover:bg-slate-800 text-[var(--md-sys-color-on-surface)] dark:text-slate-200'
                               }`}
                             >
-                              <div className="flex items-center gap-1 text-[11px] font-bold opacity-90 truncate">
+                              <div className={`flex items-center gap-1 text-[11px] font-bold truncate ${isMe ? 'text-white/90' : 'text-[var(--md-sys-color-primary)]'}`}>
                                 <Reply className="w-3 h-3 shrink-0" />
                                 <span>{(msg.replyTo || msg.metadata?.replyTo).senderName}</span>
                               </div>
@@ -1000,10 +1000,23 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                           {/* Regular File Attachment Card */}
                           {msg.messageType === 'file' && !isGif && (
-                            <div className="my-1 p-2.5 rounded-xl bg-black/5 dark:bg-black/20 border border-[var(--md-sys-color-outline-variant)] dark:border-white/10 flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 truncate">
-                                <FileText className="w-4 h-4 flex-shrink-0 text-[var(--md-sys-color-primary)]" />
-                                <span className="font-semibold truncate text-[var(--md-sys-color-on-surface)] dark:text-slate-100">{msg.fileName || 'Attachment'}</span>
+                            <div className={`my-1.5 p-3 rounded-2xl border flex items-center justify-between gap-3 shadow-2xs ${
+                              isMe
+                                ? 'bg-black/20 dark:bg-black/40 border-white/20 text-white'
+                                : 'bg-black/5 dark:bg-[#192338] border-[var(--md-sys-color-outline-variant)] dark:border-[#283652] text-[var(--md-sys-color-on-surface)] dark:text-slate-100'
+                            }`}>
+                              <div className="flex items-center gap-2.5 truncate">
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                                  isMe ? 'bg-white/20 text-white' : 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)]'
+                                }`}>
+                                  <FileText className="w-5 h-5" />
+                                </div>
+                                <div className="truncate">
+                                  <span className="font-bold text-xs truncate block">{msg.fileName || 'Attachment Document'}</span>
+                                  <span className="text-[10px] block opacity-80 uppercase font-medium mt-0.5">
+                                    {msg.fileType ? msg.fileType.split('/')[1] || 'File' : 'File'}
+                                  </span>
+                                </div>
                               </div>
                               {msg.fileUrl && (
                                 <a
@@ -1011,9 +1024,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                   download
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="p-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors text-[var(--md-sys-color-on-surface)] dark:text-white"
+                                  className={`p-2 rounded-xl transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer ${
+                                    isMe
+                                      ? 'bg-white/20 hover:bg-white/30 text-white'
+                                      : 'bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-[var(--md-sys-color-on-surface)] dark:text-white'
+                                  }`}
+                                  title="Download file"
                                 >
-                                  <Download className="w-3.5 h-3.5" />
+                                  <Download className="w-4 h-4" />
                                 </a>
                               )}
                             </div>
