@@ -128,10 +128,18 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [heartBursts, setHeartBursts] = useState<Array<{ id: string; msgId: string; x: number; y: number }>>([])
   const [actionSheetPullOffset, setActionSheetPullOffset] = useState<number>(0)
 
+  // Real-time Typing Users State
+  const [typingUsers, setTypingUsers] = useState<Record<string, { userName: string; avatarUrl?: string; timestamp: number }>>({})
+  const typingDebounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const isCurrentlyTypingRef = useRef(false)
+
+  // Smart Scrolling & Containers
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mainInputRef = useRef<HTMLTextAreaElement>(null)
+  const isInitialLoadRef = useRef(true)
 
   const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null)
   const isHorizontalSwipe = useRef<boolean>(false)
@@ -339,6 +347,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           const fresh = await getConversationMessagesAction(activeConvId)
           setMessages(fresh)
           broadcastChatActivity()
+          broadcastTypingStatus(false)
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
         } catch (err: any) {
           alert(err.message || 'Failed to send voice note')
         } finally {
@@ -507,11 +517,91 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     }
   }, [])
 
+  // Broadcast typing status (start/stop) to peers
+  const broadcastTypingStatus = useCallback(
+    (isTyping: boolean) => {
+      if (!activeConvId || !currentUserId) return
+      try {
+        const supabase = createClient()
+        supabase.channel(`chat-realtime-${activeConvId}`).send({
+          type: 'broadcast',
+          event: isTyping ? 'typing_start' : 'typing_stop',
+          payload: {
+            conversationId: activeConvId,
+            userId: currentUserId,
+            userName: currentUserName || 'Teammate',
+            avatarUrl: currentUserAvatar,
+            timestamp: Date.now(),
+          },
+        })
+        isCurrentlyTypingRef.current = isTyping
+      } catch {}
+    },
+    [activeConvId, currentUserId, currentUserName, currentUserAvatar]
+  )
+
+  // Broadcast seen/read receipt to peers
+  const broadcastConversationRead = useCallback(() => {
+    if (!activeConvId || !currentUserId) return
+    try {
+      const supabase = createClient()
+      supabase.channel(`chat-realtime-${activeConvId}`).send({
+        type: 'broadcast',
+        event: 'conversation_read',
+        payload: {
+          conversationId: activeConvId,
+          userId: currentUserId,
+          readAt: new Date().toISOString(),
+        },
+      })
+    } catch {}
+  }, [activeConvId, currentUserId])
+
+  // Handle typing debounce on input change
+  const handleInputChange = (text: string) => {
+    setInputText(text)
+    if (!activeConvId) return
+
+    if (text.trim().length > 0) {
+      if (!isCurrentlyTypingRef.current) {
+        broadcastTypingStatus(true)
+      }
+      if (typingDebounceTimer.current) clearTimeout(typingDebounceTimer.current)
+      typingDebounceTimer.current = setTimeout(() => {
+        broadcastTypingStatus(false)
+      }, 2500)
+    } else {
+      if (typingDebounceTimer.current) clearTimeout(typingDebounceTimer.current)
+      broadcastTypingStatus(false)
+    }
+  }
+
+  // Clear stale typing indicators periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setTypingUsers((prev) => {
+        const copy: typeof prev = {}
+        let hasChanges = false
+        for (const [id, user] of Object.entries(prev)) {
+          if (now - user.timestamp < 3500) {
+            copy[id] = user
+          } else {
+            hasChanges = true
+          }
+        }
+        return hasChanges ? copy : prev
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   // Load messages whenever active conversation changes
   useEffect(() => {
     if (!activeConvId) return
     let isMounted = true
     setLoadingMessages(true)
+    isInitialLoadRef.current = true
 
     // Optimistically zero out unreadCount on active conversation
     setConversations((prev) =>
@@ -524,10 +614,17 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           setMessages(msgs)
           setLoadingMessages(false)
           markConversationAsReadAction(activeConvId).then(() => {
+            broadcastConversationRead()
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('unread-messages-count-updated'))
             }
           })
+
+          // ONLY Auto-scroll to bottom once upon initial load of conversation
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+            isInitialLoadRef.current = false
+          }, 80)
         }
       })
       .catch((err) => {
@@ -538,14 +635,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     return () => {
       isMounted = false
     }
-  }, [activeConvId])
+  }, [activeConvId, broadcastConversationRead])
 
-  // Scroll to bottom of message list on updates
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  // Refresh messages helper
+  // Refresh messages helper (with Smart Scrolling that doesn't displace user if scrolled up)
   const refreshMessages = useCallback(async (playIncomingSound = false) => {
     if (!activeConvId) return
     try {
@@ -554,6 +646,20 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
       if (playIncomingSound) {
         soundEffects.playNotificationSound()
+        markConversationAsReadAction(activeConvId).then(() => {
+          broadcastConversationRead()
+        })
+      }
+
+      // Smart Scroll: ONLY scroll if user is already near bottom (within 150px); never interrupt reading history
+      const container = messagesContainerRef.current
+      if (container) {
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 160
+        if (isNearBottom) {
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }, 50)
+        }
       }
 
       if (activeThreadParent) {
@@ -563,7 +669,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     } catch (err) {
       console.error('Failed to refresh messages:', err)
     }
-  }, [activeConvId, activeThreadParent])
+  }, [activeConvId, activeThreadParent, broadcastConversationRead])
 
   // Instant broadcast trigger to all active peers
   const broadcastChatActivity = useCallback(() => {
@@ -590,6 +696,39 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       .channel(`chat-realtime-${activeConvId}`)
       .on('broadcast', { event: 'chat_activity' }, async () => {
         await refreshMessages(true)
+      })
+      .on('broadcast', { event: 'typing_start' }, (payload: any) => {
+        const data = payload?.payload
+        if (data?.userId && data.userId !== currentUserId) {
+          setTypingUsers((prev) => ({
+            ...prev,
+            [data.userId]: {
+              userName: data.userName || 'Teammate',
+              avatarUrl: data.avatarUrl,
+              timestamp: Date.now(),
+            },
+          }))
+        }
+      })
+      .on('broadcast', { event: 'typing_stop' }, (payload: any) => {
+        const data = payload?.payload
+        if (data?.userId) {
+          setTypingUsers((prev) => {
+            const copy = { ...prev }
+            delete copy[data.userId]
+            return copy
+          })
+        }
+      })
+      .on('broadcast', { event: 'conversation_read' }, (payload: any) => {
+        const readerId = payload?.payload?.userId
+        if (readerId && readerId !== currentUserId) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.senderId === currentUserId ? { ...m, status: 'seen' } : m
+            )
+          )
+        }
       })
       .on('broadcast', { event: 'call_declined' }, async () => {
         await refreshMessages()
@@ -731,6 +870,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
       broadcastChatActivity()
+      broadcastTypingStatus(false)
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (err: any) {
       console.error('Failed to send message:', err)
       alert(err.message || 'Failed to send message')
@@ -784,6 +925,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
       broadcastChatActivity()
+      broadcastTypingStatus(false)
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (err: any) {
       console.error('Failed to send GIF:', err)
       alert(err.message || 'Failed to send GIF')
@@ -971,6 +1114,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       const fresh = await getConversationMessagesAction(activeConvId)
       setMessages(fresh)
       broadcastChatActivity()
+      broadcastTypingStatus(false)
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (err: any) {
       alert(err.message || 'Failed to upload attachment')
     } finally {
@@ -1251,7 +1396,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         </header>
 
         {/* Messages Feed (THE ONLY SCROLLABLE ELEMENT) */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3.5 sm:px-5 md:px-6 py-3 sm:py-4 space-y-1 overscroll-contain">
+        <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3.5 sm:px-5 md:px-6 py-3 sm:py-4 space-y-1 overscroll-contain">
           {loadingMessages ? (
             <div className="h-full flex flex-col items-center justify-center gap-2 text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">
               <div className="w-6 h-6 border-2 border-[var(--md-sys-color-primary)] border-t-transparent rounded-full animate-spin" />
@@ -1745,14 +1890,16 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               />
                             </div>
                           )}
-                        </div>
-
-                        {/* Inline Time for Sent GIF cards or Meet cards */}
-                        {isMe && (msg.messageType === 'meet_card' || isGif) && (
-                          <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none">
+                          {/* Inline Time & Seen Status for ALL Sent Messages */}
+                        {isMe && (
+                          <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 select-none px-1">
+                            {(msg.isEdited || msg.metadata?.isEdited) && <span className="italic">(edited)</span>}
                             <span>{formatMessageTime(msg.createdAt)}</span>
                             {msg.status === 'seen' ? (
-                              <span className="inline-flex items-center gap-0.5 text-sky-500 dark:text-sky-400 font-bold text-[9px] bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded-full border border-sky-200 dark:border-sky-800/40">
+                              <span
+                                className="inline-flex items-center gap-0.5 text-sky-500 dark:text-sky-400 font-bold text-[9px] bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded-full border border-sky-200 dark:border-sky-800/40"
+                                title={`Seen by ${msg.readBy?.map((r) => r.fullName).join(', ') || 'recipient'}`}
+                              >
                                 <CheckCheck className="w-3 h-3 text-sky-500 dark:text-sky-400 stroke-[2.5]" />
                                 <span>Seen</span>
                               </span>
@@ -1764,13 +1911,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             )}
                           </div>
                         )}
-
-                        {/* Inline Time & Edited Status for Received text messages */}
-                        {!isMe && msg.messageType !== 'meet_card' && (msg.isEdited || msg.metadata?.isEdited) && (
-                          <div className="flex items-center gap-1 mt-1 -mb-0.5 text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic select-none">
-                            <span>(edited)</span>
-                          </div>
-                        )}
+                        </div>
 
                         {/* Reactions List */}
                         {msg.reactions.length > 0 && (
@@ -1811,6 +1952,23 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
               )
             })
           )}
+
+          {/* Real-time Typing Indicator in Feed */}
+          {Object.keys(typingUsers).length > 0 && (
+            <div className="flex items-center gap-2 py-1 px-1 text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+              <div className="flex items-center gap-1.5 bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] px-3 py-1 rounded-full border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] shadow-2xs">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-sys-color-primary)] animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-sys-color-primary)] animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-sys-color-primary)] animate-bounce" />
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] dark:text-slate-200">
+                  {Object.values(typingUsers).map((u) => u.userName).join(', ')} {Object.keys(typingUsers).length > 1 ? 'are' : 'is'} typing...
+                </span>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -1875,21 +2033,19 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                     ))}
                   </div>
 
-                  {/* Cancel & Send Actions */}
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                       type="button"
-                      onClick={() => handleStopVoiceRecording(false)}
-                      className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer"
+                      onClick={handleCancelVoiceRecording}
+                      className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       title="Discard recording"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-
                     <button
                       type="button"
-                      onClick={() => handleStopVoiceRecording(true)}
-                      disabled={recordingDuration < 1}
+                      onClick={handleStopVoiceRecording}
+                      disabled={sending}
                       className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-red-600/20 cursor-pointer"
                       title="Send voice note"
                     >
@@ -1903,7 +2059,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   <textarea
                     ref={mainInputRef}
                     value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
