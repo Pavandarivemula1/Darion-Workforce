@@ -1,11 +1,18 @@
 'use client'
 
 import React, { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { MessageSquarePlus } from 'lucide-react'
 import { FeedbackModal } from './FeedbackModal'
 
 export const FeedbackWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Hide floating feedback button in chat/messages and live video meets
+  if (pathname?.includes('/messages') || pathname?.includes('/meet')) {
+    return null
+  }
 
   return (
     <>
