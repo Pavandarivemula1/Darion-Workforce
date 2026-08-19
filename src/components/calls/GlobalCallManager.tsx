@@ -121,9 +121,14 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
     broadcastChannel
       .on('broadcast', { event: 'incoming_call' }, ({ payload }) => {
-        if (!payload) return
-        if (!payload.recipientIds || (resolvedUserId && payload.recipientIds.includes(resolvedUserId))) {
-          triggerIncomingCall(payload)
+        if (!payload || !resolvedUserId) return
+        // 1. Never ring if caller is self
+        if (payload.callerId === resolvedUserId) return
+        // 2. Strict recipient validation: only ring if current user is in recipientIds
+        if (Array.isArray(payload.recipientIds) && payload.recipientIds.length > 0) {
+          if (payload.recipientIds.includes(resolvedUserId)) {
+            triggerIncomingCall(payload)
+          }
         }
       })
       .on('broadcast', { event: 'call_ringing' }, ({ payload }) => {

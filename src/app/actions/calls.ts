@@ -18,6 +18,7 @@ export interface CallSessionPayload {
   conversationId: string
   conversationName?: string
   callType: 'video' | 'audio'
+  recipientIds: string[]
   meetUrl: string
   startedAt: string
 }
@@ -103,40 +104,7 @@ export async function initiateCallAction(params: {
       if (convData?.name) conversationName = convData.name
     }
 
-    // 3. Insert interactive call card into conversation message feed (initial status: ringing)
-    await adminClient.from('chat_messages').insert({
-      conversation_id: effectiveConvId,
-      sender_id: user.id,
-      message_type: 'meet_card',
-      content: `calling... (${callType})`,
-      metadata: {
-        roomId: room.id,
-        roomCode: room.room_code,
-        title: callTitle,
-        hostName: callerName,
-        callerId: user.id,
-        callType,
-        status: 'ringing',
-        startedAt: room.started_at,
-        meetUrl: `/meet/${room.room_code}`,
-      },
-    })
-
-    const callPayload: CallSessionPayload = {
-      callId: room.id,
-      roomCode: room.room_code,
-      callerId: user.id,
-      callerName,
-      callerAvatar,
-      callerRole,
-      conversationId: effectiveConvId,
-      conversationName,
-      callType,
-      meetUrl: `/meet/${room.room_code}`,
-      startedAt: room.started_at,
-    }
-
-    // 4. Resolve recipient users to send ringing notification
+    // 3. Resolve recipient users STRICTLY (Only target users in this conversation)
     let recipientIds: string[] = []
     if (params.targetUserId && params.targetUserId !== user.id) {
       recipientIds = [params.targetUserId]
@@ -152,6 +120,42 @@ export async function initiateCallAction(params: {
       }
     }
 
+    // 4. Insert interactive call card into conversation message feed (initial status: calling)
+    await adminClient.from('chat_messages').insert({
+      conversation_id: effectiveConvId,
+      sender_id: user.id,
+      message_type: 'meet_card',
+      content: `calling... (${callType})`,
+      metadata: {
+        roomId: room.id,
+        roomCode: room.room_code,
+        title: callTitle,
+        hostName: callerName,
+        callerId: user.id,
+        callType,
+        status: 'calling',
+        recipientIds,
+        startedAt: room.started_at,
+        meetUrl: `/meet/${room.room_code}`,
+      },
+    })
+
+    const callPayload: CallSessionPayload = {
+      callId: room.id,
+      roomCode: room.room_code,
+      callerId: user.id,
+      callerName,
+      callerAvatar,
+      callerRole,
+      conversationId: effectiveConvId,
+      conversationName,
+      callType,
+      recipientIds,
+      meetUrl: `/meet/${room.room_code}`,
+      startedAt: room.started_at,
+    }
+
+    // 5. Send ringing notification ONLY to resolved recipient IDs
     if (recipientIds.length > 0) {
       const notifications = recipientIds.map((uid) => ({
         userId: uid,
@@ -159,6 +163,15 @@ export async function initiateCallAction(params: {
         title: `📞 Incoming ${callType.toUpperCase()} Call: ${callerName}`,
         message: `${callerName} is calling you for "${callTitle}". Click to answer.`,
         link: `/meet/${room.room_code}`,
+        metadata: {
+          callerId: user.id,
+          callerName,
+          callerAvatar,
+          callerRole,
+          conversationId: effectiveConvId,
+          roomCode: room.room_code,
+          recipientIds,
+        },
       }))
       await sendBulkNotification(notifications)
     }

@@ -343,10 +343,12 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     if (!activeConvId || startingMeet) return
     try {
       setStartingMeet(true)
+      const targetUserId = activeConv?.type === 'direct' ? activeConv.otherParticipant?.userId : undefined
       const res = await initiateCallAction({
         conversationId: activeConvId,
+        targetUserId,
         callType,
-        title: `${callType === 'video' ? 'Live Video' : 'Voice'} Call in ${activeConv?.name || 'Chat'}`,
+        title: `${callType === 'video' ? 'Live Video' : 'Voice'} Call with ${activeConv?.name || 'Teammate'}`,
       })
 
       if (!res.success || !res.callPayload) {
