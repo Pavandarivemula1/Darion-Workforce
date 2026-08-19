@@ -2036,7 +2036,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                       type="button"
-                      onClick={handleCancelVoiceRecording}
+                      onClick={() => handleStopVoiceRecording(false)}
                       className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       title="Discard recording"
                     >
@@ -2044,8 +2044,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={handleStopVoiceRecording}
-                      disabled={sending}
+                      onClick={() => handleStopVoiceRecording(true)}
+                      disabled={sending || recordingDuration < 1}
                       className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-red-600/20 cursor-pointer"
                       title="Send voice note"
                     >
