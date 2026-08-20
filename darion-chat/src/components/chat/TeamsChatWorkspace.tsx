@@ -74,6 +74,7 @@ interface TeamsChatWorkspaceProps {
   currentUserAvatar?: string
   initialConversations: ChatConversationItem[]
   initialActiveId?: string
+  showMiniSidebar?: boolean
 }
 
 const COMMON_EMOJIS = ['👍', '❤️', '🚀', '😂', '👏', '🔥', '🎉', '👀']
@@ -85,6 +86,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   currentUserAvatar,
   initialConversations,
   initialActiveId,
+  showMiniSidebar = false,
 }) => {
   const branding = useBranding()
   const [activeNavTab, setActiveNavTab] = useState<ChatNavTab>('chat')
@@ -1187,23 +1189,25 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const totalUnreadCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0)
 
   return (
-    <div className="flex h-full w-full rounded-none overflow-hidden border-0 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] relative font-sans pb-16 md:pb-0">
-      {/* 0. LEFT MINI ACTIVITY RAIL (Chats, Meetings, Calendar, Settings, Profile) */}
-      <MiniSidebarRail
-        activeTab={activeNavTab}
-        setActiveTab={setActiveNavTab}
-        unreadCount={totalUnreadCount}
-        currentUserId={currentUserId}
-        currentUserName={currentUserName}
-        currentUserRole={currentUserRole}
-        currentUserAvatar={currentUserAvatar}
-      />
+    <div className={`flex h-full w-full rounded-none overflow-hidden border-0 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] relative font-sans ${showMiniSidebar ? 'pb-16 md:pb-0' : 'pb-0'}`}>
+      {/* 0. LEFT MINI ACTIVITY RAIL (Chats, Meetings, Calendar, Settings, Profile) - Standalone Chat App only */}
+      {showMiniSidebar && (
+        <MiniSidebarRail
+          activeTab={activeNavTab}
+          setActiveTab={setActiveNavTab}
+          unreadCount={totalUnreadCount}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          currentUserRole={currentUserRole}
+          currentUserAvatar={currentUserAvatar}
+        />
+      )}
 
-      {activeNavTab === 'meetings' ? (
+      {showMiniSidebar && activeNavTab === 'meetings' ? (
         <MeetingsPanel currentUserId={currentUserId} currentUserName={currentUserName} />
-      ) : activeNavTab === 'calendar' ? (
+      ) : showMiniSidebar && activeNavTab === 'calendar' ? (
         <CalendarPanel currentUserId={currentUserId} currentUserName={currentUserName} />
-      ) : activeNavTab === 'settings' ? (
+      ) : showMiniSidebar && activeNavTab === 'settings' ? (
         <SettingsPanel />
       ) : (
         <>

@@ -24,13 +24,14 @@ export default async function ChatPage() {
   const conversations = await getConversationsListAction()
 
   return (
-    <main className="h-screen w-screen overflow-hidden flex flex-col bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12]">
+    <main className="h-screen w-screen overflow-hidden flex flex-col bg-[var(--md-sys-color-surface-container-lowest)]">
       <TeamsChatWorkspace
         currentUserId={user.id}
         currentUserName={profile?.full_name || user.email?.split('@')[0] || 'Team Member'}
         currentUserRole={profile?.role || 'member'}
         currentUserAvatar={profile?.avatar_url}
         initialConversations={conversations}
+        showMiniSidebar={true}
       />
     </main>
   )
