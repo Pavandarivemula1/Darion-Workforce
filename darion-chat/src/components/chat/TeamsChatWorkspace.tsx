@@ -36,6 +36,7 @@ import {
   MicOff,
   Maximize2,
   Image as ImageIcon,
+  Loader2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -2044,7 +2045,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
-                      onClick={handleCancelVoiceRecording}
+                      onClick={() => handleStopVoiceRecording(false)}
                       title="Discard Recording"
                       className="p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                     >
@@ -2052,12 +2053,12 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={handleSendVoiceRecording}
-                      disabled={sendingVoice}
+                      onClick={() => handleStopVoiceRecording(true)}
+                      disabled={sending || recordingDuration < 1}
                       title="Send Voice Note"
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs shadow-md shadow-red-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                     >
-                      {sendingVoice ? (
+                      {sending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
@@ -2074,10 +2075,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   <textarea
                     ref={mainInputRef}
                     value={inputText}
-                    onChange={(e) => {
-                      setInputText(e.target.value)
-                      handleTyping()
-                    }}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()

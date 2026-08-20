@@ -145,7 +145,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, onS
                       )}
                     </div>
                     <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] capitalize">
-                      {u.role ? u.role.replace('_', ' ') : 'Member'} • {u.team || 'General'}
+                      {u.role ? u.role.replace('_', ' ') : 'Member'}
                     </div>
                   </div>
                 </div>
