@@ -66,6 +66,11 @@ import { MiniSidebarRail, ChatNavTab } from '@/components/navigation/MiniSidebar
 import { MeetingsPanel } from './MeetingsPanel'
 import { CalendarPanel } from './CalendarPanel'
 import { SettingsPanel } from './SettingsPanel'
+import { GoogleChatHeader } from './GoogleChatHeader'
+import { ChatNavColumn } from './ChatNavColumn'
+import { HomeFeedPane } from './HomeFeedPane'
+import { NoConversationSelected } from './NoConversationSelected'
+import { CompanionRail } from './CompanionRail'
 
 interface TeamsChatWorkspaceProps {
   currentUserId: string
@@ -117,6 +122,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [replyingTo, setReplyingTo] = useState<ChatMessageItem | null>(null)
   const [reactingMessageId, setReactingMessageId] = useState<string | null>(null)
   const [mobileActionMessage, setMobileActionMessage] = useState<ChatMessageItem | null>(null)
+  const [activeNavShortcut, setActiveNavShortcut] = useState<'home' | 'mentions' | 'starred'>('home')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // Image Lightbox Preview State
   const [previewImage, setPreviewImage] = useState<{
@@ -1189,181 +1196,61 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const totalUnreadCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0)
 
   return (
-    <div className={`flex h-full w-full rounded-none overflow-hidden border-0 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] relative font-sans ${showMiniSidebar ? 'pb-16 md:pb-0' : 'pb-0'}`}>
-      {/* 0. LEFT MINI ACTIVITY RAIL (Chats, Meetings, Calendar, Settings, Profile) - Standalone Chat App only */}
-      {showMiniSidebar && (
-        <MiniSidebarRail
-          activeTab={activeNavTab}
-          setActiveTab={setActiveNavTab}
-          unreadCount={totalUnreadCount}
-          currentUserId={currentUserId}
-          currentUserName={currentUserName}
-          currentUserRole={currentUserRole}
-          currentUserAvatar={currentUserAvatar}
-        />
-      )}
+    <div className="flex flex-col h-full w-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] relative font-sans">
+      {/* 1. TOP GOOGLE CHAT APP HEADER BAR */}
+      <GoogleChatHeader
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        currentUserRole={currentUserRole}
+        currentUserAvatar={currentUserAvatar}
+        searchQuery={convSearch}
+        onSearchChange={setConvSearch}
+        onToggleSidebar={() => setShowMobileSidebar(!showMobileSidebar)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
 
-      {showMiniSidebar && activeNavTab === 'meetings' ? (
-        <MeetingsPanel currentUserId={currentUserId} currentUserName={currentUserName} />
-      ) : showMiniSidebar && activeNavTab === 'calendar' ? (
-        <CalendarPanel currentUserId={currentUserId} currentUserName={currentUserName} />
-      ) : showMiniSidebar && activeNavTab === 'settings' ? (
-        <SettingsPanel />
-      ) : (
-        <>
-          {/* 1. LEFT SIDEBAR: Channels & Direct Messages */}
-          <aside
-            className={`w-full md:w-72 flex-shrink-0 flex flex-col border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] transition-all z-20 ${
-              showMobileSidebar ? 'absolute inset-0 md:relative' : 'hidden md:flex'
-            }`}
-          >
-            {/* Sleek Top Search & Action Bar (Clean, no redundant titles) */}
-            <div className="p-2.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center gap-2 bg-[var(--md-sys-color-surface-container)]">
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--md-sys-color-on-surface-variant)]" />
-            <input
-              type="text"
-              value={convSearch}
-              onChange={(e) => setConvSearch(e.target.value)}
-              placeholder="Search conversations..."
-              className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs text-[var(--md-sys-color-on-surface)] placeholder-[var(--md-sys-color-on-surface-variant)] focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)] transition-all"
-            />
-          </div>
-
-          <button
-            onClick={() => setIsNewChatOpen(true)}
-            title="New Direct Message"
-            className="p-1.5 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-          {showMobileSidebar && (
-            <button
-              onClick={() => setShowMobileSidebar(false)}
-              className="md:hidden p-1.5 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+      {/* 2. MAIN 3-PANE + COMPANION RAIL BODY */}
+      <div className="flex-1 flex min-h-0 w-full overflow-hidden relative">
+        {/* 2.1 LEFT NAVIGATION DRAWER (Shortcuts, DMs, Spaces) */}
+        <div className={`${showMobileSidebar ? 'absolute inset-0 z-30 flex' : 'hidden md:flex'} shrink-0 h-full`}>
+          <ChatNavColumn
+            conversations={conversations}
+            activeConvId={activeConvId}
+            activeNavShortcut={activeNavShortcut}
+            onSelectShortcut={(s) => {
+              setActiveNavShortcut(s)
+              setShowMobileSidebar(false)
+            }}
+            onSelectConversation={(id) => {
+              setActiveConvId(id)
+              setShowMobileSidebar(false)
+            }}
+            onNewChat={() => setIsNewChatOpen(true)}
+            onNewChannel={() => setIsNewChannelOpen(true)}
+          />
         </div>
 
-        {/* Conversation Trees */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-4">
-          {/* Channels Section */}
-          <div>
-            <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 uppercase tracking-wider">
-              <span>Channels</span>
-              <button
-                onClick={() => setIsNewChannelOpen(true)}
-                className="hover:text-[var(--md-sys-color-primary)] transition-colors"
-                title="Create Channel"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="space-y-0.5 mt-1">
-              {filteredChannels.map((c) => {
-                const isActive = c.id === activeConvId
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      setActiveConvId(c.id)
-                      setShowMobileSidebar(false)
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all ${
-                      isActive
-                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
-                        : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] font-medium'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <Hash className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-on-surface-variant)]'}`} />
-                      <span className="text-xs truncate">{c.name}</span>
-                    </div>
-                    {c.unreadCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-black text-[10px] shadow-sm">
-                        {c.unreadCount}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Direct Messages Section */}
-          <div>
-            <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-              <span>Direct Messages</span>
-              <button
-                onClick={() => setIsNewChatOpen(true)}
-                className="hover:text-[var(--md-sys-color-primary)] transition-colors"
-                title="New Direct Message"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="space-y-0.5 mt-1">
-              {filteredDMs.length === 0 ? (
-                <div className="px-3 py-2 text-[11px] text-[var(--md-sys-color-on-surface-variant)] italic">
-                  No direct messages yet
-                </div>
-              ) : (
-                filteredDMs.map((c) => {
-                  const isActive = c.id === activeConvId
-                  const presence = c.otherParticipant?.presenceStatus || 'offline'
-                  const statusDot =
-                    presence === 'online'
-                      ? 'bg-emerald-500 ring-2 ring-emerald-500/30'
-                      : presence === 'in_meeting'
-                      ? 'bg-rose-500 ring-2 ring-rose-500/40 animate-pulse'
-                      : presence === 'busy'
-                      ? 'bg-amber-500'
-                      : 'bg-slate-400'
-
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        setActiveConvId(c.id)
-                        setShowMobileSidebar(false)
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all ${
-                        isActive
-                          ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
-                          : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] font-medium'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <div className="relative flex-shrink-0">
-                          {c.avatarUrl ? (
-                            <img src={c.avatarUrl} alt={c.name} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-[10px] font-bold border border-[var(--md-sys-color-outline-variant)]">
-                              {c.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[var(--md-sys-color-surface-container)] ${statusDot}`} />
-                        </div>
-                        <span className="text-xs truncate">{c.name}</span>
-                      </div>
-                      {c.unreadCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-black text-[10px] shadow-sm">
-                          {c.unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </div>
+        {/* 2.2 MIDDLE HOME FEED PANE (Unified Home Inbox, Unread Toggle) */}
+        <div className={`${!activeConvId || showMobileSidebar ? 'flex' : 'hidden md:flex'} shrink-0 h-full`}>
+          <HomeFeedPane
+            conversations={conversations}
+            activeConvId={activeConvId}
+            searchQuery={convSearch}
+            onSelectConversation={(id) => {
+              setActiveConvId(id)
+              setShowMobileSidebar(false)
+            }}
+          />
         </div>
-      </aside>
 
-      {/* 2. MAIN ACTIVE CHAT STREAM */}
-      <main className="flex-1 flex flex-col min-w-0 h-full max-h-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] relative">
+        {/* 2.3 RIGHT CHAT PANE (Active conversation OR Illustrated Empty State) */}
+        <div className={`flex-1 flex min-w-0 h-full overflow-hidden relative ${!activeConvId ? 'hidden md:flex' : 'flex'}`}>
+          {!activeConv ? (
+            <NoConversationSelected onClose={() => setActiveConvId('')} />
+          ) : (
+            <div className="flex-1 flex min-w-0 h-full overflow-hidden relative">
+              {/* 2. MAIN ACTIVE CHAT STREAM */}
+              <main className="flex-1 flex flex-col min-w-0 h-full max-h-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] relative">-color-surface-container-lowest)] relative">
         {/* Chat Top Header (Pinned & Fixed) */}
         <header className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-2 sm:gap-3 truncate">
@@ -2268,6 +2155,18 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           </aside>
         </>
       )}
+            </div>
+          )}
+        </div>
+
+        {/* 2.4 FAR-RIGHT COMPANION RAIL (Google Calendar 31, Keep, Tasks, Contacts) */}
+        <div className="hidden lg:flex shrink-0 h-full">
+          <CompanionRail
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
+        </div>
+      </div>
 
       {/* 4. NATIVE-GRADE MOBILE MESSAGE ACTION BOTTOM SHEET */}
       {mobileActionMessage && (
@@ -2403,9 +2302,6 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           </div>
         </>
       )}
-        </>
-      )}
-
       {/* Modals */}
       <NewChatModal
         isOpen={isNewChatOpen}
@@ -2449,6 +2345,27 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         fileSize={previewImage?.fileSize}
         onClose={() => setPreviewImage(null)}
       />
+
+      {/* 6. SETTINGS MODAL DIALOG */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative w-full max-w-2xl bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="px-5 py-4 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between bg-[var(--md-sys-color-surface-container)]">
+              <h3 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">Chat Settings</h3>
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(false)}
+                className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <SettingsPanel />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
