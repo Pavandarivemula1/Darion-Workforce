@@ -10,13 +10,7 @@ import {
   Moon,
   Sun,
   Shield,
-  Volume2,
-  Bell,
   CheckCircle2,
-  CircleDot,
-  Clock,
-  MinusCircle,
-  HelpCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -84,13 +78,13 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
   const getStatusColor = (status: UserPresenceStatus) => {
     switch (status) {
       case 'available':
-        return 'bg-emerald-500 ring-emerald-400'
+        return 'bg-emerald-500'
       case 'busy':
-        return 'bg-rose-500 ring-rose-400'
+        return 'bg-rose-500'
       case 'away':
-        return 'bg-amber-500 ring-amber-400'
+        return 'bg-amber-500'
       case 'dnd':
-        return 'bg-purple-500 ring-purple-400'
+        return 'bg-purple-500'
     }
   }
 
@@ -112,15 +106,18 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
       {/* ============================================================ */}
       {/* DESKTOP LEFT MINI RAIL (Hidden on mobile < md)                 */}
       {/* ============================================================ */}
-      <aside className="hidden md:flex w-16 flex-shrink-0 flex-col items-center justify-between py-3.5 bg-[var(--md-sys-color-surface-container-low)] dark:bg-[#070a12] border-r border-[var(--md-sys-color-outline-variant)] dark:border-[#192237] select-none z-30">
+      <aside className="hidden md:flex w-16 flex-shrink-0 flex-col items-center justify-between py-3.5 bg-[var(--md-sys-color-surface-container-low)] border-r border-[var(--md-sys-color-outline-variant)] select-none z-30">
         {/* TOP: Brand Logo & Main Nav Tabs */}
         <div className="w-full flex flex-col items-center gap-4">
           {/* App Logo Mark */}
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-600/30 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform" title="Darion Chat Workspace">
+          <div
+            className="w-10 h-10 rounded-2xl bg-[var(--md-sys-color-primary)] flex items-center justify-center text-[var(--md-sys-color-on-primary)] shadow-sm shadow-[var(--md-sys-color-primary)]/30 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+            title="Darion Chat Workspace"
+          >
             <MessageSquare className="w-5 h-5 fill-white/20" />
           </div>
 
-          <div className="w-8 h-px bg-[var(--md-sys-color-outline-variant)] dark:bg-[#1e293b] my-0.5" />
+          <div className="w-8 h-px bg-[var(--md-sys-color-outline-variant)] my-0.5" />
 
           {/* Navigation Action Icons */}
           <nav className="flex flex-col items-center gap-2 w-full px-2">
@@ -130,8 +127,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               onClick={() => setActiveTab('chat')}
               className={`relative group w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'chat'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
-                  : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm shadow-[var(--md-sys-color-primary)]/30 font-semibold'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
               }`}
               title="Chats & Channels"
             >
@@ -140,12 +137,12 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
 
               {/* Active Indicator Bar */}
               {activeTab === 'chat' && (
-                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-blue-500 shadow-sm" />
+                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-[var(--md-sys-color-primary)] shadow-xs" />
               )}
 
               {/* Unread Counter Badge */}
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow-md animate-pulse">
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] text-[10px] font-extrabold flex items-center justify-center shadow-sm animate-pulse">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -157,8 +154,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               onClick={() => setActiveTab('meetings')}
               className={`relative group w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'meetings'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
-                  : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm shadow-[var(--md-sys-color-primary)]/30 font-semibold'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
               }`}
               title="Instant Meetings & Video Calls"
             >
@@ -166,7 +163,7 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               <span className="text-[9px] font-medium tracking-tight mt-0.5">Meet</span>
 
               {activeTab === 'meetings' && (
-                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-blue-500 shadow-sm" />
+                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-[var(--md-sys-color-primary)] shadow-xs" />
               )}
             </button>
 
@@ -176,8 +173,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               onClick={() => setActiveTab('calendar')}
               className={`relative group w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'calendar'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
-                  : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm shadow-[var(--md-sys-color-primary)]/30 font-semibold'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
               }`}
               title="Team Schedule & Upcoming Calls"
             >
@@ -185,7 +182,7 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               <span className="text-[9px] font-medium tracking-tight mt-0.5">Calendar</span>
 
               {activeTab === 'calendar' && (
-                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-blue-500 shadow-sm" />
+                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-[var(--md-sys-color-primary)] shadow-xs" />
               )}
             </button>
 
@@ -195,8 +192,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               onClick={() => setActiveTab('settings')}
               className={`relative group w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'settings'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold'
-                  : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm shadow-[var(--md-sys-color-primary)]/30 font-semibold'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
               }`}
               title="Preferences & Audio Settings"
             >
@@ -204,7 +201,7 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               <span className="text-[9px] font-medium tracking-tight mt-0.5">Settings</span>
 
               {activeTab === 'settings' && (
-                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-blue-500 shadow-sm" />
+                <div className="absolute -left-2 top-2.5 bottom-2.5 w-1 rounded-r-full bg-[var(--md-sys-color-primary)] shadow-xs" />
               )}
             </button>
           </nav>
@@ -215,50 +212,50 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
           <button
             type="button"
             onClick={() => setShowProfileMenu((prev) => !prev)}
-            className="relative p-0.5 rounded-full hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer"
+            className="relative p-0.5 rounded-full hover:ring-2 hover:ring-[var(--md-sys-color-primary)] transition-all cursor-pointer"
             title={`${currentUserName} (${getStatusLabel(presenceStatus)})`}
           >
             {currentUserAvatar ? (
               <img
                 src={currentUserAvatar}
                 alt={currentUserName}
-                className="w-10 h-10 rounded-full object-cover border border-slate-700 shadow-md"
+                className="w-10 h-10 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)] shadow-sm"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 text-white font-bold text-sm flex items-center justify-center border border-slate-700 shadow-md">
+              <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold text-sm flex items-center justify-center border border-[var(--md-sys-color-outline-variant)] shadow-sm">
                 {currentUserName.charAt(0).toUpperCase()}
               </div>
             )}
 
             {/* Status Dot */}
             <span
-              className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full ring-2 ring-[#070a12] ${getStatusColor(
+              className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full ring-2 ring-[var(--md-sys-color-surface-container-low)] ${getStatusColor(
                 presenceStatus
-              )} shadow-sm`}
+              )} shadow-xs`}
             />
           </button>
 
           {/* Profile & Presence Popover Drawer */}
           {showProfileMenu && (
-            <div className="absolute bottom-2 left-16 ml-2 w-64 rounded-2xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#101726] border border-[var(--md-sys-color-outline-variant)] dark:border-[#202d46] shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+            <div className="absolute bottom-2 left-16 ml-2 w-64 rounded-2xl bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
               {/* User Header */}
-              <div className="flex items-center gap-3 pb-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-slate-800">
+              <div className="flex items-center gap-3 pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
                 {currentUserAvatar ? (
                   <img
                     src={currentUserAvatar}
                     alt={currentUserName}
-                    className="w-10 h-10 rounded-full object-cover border border-slate-700"
+                    className="w-10 h-10 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 text-white font-bold text-sm flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold text-sm flex items-center justify-center">
                     {currentUserName.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white truncate">
+                  <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)] truncate">
                     {currentUserName}
                   </div>
-                  <div className="inline-flex items-center gap-1 text-[10px] text-blue-400 capitalize font-medium">
+                  <div className="inline-flex items-center gap-1 text-[10px] text-[var(--md-sys-color-primary)] capitalize font-medium">
                     <Shield className="w-3 h-3" />
                     <span>{currentUserRole.replace('_', ' ')}</span>
                   </div>
@@ -266,8 +263,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               </div>
 
               {/* Status Switcher */}
-              <div className="py-2.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-slate-800">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+              <div className="py-2.5 border-b border-[var(--md-sys-color-outline-variant)]">
+                <div className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider mb-1.5 px-1">
                   Set Presence Status
                 </div>
                 <div className="space-y-0.5">
@@ -281,15 +278,15 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
                       }}
                       className={`w-full flex items-center justify-between px-2 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                         presenceStatus === st
-                          ? 'bg-blue-600/15 text-blue-400'
-                          : 'text-slate-300 hover:bg-slate-800/60'
+                          ? 'bg-[var(--md-sys-color-primary)]/15 text-[var(--md-sys-color-primary)]'
+                          : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <span className={`w-2.5 h-2.5 rounded-full ${getStatusColor(st)}`} />
                         <span>{getStatusLabel(st)}</span>
                       </div>
-                      {presenceStatus === st && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                      {presenceStatus === st && <CheckCircle2 className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />}
                     </button>
                   ))}
                 </div>
@@ -300,16 +297,16 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs text-slate-300 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors cursor-pointer"
                 >
-                  {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-blue-400" />}
+                  {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[var(--md-sys-color-primary)]" />}
                   <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer font-semibold"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error)]/10 transition-colors cursor-pointer font-semibold"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
@@ -323,21 +320,21 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
       {/* ============================================================ */}
       {/* MOBILE BOTTOM NAVIGATION BAR (Visible on mobile < md only)     */}
       {/* ============================================================ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--md-sys-color-surface-container)] dark:bg-[#090d16]/95 backdrop-blur-xl border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b] flex items-center justify-around px-2 z-40 select-none">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--md-sys-color-surface-container-low)]/95 backdrop-blur-xl border-t border-[var(--md-sys-color-outline-variant)] flex items-center justify-around px-2 z-40 select-none">
         {/* Chat */}
         <button
           type="button"
           onClick={() => setActiveTab('chat')}
           className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
             activeTab === 'chat'
-              ? 'text-blue-500 dark:text-blue-400 font-bold'
-              : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400'
+              ? 'text-[var(--md-sys-color-primary)] font-bold'
+              : 'text-[var(--md-sys-color-on-surface-variant)]'
           }`}
         >
           <div className="relative">
             <MessageSquare className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">
+              <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] text-[9px] font-black flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -351,8 +348,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
           onClick={() => setActiveTab('meetings')}
           className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
             activeTab === 'meetings'
-              ? 'text-blue-500 dark:text-blue-400 font-bold'
-              : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400'
+              ? 'text-[var(--md-sys-color-primary)] font-bold'
+              : 'text-[var(--md-sys-color-on-surface-variant)]'
           }`}
         >
           <Video className="w-5 h-5" />
@@ -365,8 +362,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
           onClick={() => setActiveTab('calendar')}
           className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
             activeTab === 'calendar'
-              ? 'text-blue-500 dark:text-blue-400 font-bold'
-              : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400'
+              ? 'text-[var(--md-sys-color-primary)] font-bold'
+              : 'text-[var(--md-sys-color-on-surface-variant)]'
           }`}
         >
           <CalendarDays className="w-5 h-5" />
@@ -379,8 +376,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
           onClick={() => setActiveTab('settings')}
           className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
             activeTab === 'settings'
-              ? 'text-blue-500 dark:text-blue-400 font-bold'
-              : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400'
+              ? 'text-[var(--md-sys-color-primary)] font-bold'
+              : 'text-[var(--md-sys-color-on-surface-variant)]'
           }`}
         >
           <Settings className="w-5 h-5" />
@@ -391,22 +388,22 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
         <button
           type="button"
           onClick={() => setShowProfileMenu(true)}
-          className="flex flex-col items-center justify-center flex-1 py-1 relative transition-colors text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400"
+          className="flex flex-col items-center justify-center flex-1 py-1 relative transition-colors text-[var(--md-sys-color-on-surface-variant)]"
         >
           <div className="relative">
             {currentUserAvatar ? (
               <img
                 src={currentUserAvatar}
                 alt={currentUserName}
-                className="w-5 h-5 rounded-full object-cover border border-slate-700"
+                className="w-5 h-5 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]"
               />
             ) : (
-              <div className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[9px] flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-[9px] flex items-center justify-center">
                 {currentUserName.charAt(0).toUpperCase()}
               </div>
             )}
             <span
-              className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-1 ring-[#090d16] ${getStatusColor(
+              className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-1 ring-[var(--md-sys-color-surface-container-low)] ${getStatusColor(
                 presenceStatus
               )}`}
             />
@@ -418,27 +415,27 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
       {/* Mobile Profile Modal */}
       {showProfileMenu && (
         <div className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#101726] border border-[var(--md-sys-color-outline-variant)] dark:border-[#202d46] p-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
-            <div className="flex items-center gap-3 pb-4 border-b border-[var(--md-sys-color-outline-variant)] dark:border-slate-800">
+          <div className="w-full max-w-sm rounded-3xl bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] p-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center gap-3 pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
               {currentUserAvatar ? (
                 <img
                   src={currentUserAvatar}
                   alt={currentUserName}
-                  className="w-12 h-12 rounded-full object-cover border border-slate-700"
+                  className="w-12 h-12 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 text-white font-bold text-base flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold text-base flex items-center justify-center">
                   {currentUserName.charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-white truncate">{currentUserName}</div>
-                <div className="text-xs text-blue-400 capitalize">{currentUserRole.replace('_', ' ')}</div>
+                <div className="text-sm font-bold text-[var(--md-sys-color-on-surface)] truncate">{currentUserName}</div>
+                <div className="text-xs text-[var(--md-sys-color-primary)] capitalize">{currentUserRole.replace('_', ' ')}</div>
               </div>
             </div>
 
-            <div className="py-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-slate-800">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Presence Status</div>
+            <div className="py-3 border-b border-[var(--md-sys-color-outline-variant)]">
+              <div className="text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider mb-2">Presence Status</div>
               <div className="grid grid-cols-2 gap-1.5">
                 {(['available', 'busy', 'away', 'dnd'] as UserPresenceStatus[]).map((st) => (
                   <button
@@ -450,8 +447,8 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
                     }}
                     className={`flex items-center gap-2 p-2.5 rounded-xl text-xs font-medium transition-colors ${
                       presenceStatus === st
-                        ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                        : 'bg-slate-900/60 text-slate-300 border border-slate-800'
+                        ? 'bg-[var(--md-sys-color-primary)]/20 text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-primary)]/30'
+                        : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]'
                     }`}
                   >
                     <span className={`w-2.5 h-2.5 rounded-full ${getStatusColor(st)}`} />
@@ -465,15 +462,15 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-bold flex items-center justify-center gap-1.5"
               >
-                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-blue-400" />}
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[var(--md-sys-color-primary)]" />}
                 <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </button>
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="flex-1 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-[var(--md-sys-color-error)]/10 border border-[var(--md-sys-color-error)]/30 text-[var(--md-sys-color-error)] text-xs font-bold flex items-center justify-center gap-1.5"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Sign Out</span>
@@ -483,7 +480,7 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
             <button
               type="button"
               onClick={() => setShowProfileMenu(false)}
-              className="w-full mt-3 py-2 text-center text-xs text-slate-400 hover:text-white"
+              className="w-full mt-3 py-2 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
             >
               Close
             </button>

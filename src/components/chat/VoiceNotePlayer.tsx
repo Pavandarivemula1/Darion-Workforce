@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { Play, Pause, Volume2, VolumeX, Download } from 'lucide-react'
+import { Play, Pause } from 'lucide-react'
 
 export interface VoiceNotePlayerProps {
   audioUrl: string
@@ -150,8 +150,8 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       onClick={(e) => e.stopPropagation()}
       className={`my-1.5 p-2.5 sm:p-3 rounded-2xl border flex flex-col gap-2 shadow-2xs max-w-full min-w-0 sm:min-w-[270px] select-none ${
         isMe
-          ? 'bg-black/20 dark:bg-black/40 border-white/20 text-white'
-          : 'bg-black/5 dark:bg-[#192338] border-[var(--md-sys-color-outline-variant)] dark:border-[#283652] text-[var(--md-sys-color-on-surface)] dark:text-slate-100'
+          ? 'bg-black/20 border-white/20 text-white'
+          : 'bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]'
       }`}
     >
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -162,7 +162,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
           className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 shadow-xs transition-all active:scale-95 cursor-pointer ${
             isMe
               ? 'bg-white text-[var(--md-sys-color-primary)] hover:bg-white/90'
-              : 'bg-[var(--md-sys-color-primary)] text-white hover:opacity-90'
+              : 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90'
           }`}
           title={isPlaying ? 'Pause voice note' : 'Play voice note'}
         >
@@ -221,7 +221,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
                 className={`px-1.5 py-0.5 rounded-md font-bold text-[9px] transition-all active:scale-90 cursor-pointer ${
                   isMe
                     ? 'bg-white/20 hover:bg-white/30 text-white'
-                    : 'bg-black/10 dark:bg-white/10 hover:bg-black/20 text-inherit'
+                    : 'bg-[var(--md-sys-color-surface-container-highest)] hover:bg-[var(--md-sys-color-surface-container-high)] text-inherit'
                 }`}
                 title="Change speed"
               >

@@ -1186,7 +1186,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const totalUnreadCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0)
 
   return (
-    <div className="flex h-full w-full rounded-none overflow-hidden border-0 bg-[var(--md-sys-color-surface)] dark:bg-[#070a12] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 relative font-sans pb-16 md:pb-0">
+    <div className="flex h-full w-full rounded-none overflow-hidden border-0 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] relative font-sans pb-16 md:pb-0">
       {/* 0. LEFT MINI ACTIVITY RAIL (Chats, Meetings, Calendar, Settings, Profile) */}
       <MiniSidebarRail
         activeTab={activeNavTab}
@@ -1208,34 +1208,34 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         <>
           {/* 1. LEFT SIDEBAR: Channels & Direct Messages */}
           <aside
-            className={`w-full md:w-72 flex-shrink-0 flex flex-col border-r border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] transition-all z-20 ${
+            className={`w-full md:w-72 flex-shrink-0 flex flex-col border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] transition-all z-20 ${
               showMobileSidebar ? 'absolute inset-0 md:relative' : 'hidden md:flex'
             }`}
           >
             {/* Sleek Top Search & Action Bar (Clean, no redundant titles) */}
-            <div className="p-2.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 flex items-center gap-2 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d]">
+            <div className="p-2.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center gap-2 bg-[var(--md-sys-color-surface-container)]">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--md-sys-color-on-surface-variant)]" />
             <input
               type="text"
               value={convSearch}
               onChange={(e) => setConvSearch(e.target.value)}
               placeholder="Search conversations..."
-              className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-200 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)] transition-all"
+              className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs text-[var(--md-sys-color-on-surface)] placeholder-[var(--md-sys-color-on-surface-variant)] focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)] transition-all"
             />
           </div>
 
           <button
             onClick={() => setIsNewChatOpen(true)}
             title="New Direct Message"
-            className="p-1.5 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60 transition-colors shrink-0"
+            className="p-1.5 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors shrink-0"
           >
             <Plus className="w-4 h-4" />
           </button>
           {showMobileSidebar && (
             <button
               onClick={() => setShowMobileSidebar(false)}
-              className="md:hidden p-1.5 rounded-xl text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-white shrink-0"
+              className="md:hidden p-1.5 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1269,11 +1269,11 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all ${
                       isActive
                         ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
-                        : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] font-medium dark:text-slate-300 dark:hover:bg-slate-800/40'
+                        : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <Hash className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500'}`} />
+                      <Hash className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-on-surface-variant)]'}`} />
                       <span className="text-xs truncate">{c.name}</span>
                     </div>
                     {c.unreadCount > 0 && (
@@ -1289,7 +1289,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
           {/* Direct Messages Section */}
           <div>
-            <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 uppercase tracking-wider">
+            <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
               <span>Direct Messages</span>
               <button
                 onClick={() => setIsNewChatOpen(true)}
@@ -1301,7 +1301,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             </div>
             <div className="space-y-0.5 mt-1">
               {filteredDMs.length === 0 ? (
-                <div className="px-3 py-2 text-[11px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic">
+                <div className="px-3 py-2 text-[11px] text-[var(--md-sys-color-on-surface-variant)] italic">
                   No direct messages yet
                 </div>
               ) : (
@@ -1315,7 +1315,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       ? 'bg-rose-500 ring-2 ring-rose-500/40 animate-pulse'
                       : presence === 'busy'
                       ? 'bg-amber-500'
-                      : 'bg-slate-400 dark:bg-slate-500'
+                      : 'bg-slate-400'
 
                   return (
                     <button
@@ -1327,19 +1327,19 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all ${
                         isActive
                           ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-xs'
-                          : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] font-medium dark:text-slate-300 dark:hover:bg-slate-800/40'
+                          : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] font-medium'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 truncate">
                         <div className="relative flex-shrink-0">
                           {c.avatarUrl ? (
-                            <img src={c.avatarUrl} alt={c.name} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)] dark:border-slate-700" />
+                            <img src={c.avatarUrl} alt={c.name} className="w-6 h-6 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
                           ) : (
-                            <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-[10px] font-bold border border-[var(--md-sys-color-outline-variant)] dark:border-slate-700">
+                            <div className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center text-[10px] font-bold border border-[var(--md-sys-color-outline-variant)]">
                               {c.name.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[var(--md-sys-color-surface)] dark:border-[#0c111d] ${statusDot}`} />
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[var(--md-sys-color-surface-container)] ${statusDot}`} />
                         </div>
                         <span className="text-xs truncate">{c.name}</span>
                       </div>
@@ -1358,9 +1358,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       </aside>
 
       {/* 2. MAIN ACTIVE CHAT STREAM */}
-      <main className="flex-1 flex flex-col min-w-0 h-full max-h-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12] relative">
+      <main className="flex-1 flex flex-col min-w-0 h-full max-h-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] relative">
         {/* Chat Top Header (Pinned & Fixed) */}
-        <header className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)]/95 dark:bg-[#0c111d]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 sticky top-0 z-20">
+        <header className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-2 sm:gap-3 truncate">
             {/* Ruled Mobile Back Button */}
             <button
@@ -1380,7 +1380,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
               ) : (
                 <div className="relative flex-shrink-0">
                   {activeConv?.avatarUrl ? (
-                    <img src={activeConv.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)] dark:border-slate-700" />
+                    <img src={activeConv.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-center font-bold text-xs">
                       {activeConv?.name.charAt(0).toUpperCase()}
@@ -1389,10 +1389,10 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                 </div>
               )}
               <div className="truncate">
-                <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] dark:text-white flex items-center gap-2 truncate">
+                <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2 truncate">
                   <span>{activeConv?.name || 'Select Conversation'}</span>
                 </h3>
-                <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 truncate">
+                <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate">
                   {activeConv?.description || (activeConv?.type === 'channel' ? 'Public Team Channel' : 'Direct Conversation')}
                 </p>
               </div>
@@ -1405,7 +1405,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
               onClick={() => handleStartCall('audio')}
               disabled={startingMeet}
               title="Start Voice Call"
-              className="p-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] transition-all shadow-2xs active:scale-95 disabled:opacity-50"
+              className="p-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] transition-all shadow-2xs active:scale-95 disabled:opacity-50"
             >
               <Phone className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
             </button>
@@ -1413,9 +1413,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             <button
               onClick={() => handleStartCall('video')}
               disabled={startingMeet}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] font-semibold text-xs tracking-wide transition-all shadow-2xs active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] font-semibold text-xs tracking-wide transition-all shadow-2xs active:scale-95 disabled:opacity-50"
             >
-              <Video className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Video className="w-3.5 h-3.5 text-emerald-500" />
               <span className="hidden sm:inline">Video Call</span>
             </button>
           </div>
@@ -1485,18 +1485,18 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   {/* Sticky Date Divider */}
                   {!isSameDateAsPrev && (
                     <div className="flex items-center my-3 sm:my-4 gap-3">
-                      <div className="h-px bg-[var(--md-sys-color-outline-variant)]/60 dark:bg-[#1e293b] flex-1" />
-                      <span className="text-[10px] font-bold tracking-wider text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 uppercase px-3 py-0.5 bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] rounded-full shadow-xs">
+                      <div className="h-px bg-[var(--md-sys-color-outline-variant)]/60 flex-1" />
+                      <span className="text-[10px] font-bold tracking-wider text-[var(--md-sys-color-on-surface-variant)] uppercase px-3 py-0.5 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] rounded-full shadow-xs">
                         {formatMessageDateGroup(msg.createdAt)}
                       </span>
-                      <div className="h-px bg-[var(--md-sys-color-outline-variant)]/60 dark:bg-[#1e293b] flex-1" />
+                      <div className="h-px bg-[var(--md-sys-color-outline-variant)]/60 flex-1" />
                     </div>
                   )}
 
                   {/* System Message */}
                   {isSystem ? (
                     <div className="flex items-center justify-center my-2">
-                      <span className="px-3 py-1 rounded-full text-[11px] bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] dark:bg-[#141b2b] dark:text-slate-400 border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] shadow-xs">
+                      <span className="px-3 py-1 rounded-full text-[11px] bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)] shadow-xs">
                         {msg.senderName} {msg.content}
                       </span>
                     </div>
@@ -1533,8 +1533,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           <div
                             className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-75 ${
                               Math.abs(swipeOffset) >= 40
-                                ? 'bg-[var(--md-sys-color-primary)] text-white scale-110'
-                                : 'bg-[var(--md-sys-color-surface-container-high)] dark:bg-slate-800 text-[var(--md-sys-color-primary)] scale-90 opacity-80'
+                                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] scale-110'
+                                : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] scale-90 opacity-80'
                             }`}
                           >
                             <Reply className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -1584,8 +1584,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             msg.messageType === 'meet_card' || isGif || isImage || isAudio
                               ? 'p-0 bg-transparent border-0 shadow-none'
                               : isMe
-                              ? 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-primary)] text-white font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent'
-                              : 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] dark:bg-[#131c2e] dark:text-slate-100 dark:border-[#202d46] rounded-2xl rounded-tl-xs shadow-2xs font-normal'
+                              ? 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent'
+                              : 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl rounded-tl-xs shadow-xs font-normal'
                           }`}
                         >
                           {/* In-Chat Quoted Tagging / Reply Bubble */}
@@ -1597,8 +1597,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               }}
                               className={`mb-2 p-2 sm:p-2.5 rounded-xl border-l-[3.5px] cursor-pointer transition-all active:scale-[0.98] text-left select-none shadow-2xs max-w-full min-w-0 overflow-hidden ${
                                 isMe
-                                  ? 'bg-black/20 dark:bg-black/40 border-white/90 hover:bg-black/30 text-white'
-                                  : 'bg-black/5 dark:bg-slate-800/80 border-[var(--md-sys-color-primary)] hover:bg-black/10 dark:hover:bg-slate-800 text-[var(--md-sys-color-on-surface)] dark:text-slate-200'
+                                  ? 'bg-black/20 border-white/90 hover:bg-black/30 text-white'
+                                  : 'bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]'
                               }`}
                             >
                               <div className={`flex items-center gap-1 text-[11px] font-bold truncate ${isMe ? 'text-white/90' : 'text-[var(--md-sys-color-primary)]'}`}>
@@ -1692,12 +1692,12 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           {msg.messageType === 'file' && !isGif && !isImage && !isAudio && (
                             <div className={`my-1 p-2.5 sm:p-3 rounded-2xl border flex items-center justify-between gap-2 sm:gap-3 shadow-2xs max-w-full min-w-0 overflow-hidden ${
                               isMe
-                                ? 'bg-black/20 dark:bg-black/40 border-white/20 text-white'
-                                : 'bg-black/5 dark:bg-[#192338] border-[var(--md-sys-color-outline-variant)] dark:border-[#283652] text-[var(--md-sys-color-on-surface)] dark:text-slate-100'
+                                ? 'bg-[var(--md-sys-color-primary-container)]/30 border-[var(--md-sys-color-on-primary)]/20 text-[var(--md-sys-color-on-primary)]'
+                                : 'bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]'
                             }`}>
                               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
                                 <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
-                                  isMe ? 'bg-white/20 text-white' : 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)]'
+                                  isMe ? 'bg-[var(--md-sys-color-on-primary)]/20 text-[var(--md-sys-color-on-primary)]' : 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)]'
                                 }`}>
                                   <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                                 </div>
@@ -1716,8 +1716,8 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                   rel="noreferrer"
                                   className={`p-1.5 sm:p-2 rounded-xl transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer ${
                                     isMe
-                                      ? 'bg-white/20 hover:bg-white/30 text-white'
-                                      : 'bg-[var(--md-sys-color-surface-container)] dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-[var(--md-sys-color-on-surface)] dark:text-white'
+                                      ? 'bg-[var(--md-sys-color-on-primary)]/20 hover:bg-[var(--md-sys-color-on-primary)]/30 text-[var(--md-sys-color-on-primary)]'
+                                      : 'bg-[var(--md-sys-color-surface-container-high)] hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]'
                                   }`}
                                   title="Download file"
                                 >
@@ -1744,20 +1744,20 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 }}
                                 autoFocus
                                 rows={2}
-                                className="w-full p-2 text-xs rounded-xl bg-black/10 dark:bg-black/40 border border-white/20 text-inherit placeholder-white/60 focus:outline-none focus:ring-1 focus:ring-white resize-none"
+                                className="w-full p-2 text-xs rounded-xl bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] placeholder-[var(--md-sys-color-on-surface-variant)] focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)] resize-none"
                               />
                               <div className="flex items-center justify-end gap-1.5 mt-1.5 text-[11px]">
                                 <button
                                   type="button"
                                   onClick={handleCancelEdit}
-                                  className="px-2.5 py-1 rounded-lg bg-black/20 hover:bg-black/30 text-inherit font-semibold transition-colors cursor-pointer"
+                                  className="px-2.5 py-1 rounded-lg bg-[var(--md-sys-color-surface-container-high)] hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] font-semibold transition-colors cursor-pointer"
                                 >
                                   Cancel
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSaveEdit(msg.id)}
-                                  className="px-3 py-1 rounded-lg bg-white text-blue-600 font-bold hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                                  className="px-3 py-1 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
                                 >
                                   Save
                                 </button>
@@ -1784,30 +1784,30 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                               {/* Prominent Seen vs Delivered Status Indicator */}
                               {msg.status === 'seen' ? (
                                 <span
-                                  className="inline-flex items-center gap-0.5 text-sky-100 font-bold text-[9px] tracking-tight bg-sky-400/25 px-1.5 py-0.5 rounded-full border border-sky-300/30 shadow-2xs"
+                                  className="inline-flex items-center gap-0.5 text-[var(--md-sys-color-on-primary)]/90 font-bold text-[9px] tracking-tight bg-[var(--md-sys-color-on-primary)]/20 px-1.5 py-0.5 rounded-full border border-[var(--md-sys-color-on-primary)]/30 shadow-2xs"
                                   title={
                                     msg.readBy && msg.readBy.length > 0
                                       ? `Seen by ${msg.readBy.map((u) => u.fullName).join(', ')}`
                                       : 'Seen'
                                   }
                                 >
-                                  <CheckCheck className="w-3 h-3 text-sky-200 stroke-[2.5]" />
+                                  <CheckCheck className="w-3 h-3 text-[var(--md-sys-color-on-primary)] stroke-[2.5]" />
                                   <span>Seen</span>
                                 </span>
                               ) : msg.status === 'delivered' ? (
                                 <span
-                                  className="inline-flex items-center gap-0.5 text-white/80 font-medium text-[9px] tracking-tight bg-black/10 px-1.5 py-0.5 rounded-full"
+                                  className="inline-flex items-center gap-0.5 text-[var(--md-sys-color-on-primary)]/80 font-medium text-[9px] tracking-tight bg-black/10 px-1.5 py-0.5 rounded-full"
                                   title="Delivered to recipient"
                                 >
-                                  <CheckCheck className="w-3 h-3 text-white/80" />
+                                  <CheckCheck className="w-3 h-3 text-[var(--md-sys-color-on-primary)]/80" />
                                   <span>Delivered</span>
                                 </span>
                               ) : (
                                 <span
-                                  className="inline-flex items-center gap-0.5 text-white/70 font-medium text-[9px] tracking-tight"
+                                  className="inline-flex items-center gap-0.5 text-[var(--md-sys-color-on-primary)]/70 font-medium text-[9px] tracking-tight"
                                   title="Sent to cloud"
                                 >
-                                  <Check className="w-3 h-3 text-white/70" />
+                                  <Check className="w-3 h-3 text-[var(--md-sys-color-on-primary)]/70" />
                                   <span>Sent</span>
                                 </span>
                               )}
@@ -1818,7 +1818,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           <div
                             className={`absolute -top-4 ${
                               isMe ? 'right-0' : 'left-0'
-                            } opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto transition-all duration-150 flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container)] dark:bg-[#1a2336] border border-[var(--md-sys-color-outline-variant)] dark:border-slate-700 shadow-xl text-xs z-30 whitespace-nowrap`}
+                            } opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto transition-all duration-150 flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] shadow-xl text-xs z-30 whitespace-nowrap`}
                           >
                             {COMMON_EMOJIS.slice(0, 3).map((emoji) => (
                               <button
@@ -1841,7 +1841,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             >
                               <SmilePlus className="w-3.5 h-3.5" />
                             </button>
-                            <div className="w-px h-3 bg-[var(--md-sys-color-outline-variant)] dark:bg-slate-700 mx-0.5" />
+                            <div className="w-px h-3 bg-[var(--md-sys-color-outline-variant)] mx-0.5" />
                             <button
                               onClick={() => {
                                 setReplyingTo(msg)
@@ -1928,7 +1928,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition-all ${
                                   r.hasReacted
                                     ? 'bg-[var(--md-sys-color-primary-container)] border-[var(--md-sys-color-primary)]/40 text-[var(--md-sys-color-on-primary-container)]'
-                                    : 'bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] dark:bg-[#141b2b] dark:border-[#24324c] dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-600'
+                                    : 'bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] hover:border-[var(--md-sys-color-primary)]'
                                 }`}
                               >
                                 <span>{r.emoji}</span>
@@ -1960,14 +1960,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
           {/* Real-time Typing Indicator in Feed */}
           {Object.keys(typingUsers).length > 0 && (
-            <div className="flex items-center gap-2 py-1 px-1 text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
-              <div className="flex items-center gap-1.5 bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] px-3 py-1 rounded-full border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] shadow-2xs">
+            <div className="flex items-center gap-2 py-1 px-1 text-xs text-[var(--md-sys-color-on-surface-variant)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+              <div className="flex items-center gap-1.5 bg-[var(--md-sys-color-surface-container)] px-3 py-1 rounded-full border border-[var(--md-sys-color-outline-variant)] shadow-2xs">
                 <div className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-sys-color-primary)] animate-bounce [animation-delay:-0.3s]" />
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-sys-color-primary)] animate-bounce [animation-delay:-0.15s]" />
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-sys-color-primary)] animate-bounce" />
                 </div>
-                <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] dark:text-slate-200">
+                <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
                   {Object.values(typingUsers).map((u) => u.userName).join(', ')} {Object.keys(typingUsers).length > 1 ? 'are' : 'is'} typing...
                 </span>
               </div>
@@ -1978,19 +1978,19 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         </div>
 
         {/* Bottom Composer (Pinned & Fixed) */}
-        <div className="p-2.5 sm:p-3 border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] shrink-0 sticky bottom-0 z-20 pb-safe">
+        <div className="p-2.5 sm:p-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shrink-0 sticky bottom-0 z-20 pb-safe">
           <form onSubmit={handleSendMessage} className="relative flex flex-col gap-1.5">
-            <div className="relative rounded-2xl bg-[var(--md-sys-color-surface-container)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]/20 transition-all p-3 shadow-xs">
+            <div className="relative rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]/20 transition-all p-3 shadow-xs">
               
               {/* In-Chat Quote Reply Preview Bar */}
               {replyingTo && (
-                <div className="flex items-center justify-between mb-2.5 px-3 py-2 bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#1c273c] rounded-xl border-l-4 border-[var(--md-sys-color-primary)] text-xs animate-in slide-in-from-bottom-1 select-none">
+                <div className="flex items-center justify-between mb-2.5 px-3 py-2 bg-[var(--md-sys-color-surface-container-high)] rounded-xl border-l-4 border-[var(--md-sys-color-primary)] text-xs animate-in slide-in-from-bottom-1 select-none">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 font-bold text-[var(--md-sys-color-primary)]">
                       <Reply className="w-3.5 h-3.5 shrink-0" />
                       <span>Replying to {replyingTo.senderName}</span>
                     </div>
-                    <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 truncate mt-0.5">
+                    <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate mt-0.5">
                       {replyingTo.messageType === 'file'
                         ? `📎 ${replyingTo.fileName || 'Attachment'}`
                         : replyingTo.messageType === 'meet_card'
@@ -2001,7 +2001,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   <button
                     type="button"
                     onClick={() => setReplyingTo(null)}
-                    className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400 hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+                    className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
                     title="Cancel reply"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -2021,50 +2021,63 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       <span className="text-[11px] sm:text-xs font-bold text-red-500 truncate">
                         Recording...
                       </span>
-                      <span className="text-[10px] sm:text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-400">
+                      <span className="text-[10px] sm:text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
                         {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                       </span>
                     </div>
                   </div>
 
                   {/* Dynamic Fluctuating Soundwave Bars */}
-                  <div className="flex items-center gap-[3px] sm:gap-1 h-6 flex-1 max-w-[120px] sm:max-w-[180px] justify-center px-1 sm:px-2">
-                    {recordingWaveformLevels.map((lvl, i) => (
+                  <div className="flex items-center gap-1 flex-1 justify-center max-w-[200px] h-6 px-2 overflow-hidden">
+                    {Array.from({ length: 18 }).map((_, i) => (
                       <div
                         key={i}
-                        className="w-1 rounded-full bg-red-500 transition-all duration-75"
-                        style={{ height: `${Math.max(20, lvl * 100)}%` }}
+                        className="w-1 bg-red-500 rounded-full transition-all duration-75"
+                        style={{
+                          height: `${Math.max(4, Math.sin(i + recordingDuration * 3) * 20 + 8)}px`,
+                        }}
                       />
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-1.5 sm:gap-2">
+                  {/* Action Controls */}
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleStopVoiceRecording(false)}
-                      className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                      title="Discard recording"
+                      onClick={handleCancelVoiceRecording}
+                      title="Discard Recording"
+                      className="p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleStopVoiceRecording(true)}
-                      disabled={sending || recordingDuration < 1}
-                      className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-red-600/20 cursor-pointer"
-                      title="Send voice note"
+                      onClick={handleSendVoiceRecording}
+                      disabled={sendingVoice}
+                      title="Send Voice Note"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs shadow-md shadow-red-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                     >
-                      <span>Send</span>
-                      <Send className="w-3.5 h-3.5" />
+                      {sendingVoice ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <span>Send</span>
+                          <Send className="w-3.5 h-3.5" />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
               ) : (
+                /* Regular Text Input & Toolbar */
                 <>
                   <textarea
                     ref={mainInputRef}
                     value={inputText}
-                    onChange={(e) => handleInputChange(e.target.value)}
+                    onChange={(e) => {
+                      setInputText(e.target.value)
+                      handleTyping()
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -2076,17 +2089,17 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                     }}
                     placeholder={replyingTo ? `Reply to ${replyingTo.senderName}...` : `Message #${activeConv?.name || 'chat'}...`}
                     rows={2}
-                    className="w-full bg-transparent text-[13px] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none resize-none px-1 font-normal leading-relaxed"
+                    className="w-full bg-transparent text-[13px] text-[var(--md-sys-color-on-surface)] placeholder-[var(--md-sys-color-on-surface-variant)] focus:outline-none resize-none px-1 font-normal leading-relaxed"
                   />
 
                   {/* Composer Toolbar */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 dark:border-[#1e293b]/80">
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         title="Attach File"
-                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
                       >
                         <Paperclip className="w-4 h-4" />
                       </button>
@@ -2101,7 +2114,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                         type="button"
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                         title="Insert Emoji"
-                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
                       >
                         <Smile className="w-4 h-4" />
                       </button>
@@ -2110,7 +2123,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                         type="button"
                         onClick={handleStartVoiceRecording}
                         title="Record Voice Note"
-                        className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/15 transition-colors cursor-pointer"
                       >
                         <Mic className="w-4 h-4" />
                       </button>
@@ -2119,14 +2132,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                         type="button"
                         onClick={() => handleStartCall('video')}
                         title="Start Live Video Call"
-                        className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-500/15 transition-colors cursor-pointer"
                       >
                         <Video className="w-4 h-4" />
                       </button>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="hidden sm:inline text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 select-none">
+                      <span className="hidden sm:inline text-[10px] text-[var(--md-sys-color-on-surface-variant)] select-none">
                         Enter ↵ to send
                       </span>
                       <button
@@ -2177,54 +2190,54 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             onClick={() => setActiveThreadParent(null)}
           />
 
-          <aside className="fixed inset-x-0 bottom-0 top-12 md:top-auto md:bottom-auto md:relative md:inset-auto w-full md:w-80 flex-shrink-0 border-t md:border-t-0 md:border-l border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] flex flex-col z-50 animate-in slide-in-from-bottom md:slide-in-from-right-10 duration-200 rounded-t-3xl md:rounded-none shadow-2xl">
+          <aside className="fixed inset-x-0 bottom-0 top-12 md:top-auto md:bottom-auto md:relative md:inset-auto w-full md:w-80 flex-shrink-0 border-t md:border-t-0 md:border-l border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex flex-col z-50 animate-in slide-in-from-bottom md:slide-in-from-right-10 duration-200 rounded-t-3xl md:rounded-none shadow-2xl">
             {/* Mobile Drag Pill */}
             <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20 mx-auto mt-2 mb-1 md:hidden shrink-0" />
 
-            <div className="p-3.5 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 flex items-center justify-between bg-[var(--md-sys-color-surface-container)] dark:bg-[#0e1424]">
+            <div className="p-3.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between bg-[var(--md-sys-color-surface-container)]">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                <h3 className="text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-white">Thread Discussion</h3>
+                <h3 className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">Thread Discussion</h3>
               </div>
               <button
                 onClick={() => setActiveThreadParent(null)}
-                className="p-1 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 cursor-pointer"
+                className="p-1 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Parent Message Header */}
-            <div className="p-3 border-b border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#141b2b]">
+            <div className="p-3 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-high)]">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`font-bold text-xs ${getRoleColor(activeThreadParent.senderRole)}`}>
                   {activeThreadParent.senderName}
                 </span>
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
                   {formatMessageTime(activeThreadParent.createdAt)}
                 </span>
               </div>
-              <p className="text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-200">{activeThreadParent.content}</p>
+              <p className="text-xs text-[var(--md-sys-color-on-surface)]">{activeThreadParent.content}</p>
             </div>
 
             {/* Thread Replies List */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-3 bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12]">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-3 bg-[var(--md-sys-color-surface-container-lowest)]">
               {threadMessages.length === 0 ? (
-                <div className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 italic">
+                <div className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] italic">
                   No replies yet. Be the first to reply!
                 </div>
               ) : (
                 threadMessages.map((tMsg) => (
-                  <div key={tMsg.id} className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#151d2c] border border-[var(--md-sys-color-outline-variant)] dark:border-[#222e44]">
+                  <div key={tMsg.id} className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className={`font-semibold text-xs ${getRoleColor(tMsg.senderRole)}`}>
                         {tMsg.senderName}
                       </span>
-                      <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
+                      <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
                         {formatMessageTime(tMsg.createdAt)}
                       </span>
                     </div>
-                    <p className="text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-200 whitespace-pre-wrap">{tMsg.content}</p>
+                    <p className="text-xs text-[var(--md-sys-color-on-surface)] whitespace-pre-wrap">{tMsg.content}</p>
                   </div>
                 ))
               )}
@@ -2232,14 +2245,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             </div>
 
             {/* Thread Reply Composer */}
-            <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#1e293b]/70 bg-[var(--md-sys-color-surface)] dark:bg-[#0c111d] pb-safe">
+            <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] pb-safe">
               <form onSubmit={handleSendThreadReply} className="flex gap-2">
                 <input
                   type="text"
                   value={threadInputText}
                   onChange={(e) => setThreadInputText(e.target.value)}
                   placeholder="Reply in thread..."
-                  className="flex-1 px-3 py-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] dark:bg-[#141b2b] border border-[var(--md-sys-color-outline-variant)] dark:border-[#24324c] text-xs text-[var(--md-sys-color-on-surface)] dark:text-slate-100 placeholder-[var(--md-sys-color-on-surface-variant)] dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)]"
+                  className="flex-1 px-3 py-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs text-[var(--md-sys-color-on-surface)] placeholder-[var(--md-sys-color-on-surface-variant)] focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)]"
                 />
                 <button
                   type="submit"
@@ -2266,7 +2279,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
               transform: actionSheetPullOffset > 0 ? `translateY(${actionSheetPullOffset}px)` : undefined,
               transition: actionSheetPullOffset > 0 ? 'none' : 'transform 0.2s ease-out',
             }}
-            className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-[var(--md-sys-color-surface-container-high)]/98 dark:bg-[#0e1626]/98 backdrop-blur-xl border-t border-[var(--md-sys-color-outline-variant)] dark:border-[#22304a] shadow-2xl rounded-t-3xl p-4 animate-in slide-in-from-bottom duration-200 select-none pb-safe"
+            className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-[var(--md-sys-color-surface-container-highest)]/98 backdrop-blur-xl border-t border-[var(--md-sys-color-outline-variant)] shadow-2xl rounded-t-3xl p-4 animate-in slide-in-from-bottom duration-200 select-none pb-safe"
           >
             {/* Pull-to-Dismiss Drag Handle Area */}
             <div
@@ -2279,7 +2292,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             </div>
 
             {/* Quick Emoji Reaction Bar */}
-            <div className="flex items-center justify-around py-2 px-1 bg-black/5 dark:bg-black/30 rounded-2xl border border-[var(--md-sys-color-outline-variant)]/60 dark:border-white/5 mb-3">
+            <div className="flex items-center justify-around py-2 px-1 bg-[var(--md-sys-color-surface-container-high)] rounded-2xl border border-[var(--md-sys-color-outline-variant)] mb-3">
               {['👍', '❤️', '😂', '🔥', '🎉', '👏'].map((emoji) => (
                 <button
                   key={emoji}
@@ -2300,7 +2313,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   setMobileActionMessage(null)
                   setReactingMessageId(targetId)
                 }}
-                className="p-1.5 text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center justify-center w-9 h-9 rounded-full bg-black/5 dark:bg-white/10"
+                className="p-1.5 text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center justify-center w-9 h-9 rounded-full bg-[var(--md-sys-color-surface-container-highest)]"
               >
                 <SmilePlus className="w-4 h-4" />
               </button>
@@ -2315,7 +2328,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   setMobileActionMessage(null)
                   mainInputRef.current?.focus()
                 }}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] active:opacity-80 transition-colors"
               >
                 <Reply className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
                 <span>Reply in Chat</span>
@@ -2327,7 +2340,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   setActiveThreadParent(mobileActionMessage)
                   setMobileActionMessage(null)
                 }}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] active:opacity-80 transition-colors"
               >
                 <MessageCircle className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
                 <span>Reply in Thread</span>
@@ -2339,7 +2352,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   handleCopyMessage(mobileActionMessage.id, mobileActionMessage.content || '')
                   setMobileActionMessage(null)
                 }}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] active:opacity-80 transition-colors"
               >
                 <Copy className="w-4 h-4 text-emerald-500" />
                 <span>Copy Message Text</span>
@@ -2351,9 +2364,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   handleOpenForward(mobileActionMessage)
                   setMobileActionMessage(null)
                 }}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] active:opacity-80 transition-colors"
               >
-                <Forward className="w-4 h-4 text-sky-500" />
+                <Forward className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
                 <span>Forward Message</span>
               </button>
 
@@ -2364,7 +2377,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                     handleStartEdit(mobileActionMessage)
                     setMobileActionMessage(null)
                   }}
-                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors"
+                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] active:opacity-80 transition-colors"
                 >
                   <Pencil className="w-4 h-4 text-amber-500" />
                   <span>Edit Message</span>
