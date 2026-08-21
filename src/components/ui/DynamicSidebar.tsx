@@ -318,6 +318,8 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                 alt={brandName}
                 className="w-full h-full object-contain rounded-[var(--md-sys-shape-corner-medium)]"
               />
+            ) : brandIcon ? (
+              brandIcon
             ) : (
               brandName.charAt(0).toUpperCase()
             )}
