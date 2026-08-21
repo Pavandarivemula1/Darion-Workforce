@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import { Card } from '@/components/ui/Card'
 import Link from 'next/link'
@@ -7,12 +9,9 @@ import {
   Banknote,
   AlertTriangle,
   ArrowRight,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  CalendarCheck,
   Palmtree,
-  Eye,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react'
 
 export interface AuditorDashboardProps {
@@ -37,100 +36,201 @@ export const AuditorDashboard: React.FC<AuditorDashboardProps> = ({
     : 100
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Auditor Executive Hero */}
-      <div className="relative overflow-hidden rounded-3xl p-6 md:p-8 bg-linear-to-br from-teal-950/80 via-slate-900 to-slate-950 border border-teal-500/30 shadow-2xl text-white">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-linear-to-tr from-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-lg shadow-teal-500/30 shrink-0">
-              <ShieldCheck className="w-8 h-8" />
+    <div className="flex flex-col gap-5 sm:gap-6">
+      {/* 1. TOP STATUS BANNER */}
+      <Card
+        variant="elevated"
+        className="p-4 sm:p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0 shadow-2xs">
+              <ShieldCheck className="w-5 h-5 text-teal-600" />
             </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Audit & Compliance Center</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-teal-500/30 text-teal-200 border border-teal-400/40">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-[var(--md-sys-color-on-surface)] truncate">
+                  Audit & Compliance Oversight
+                </h3>
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                   Read-Only Compliance Mode
                 </span>
               </div>
-              <p className="text-sm text-teal-200/80 mt-1 max-w-2xl">
-                Independent compliance observation across workforce working hours, payroll settlement records, leave logs, and time-tracking variances.
+              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 truncate">
+                Independent compliance observation across workforce working hours, payroll settlement records, and leave logs
               </p>
             </div>
           </div>
         </div>
+      </Card>
 
-        {/* Auditor Key Figures */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-teal-500/20">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-teal-300/70 block">Audited Shifts Volume</span>
-            <span className="text-2xl font-black font-mono text-white">{totalAttendanceRecords.toLocaleString()}</span>
+      {/* 2. AUDIT KPI METRICS ROW */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Audited Shifts Volume */}
+        <Card
+          variant="elevated"
+          className="p-4 sm:p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Audited Shifts Volume
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-teal-300/70 block">Shift Compliance Rate</span>
-            <span className="text-2xl font-black font-mono text-emerald-400">{complianceRate}%</span>
+          <div className="mt-3">
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[var(--md-sys-color-on-surface)] tracking-tight">
+              {totalAttendanceRecords.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] block mt-0.5">
+              Total attendance records
+            </span>
           </div>
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-teal-300/70 block">Auto-Cutoff Anomalies</span>
-            <span className="text-2xl font-black font-mono text-amber-300">{autoCutoffCount}</span>
+        </Card>
+
+        {/* Shift Compliance Rate */}
+        <Card
+          variant="elevated"
+          className="p-4 sm:p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Shift Compliance Rate
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-teal-300/70 block">Historical Disbursements</span>
-            <span className="text-2xl font-black font-mono text-teal-200">₹{totalDisbursedPayroll.toLocaleString()}</span>
+          <div className="mt-3">
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
+              {complianceRate}%
+            </span>
+            <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] block mt-0.5">
+              Completed without anomaly
+            </span>
           </div>
-        </div>
+        </Card>
+
+        {/* Auto-Cutoff Anomalies */}
+        <Card
+          variant="elevated"
+          className="p-4 sm:p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Auto-Cutoff Anomalies
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-amber-600 dark:text-amber-400 tracking-tight">
+              {autoCutoffCount.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] block mt-0.5">
+              Enforced max shift exits
+            </span>
+          </div>
+        </Card>
+
+        {/* Historical Disbursements */}
+        <Card
+          variant="elevated"
+          className="p-4 sm:p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Historical Disbursements
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center">
+              <Banknote className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[var(--md-sys-color-on-surface)] tracking-tight">
+              ₹{totalDisbursedPayroll.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] block mt-0.5">
+              Verified payroll payouts
+            </span>
+          </div>
+        </Card>
       </div>
 
-      {/* Compliance Modules Grid */}
+      {/* 3. COMPLIANCE AUDIT MODULES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link href="/admin/timesheet">
-          <Card variant="outlined" className="p-5 rounded-3xl border-[var(--md-sys-color-outline-variant)] hover:border-teal-500/50 transition-all flex flex-col justify-between h-full group">
+        <Link href="/admin/timesheet" className="group">
+          <Card
+            variant="elevated"
+            className="p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs hover:border-[var(--md-sys-color-primary)] transition-all flex flex-col justify-between h-full"
+          >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <FileSpreadsheet className="w-6 h-6 text-teal-600" />
-                <ArrowRight className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] group-hover:translate-x-1 transition-transform" />
+                <div className="w-8 h-8 rounded-lg bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] flex items-center justify-center">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] group-hover:translate-x-0.5 transition-transform" />
               </div>
-              <h3 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">Weekly Timesheet Matrix</h3>
+              <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                Weekly Timesheet Matrix
+              </h3>
               <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1">
                 Inspect daily working hour distributions in Asia/Kolkata timezone and identify duration outliers.
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-[var(--md-sys-color-outline-variant)] text-xs font-bold text-teal-600">
+            <div className="mt-4 pt-3 border-t border-[var(--md-sys-color-outline-variant)]/60 text-xs font-semibold text-[var(--md-sys-color-primary)]">
               Review Timesheets &rarr;
             </div>
           </Card>
         </Link>
 
-        <Link href="/admin/payroll">
-          <Card variant="outlined" className="p-5 rounded-3xl border-[var(--md-sys-color-outline-variant)] hover:border-teal-500/50 transition-all flex flex-col justify-between h-full group">
+        <Link href="/admin/payroll" className="group">
+          <Card
+            variant="elevated"
+            className="p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs hover:border-emerald-500 transition-all flex flex-col justify-between h-full"
+          >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Banknote className="w-6 h-6 text-emerald-600" />
-                <ArrowRight className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] group-hover:translate-x-1 transition-transform" />
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Banknote className="w-4 h-4" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] group-hover:translate-x-0.5 transition-transform" />
               </div>
-              <h3 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">Payroll Disbursements</h3>
+              <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                Payroll Disbursements
+              </h3>
               <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1">
                 View verified payment batches, payment reference IDs, hourly rates, and settlement records.
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-[var(--md-sys-color-outline-variant)] text-xs font-bold text-emerald-600">
+            <div className="mt-4 pt-3 border-t border-[var(--md-sys-color-outline-variant)]/60 text-xs font-semibold text-emerald-600">
               Audit Payroll &rarr;
             </div>
           </Card>
         </Link>
 
-        <Link href="/admin/leaves">
-          <Card variant="outlined" className="p-5 rounded-3xl border-[var(--md-sys-color-outline-variant)] hover:border-teal-500/50 transition-all flex flex-col justify-between h-full group">
+        <Link href="/admin/leaves" className="group">
+          <Card
+            variant="elevated"
+            className="p-5 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-xs hover:border-blue-500 transition-all flex flex-col justify-between h-full"
+          >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Palmtree className="w-6 h-6 text-blue-600" />
-                <ArrowRight className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] group-hover:translate-x-1 transition-transform" />
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Palmtree className="w-4 h-4" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)] group-hover:translate-x-0.5 transition-transform" />
               </div>
-              <h3 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">Leaves Compliance Logs</h3>
+              <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                Leaves Compliance Logs
+              </h3>
               <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1">
                 Inspect leave approvals, manager notes, leave types, and historical utilization patterns.
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-[var(--md-sys-color-outline-variant)] text-xs font-bold text-blue-600">
+            <div className="mt-4 pt-3 border-t border-[var(--md-sys-color-outline-variant)]/60 text-xs font-semibold text-blue-600">
               View Leave Logs &rarr;
             </div>
           </Card>

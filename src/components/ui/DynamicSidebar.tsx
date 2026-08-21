@@ -491,50 +491,94 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       </nav>
 
       {/* User Profile & Sign Out Footer */}
-      <div className="p-2.5 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shrink-0 flex flex-col gap-1.5">
-        {/* User Card if provided */}
-        {user && !isCollapsed && (
-          <Link
-            href={user.profileHref || '/admin/profile'}
-            className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors group cursor-pointer"
-          >
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name || 'User'}
-                className="w-8 h-8 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)] shrink-0"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-bold flex items-center justify-center shrink-0">
-                {user.name?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
-              </div>
-            )}
-            <div className="overflow-hidden min-w-0 flex-1">
-              <p className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate group-hover:text-[var(--md-sys-color-primary)] transition-colors">
-                {user.name || 'Account'}
-              </p>
-              {user.role && (
-                <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] truncate leading-tight capitalize">
-                  {user.role}
-                </p>
-              )}
-            </div>
-          </Link>
-        )}
+      <div className="p-2.5 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shrink-0">
+        {user ? (
+          !isCollapsed ? (
+            <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]/70 gap-2">
+              <Link
+                href={user.profileHref || '/admin/profile'}
+                className="flex items-center gap-2.5 min-w-0 flex-1 group cursor-pointer"
+                title="View Profile"
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name || 'User'}
+                    className="w-8 h-8 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)] shrink-0 shadow-2xs"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                    {user.name?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
+                  </div>
+                )}
+                <div className="overflow-hidden min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate group-hover:text-[var(--md-sys-color-primary)] transition-colors">
+                    {user.name || 'Account'}
+                  </p>
+                  {user.role && (
+                    <span className="inline-block text-[9px] font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)] truncate mt-0.5">
+                      {user.role.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                </div>
+              </Link>
 
-        {/* Sign Out Button */}
-        <form action={logoutAction} className="w-full">
-          <button
-            type="submit"
-            title="Sign Out"
-            className={`flex items-center ${
-              isCollapsed ? 'justify-center px-0' : 'px-3'
-            } w-full h-9 text-xs font-medium rounded-xl border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/30 hover:border-[var(--md-sys-color-error)]/40 active:scale-[0.98] transition-all cursor-pointer`}
-          >
-            <LogOut className="w-3.5 h-3.5 shrink-0" />
-            {!isCollapsed && <span className="ml-2 truncate">Sign Out</span>}
-          </button>
-        </form>
+              <form action={logoutAction} className="shrink-0">
+                <button
+                  type="submit"
+                  title="Sign Out"
+                  aria-label="Sign Out"
+                  className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/40 transition-colors cursor-pointer active:scale-95"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-1">
+              <Link
+                href={user.profileHref || '/admin/profile'}
+                className="group cursor-pointer relative"
+                title={`${user.name || 'User'} (${user.role || ''})`}
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name || 'User'}
+                    className="w-8 h-8 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)] shrink-0 shadow-2xs"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                    {user.name?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
+                  </div>
+                )}
+              </Link>
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  title="Sign Out"
+                  aria-label="Sign Out"
+                  className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/40 transition-colors cursor-pointer active:scale-95"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            </div>
+          )
+        ) : (
+          <form action={logoutAction} className="w-full">
+            <button
+              type="submit"
+              title="Sign Out"
+              className={`flex items-center ${
+                isCollapsed ? 'justify-center px-0' : 'px-3'
+              } w-full h-8 text-xs font-medium rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-all cursor-pointer`}
+            >
+              <LogOut className="w-3.5 h-3.5 shrink-0" />
+              {!isCollapsed && <span className="ml-2 truncate">Sign Out</span>}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Resizer Handle */}
