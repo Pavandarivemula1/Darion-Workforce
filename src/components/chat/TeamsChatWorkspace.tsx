@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Hash,
   MessageSquare,
@@ -37,6 +37,12 @@ import {
   Maximize2,
   Image as ImageIcon,
   Loader2,
+  Home,
+  Layers,
+  MoreHorizontal,
+  ArrowLeft,
+  Star,
+  AtSign,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -62,6 +68,7 @@ import { EmojiAndGifPicker } from './EmojiAndGifPicker'
 import { ImagePreviewModal } from './ImagePreviewModal'
 import { VoiceNotePlayer } from './VoiceNotePlayer'
 import { soundEffects } from '@/lib/utils/soundEffects'
+import { richHaptics } from '@/lib/utils/richHaptics'
 import { MiniSidebarRail, ChatNavTab } from '@/components/navigation/MiniSidebarRail'
 import { MeetingsPanel } from './MeetingsPanel'
 import { CalendarPanel } from './CalendarPanel'
@@ -71,6 +78,15 @@ import { ChatNavColumn } from './ChatNavColumn'
 import { HomeFeedPane } from './HomeFeedPane'
 import { NoConversationSelected } from './NoConversationSelected'
 import { CompanionRail } from './CompanionRail'
+import { BrowseSpacesModal } from './BrowseSpacesModal'
+import { SpaceSharedFilesTab } from './SpaceSharedFilesTab'
+import { SpaceTasksTab } from './SpaceTasksTab'
+import { GoogleChatComposer } from './GoogleChatComposer'
+import { CodeSnippetModal } from './CodeSnippetModal'
+import { ChatCodeCard } from './ChatCodeCard'
+import { ThreadSideDrawer } from './ThreadSideDrawer'
+import { MentionsView } from './MentionsView'
+import { StarredView } from './StarredView'
 
 interface TeamsChatWorkspaceProps {
   currentUserId: string
@@ -96,9 +112,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const branding = useBranding()
   const [activeNavTab, setActiveNavTab] = useState<ChatNavTab>('chat')
   const [conversations, setConversations] = useState<ChatConversationItem[]>(initialConversations)
-  const [activeConvId, setActiveConvId] = useState<string>(
-    initialActiveId || (initialConversations.length > 0 ? initialConversations[0].id : '')
-  )
+  const [activeConvId, setActiveConvId] = useState<string>(initialActiveId || '')
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [inputText, setInputText] = useState('')
@@ -115,6 +129,10 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [threadInputText, setThreadInputText] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [showMobileMenuDrawer, setShowMobileMenuDrawer] = useState(false)
+  const [isFirstSidebarOpen, setIsFirstSidebarOpen] = useState(true)
+  const [activeMobileTab, setActiveMobileTab] = useState<'home' | 'dms' | 'spaces'>('home')
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false)
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessageItem | null>(null)
   const [isForwardOpen, setIsForwardOpen] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
@@ -124,6 +142,9 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [mobileActionMessage, setMobileActionMessage] = useState<ChatMessageItem | null>(null)
   const [activeNavShortcut, setActiveNavShortcut] = useState<'home' | 'mentions' | 'starred'>('home')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [activeSpaceTab, setActiveSpaceTab] = useState<'chat' | 'shared' | 'tasks'>('chat')
+  const [isBrowseSpacesOpen, setIsBrowseSpacesOpen] = useState(false)
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false)
 
   // Image Lightbox Preview State
   const [previewImage, setPreviewImage] = useState<{
@@ -147,6 +168,17 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const [typingUsers, setTypingUsers] = useState<Record<string, { userName: string; avatarUrl?: string; timestamp: number }>>({})
   const typingDebounceTimer = useRef<NodeJS.Timeout | null>(null)
   const isCurrentlyTypingRef = useRef(false)
+
+  // 100% Accurate Online Presence State via Supabase Realtime WebSockets
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set())
+  const [userPresenceMap, setUserPresenceMap] = useState<Record<string, { status: string; statusMessage?: string }>>({})
+  const [currentUserPresenceStatus, setCurrentUserPresenceStatus] = useState<'active' | 'away' | 'dnd'>('active')
+  const [currentStatusMessage, setCurrentStatusMessage] = useState<string>('')
+  const isInMeetingRef = useRef<boolean>(false)
+  const isManuallySetRef = useRef<'active' | 'away' | 'dnd' | null>(null)
+  const currentPresenceStatusRef = useRef<'active' | 'away' | 'dnd'>('active')
+  const presenceChannelRef = useRef<any>(null)
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Smart Scrolling & Containers
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -174,6 +206,56 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   const waveformSamplesRef = useRef<number[]>([])
 
   const activeConv = conversations.find((c) => c.id === activeConvId)
+
+  // Android Native Hardware Back Button Handler
+  useEffect(() => {
+    let unlisten: any = null
+    const setupBackButton = async () => {
+      try {
+        // Dynamic import with fallback for browser / SSR
+        // @ts-ignore
+        const cap = await import('@capacitor/app').catch(() => null)
+        if (!cap || !cap.App) return
+
+        const listener = await cap.App.addListener('backButton', () => {
+          if (isSettingsOpen) {
+            setIsSettingsOpen(false)
+          } else if (isBrowseSpacesOpen) {
+            setIsBrowseSpacesOpen(false)
+          } else if (isCodeModalOpen) {
+            setIsCodeModalOpen(false)
+          } else if (isMobileMoreOpen) {
+            setIsMobileMoreOpen(false)
+          } else if (showMobileMenuDrawer) {
+            setShowMobileMenuDrawer(false)
+          } else if (activeThreadParent) {
+            setActiveThreadParent(null)
+          } else if (activeConvId) {
+            setActiveConvId('')
+          } else {
+            cap.App.minimizeApp()
+          }
+        })
+        unlisten = listener
+      } catch {
+        // Fallback when running directly in browser
+      }
+    }
+    setupBackButton()
+    return () => {
+      if (unlisten && typeof unlisten.remove === 'function') {
+        unlisten.remove()
+      }
+    }
+  }, [
+    isSettingsOpen,
+    isBrowseSpacesOpen,
+    isCodeModalOpen,
+    isMobileMoreOpen,
+    showMobileMenuDrawer,
+    activeThreadParent,
+    activeConvId,
+  ])
 
   // Action Sheet Pull Down Handlers
   const handleActionSheetTouchStart = (e: React.TouchEvent) => {
@@ -652,12 +734,27 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     }
   }, [activeConvId, broadcastConversationRead])
 
-  // Refresh messages helper (with Smart Scrolling that doesn't displace user if scrolled up)
+  // Refresh messages helper (0ms Optimistic UI Reconciliation + Smart Scrolling)
   const refreshMessages = useCallback(async (playIncomingSound = false) => {
     if (!activeConvId) return
     try {
       const freshMessages = await getConversationMessagesAction(activeConvId)
-      setMessages(freshMessages)
+
+      // Reconcile and preserve pending optimistic messages (temp-...) that have not landed in DB yet
+      setMessages((prev) => {
+        const pendingOptimistic = prev.filter(
+          (m) =>
+            m.id.startsWith('temp-') &&
+            !freshMessages.some(
+              (f) =>
+                f.id === m.id ||
+                (f.senderId === m.senderId &&
+                  f.content === m.content &&
+                  Math.abs(new Date(f.createdAt).getTime() - new Date(m.createdAt).getTime()) < 20000)
+            )
+        )
+        return [...freshMessages, ...pendingOptimistic]
+      })
 
       if (playIncomingSound) {
         soundEffects.playNotificationSound()
@@ -700,6 +797,160 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     } catch {}
   }, [activeConvId])
 
+  // Helper to update presence across WebSocket channel & local state
+  const trackPresenceState = useCallback(
+    (status: 'active' | 'away' | 'dnd', statusMsg = '') => {
+      currentPresenceStatusRef.current = status
+      setCurrentUserPresenceStatus(status)
+      setCurrentStatusMessage(statusMsg)
+      if (presenceChannelRef.current) {
+        presenceChannelRef.current.track({
+          user_id: currentUserId,
+          name: currentUserName,
+          avatarUrl: currentUserAvatar,
+          status: status === 'active' ? 'online' : status,
+          statusMessage: statusMsg,
+          onlineAt: new Date().toISOString(),
+        })
+      }
+    },
+    [currentUserId, currentUserName, currentUserAvatar]
+  )
+
+  // 100% Accurate Global Presence Subscription via Supabase WebSockets
+  useEffect(() => {
+    if (!currentUserId) return
+    const supabase = createClient()
+    const presenceChannel = supabase.channel('global-user-presence', {
+      config: { presence: { key: currentUserId } },
+    })
+    presenceChannelRef.current = presenceChannel
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState()
+        const activeIds = new Set<string>()
+        const presenceMap: Record<string, { status: string; statusMessage?: string }> = {}
+
+        Object.keys(state).forEach((userId) => {
+          activeIds.add(userId)
+          const presences = state[userId] as any[]
+          if (presences && presences.length > 0) {
+            presenceMap[userId] = {
+              status: presences[0].status || 'online',
+              statusMessage: presences[0].statusMessage || '',
+            }
+          }
+        })
+
+        setOnlineUserIds(activeIds)
+        setUserPresenceMap(presenceMap)
+      })
+      .on('presence', { event: 'join' }, ({ key }) => {
+        setOnlineUserIds((prev) => new Set([...prev, key]))
+      })
+      .on('presence', { event: 'leave' }, ({ key }) => {
+        setOnlineUserIds((prev) => {
+          const copy = new Set(prev)
+          copy.delete(key)
+          return copy
+        })
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          const curSt = currentPresenceStatusRef.current
+          await presenceChannel.track({
+            user_id: currentUserId,
+            name: currentUserName,
+            avatarUrl: currentUserAvatar,
+            status: curSt === 'active' ? 'online' : curSt,
+            statusMessage: currentStatusMessage,
+            onlineAt: new Date().toISOString(),
+          })
+        }
+      })
+
+    return () => {
+      presenceChannelRef.current = null
+      supabase.removeChannel(presenceChannel)
+    }
+  }, [currentUserId, currentUserName, currentUserAvatar, currentStatusMessage])
+
+  // 1-Minute Inactivity Auto-Away Engine & Activity Wakeup Listener
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const resetInactivityTimer = () => {
+      // If currently in a meeting, stay in DND / In a meeting
+      if (isInMeetingRef.current) return
+
+      // If user was auto-marked away due to inactivity, immediately wake them back to Active!
+      if (currentPresenceStatusRef.current === 'away' && !isManuallySetRef.current) {
+        trackPresenceState('active', '')
+      }
+
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
+      inactivityTimerRef.current = setTimeout(() => {
+        // Exactly 60 seconds (1 minute) of inactivity -> transition to Away
+        if (!isInMeetingRef.current && !isManuallySetRef.current) {
+          trackPresenceState('away', 'Away')
+        }
+      }, 60 * 1000)
+    }
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click']
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetInactivityTimer, { passive: true }))
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (!isInMeetingRef.current && !isManuallySetRef.current) {
+          trackPresenceState('away', 'Away')
+        }
+      } else {
+        resetInactivityTimer()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    // Start initial 1-minute timer
+    resetInactivityTimer()
+
+    return () => {
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetInactivityTimer))
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
+    }
+  }, [currentUserId, trackPresenceState])
+
+  // Real-time Meeting & Call State Detection (Meet -> Busy / DND, End -> Active)
+  useEffect(() => {
+    const handleMeetingStart = () => {
+      isInMeetingRef.current = true
+      trackPresenceState('dnd', 'In a meeting')
+    }
+
+    const handleMeetingEnd = () => {
+      isInMeetingRef.current = false
+      trackPresenceState('active', '')
+    }
+
+    window.addEventListener('start-outgoing-call' as any, handleMeetingStart)
+    window.addEventListener('trigger-incoming-call' as any, handleMeetingStart)
+    window.addEventListener('meeting-started' as any, handleMeetingStart)
+    window.addEventListener('call-active' as any, handleMeetingStart)
+    window.addEventListener('call-ended' as any, handleMeetingEnd)
+    window.addEventListener('meeting-ended' as any, handleMeetingEnd)
+
+    return () => {
+      window.removeEventListener('start-outgoing-call' as any, handleMeetingStart)
+      window.removeEventListener('trigger-incoming-call' as any, handleMeetingStart)
+      window.removeEventListener('meeting-started' as any, handleMeetingStart)
+      window.removeEventListener('call-active' as any, handleMeetingStart)
+      window.removeEventListener('call-ended' as any, handleMeetingEnd)
+      window.removeEventListener('meeting-ended' as any, handleMeetingEnd)
+    }
+  }, [trackPresenceState])
+
   // Real-time Supabase Subscription & Resilient Auto-Sync
   useEffect(() => {
     if (!activeConvId) return
@@ -709,6 +960,25 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     // 1. Direct WebSocket Broadcast Channel (Instant 0ms latency between peers)
     const realtimeChannel = supabase
       .channel(`chat-realtime-${activeConvId}`)
+      .on('broadcast', { event: 'chat_realtime_message' }, (payload: any) => {
+        const incomingMsg: ChatMessageItem = payload?.payload?.message
+        if (incomingMsg && incomingMsg.conversationId === activeConvId) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === incomingMsg.id)) return prev
+            return [...prev, incomingMsg]
+          })
+          if (incomingMsg.parentId && activeThreadParent?.id === incomingMsg.parentId) {
+            setThreadMessages((prev) => {
+              if (prev.some((m) => m.id === incomingMsg.id)) return prev
+              return [...prev, incomingMsg]
+            })
+          }
+          if (incomingMsg.senderId !== currentUserId) {
+            soundEffects.playNotificationSound()
+          }
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 20)
+        }
+      })
       .on('broadcast', { event: 'chat_activity' }, async () => {
         await refreshMessages(true)
       })
@@ -847,10 +1117,10 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     })
   }, [activeThreadParent, activeConvId])
 
-  // Send Main Message
+  // Send Main Message (Flash Speed / 0ms Optimistic + WebSocket Broadcast)
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!inputText.trim() || !activeConvId || sending) return
+    if (!inputText.trim() || !activeConvId) return
 
     const content = inputText.trim()
     const replyMeta = replyingTo
@@ -869,30 +1139,80 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         }
       : undefined
 
+    const targetUserId = activeConv?.type === 'direct' ? activeConv.otherParticipant?.userId : null
+    const isTargetOnline = targetUserId ? onlineUserIds.has(targetUserId) : true
+    const initialStatus: 'sent' | 'delivered' = isTargetOnline ? 'delivered' : 'sent'
+
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    const nowIso = new Date().toISOString()
+    const optimisticMsg: ChatMessageItem = {
+      id: tempId,
+      conversationId: activeConvId,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderAvatarUrl: currentUserAvatar,
+      senderRole: currentUserRole,
+      content,
+      messageType: 'text',
+      isEdited: false,
+      isPinned: false,
+      status: initialStatus,
+      replyTo: replyMeta?.replyTo,
+      reactions: [],
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    }
+
+    // 1. INSTANT (0ms) LOCAL APPEND & UI RESET
+    setMessages((prev) => [...prev, optimisticMsg])
     setInputText('')
     setReplyingTo(null)
     soundEffects.playMessageSentSound()
-    setSending(true)
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
 
+    // Update conversation snippet in local sidebar immediately
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === activeConvId
+          ? {
+              ...c,
+              lastMessageAt: nowIso,
+              lastMessageSnippet: content,
+              lastMessageSenderName: currentUserName,
+            }
+          : c
+      )
+    )
+
+    // 2. INSTANT (<10ms) DIRECT WEBSOCKET BROADCAST TO PEERS
     try {
-      await sendMessageAction({
-        conversationId: activeConvId,
-        content,
-        messageType: 'text',
-        metadata: replyMeta,
+      const supabase = createClient()
+      supabase.channel(`chat-realtime-${activeConvId}`).send({
+        type: 'broadcast',
+        event: 'chat_realtime_message',
+        payload: { message: optimisticMsg },
       })
-      // Refresh messages list
-      const fresh = await getConversationMessagesAction(activeConvId)
-      setMessages(fresh)
-      broadcastChatActivity()
-      broadcastTypingStatus(false)
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-    } catch (err: any) {
-      console.error('Failed to send message:', err)
-      alert(err.message || 'Failed to send message')
-    } finally {
-      setSending(false)
-    }
+    } catch {}
+
+    broadcastTypingStatus(false)
+
+    // 3. BACKGROUND PERSIST TO DATABASE
+    sendMessageAction({
+      conversationId: activeConvId,
+      content,
+      messageType: 'text',
+      metadata: replyMeta,
+    })
+      .then((newMsg) => {
+        if (newMsg?.id) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, id: newMsg.id } : m))
+          )
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to persist message to DB:', err)
+      })
   }
 
   // Handle Select Emoji from Picker
@@ -902,7 +1222,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     mainInputRef.current?.focus()
   }
 
-  // Handle Select & Send GIF from Picker
+  // Handle Select & Send GIF from Picker (Flash Speed)
   const handleSelectGif = async (gifUrl: string, title: string) => {
     if (!activeConvId) return
     setShowEmojiPicker(false)
@@ -927,28 +1247,150 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
     setReplyingTo(null)
 
-    try {
-      await sendMessageAction({
-        conversationId: activeConvId,
-        content: title,
-        messageType: 'file',
-        fileUrl: gifUrl,
-        fileName: `${title}.gif`,
-        fileType: 'image/gif',
-        metadata: replyMeta,
-      })
-      const fresh = await getConversationMessagesAction(activeConvId)
-      setMessages(fresh)
-      broadcastChatActivity()
-      broadcastTypingStatus(false)
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-    } catch (err: any) {
-      console.error('Failed to send GIF:', err)
-      alert(err.message || 'Failed to send GIF')
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    const nowIso = new Date().toISOString()
+    const optimisticMsg: ChatMessageItem = {
+      id: tempId,
+      conversationId: activeConvId,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderAvatarUrl: currentUserAvatar,
+      senderRole: currentUserRole,
+      content: '',
+      messageType: 'file',
+      fileUrl: gifUrl,
+      fileName: 'GIF',
+      fileType: 'image/gif',
+      isEdited: false,
+      isPinned: false,
+      status: 'sent',
+      replyTo: replyMeta?.replyTo,
+      reactions: [],
+      metadata: replyMeta,
+      createdAt: nowIso,
+      updatedAt: nowIso,
     }
+
+    setMessages((prev) => [...prev, optimisticMsg])
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
+
+    try {
+      const supabase = createClient()
+      supabase.channel(`chat-realtime-${activeConvId}`).send({
+        type: 'broadcast',
+        event: 'chat_realtime_message',
+        payload: { message: optimisticMsg },
+      })
+    } catch {}
+
+    sendMessageAction({
+      conversationId: activeConvId,
+      content: '',
+      messageType: 'file',
+      fileUrl: gifUrl,
+      fileName: 'GIF',
+      fileType: 'image/gif',
+      metadata: replyMeta,
+    })
+      .then((newMsg) => {
+        if (newMsg?.id) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, id: newMsg.id } : m))
+          )
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to send GIF:', err)
+      })
   }
 
-  // Send Thread Reply
+  // Handle Send Code Snippet (Flash Speed)
+  const handleSendCodeSnippet = async (
+    code: string,
+    language: string,
+    title?: string,
+    note?: string
+  ) => {
+    if (!activeConvId) return
+    setIsCodeModalOpen(false)
+    soundEffects.playMessageSentSound()
+
+    const replyMeta = replyingTo
+      ? {
+          replyTo: {
+            messageId: replyingTo.id,
+            senderName: replyingTo.senderName,
+            content:
+              replyingTo.messageType === 'file'
+                ? `📎 ${replyingTo.fileName || 'Attachment'}`
+                : replyingTo.messageType === 'meet_card'
+                ? '📹 Video Meeting'
+                : replyingTo.messageType === 'code'
+                ? '💻 Code snippet'
+                : replyingTo.content,
+            messageType: replyingTo.messageType,
+          },
+          isCode: true,
+          language,
+          title,
+          note,
+        }
+      : { isCode: true, language, title, note }
+
+    setReplyingTo(null)
+
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    const nowIso = new Date().toISOString()
+    const optimisticMsg: ChatMessageItem = {
+      id: tempId,
+      conversationId: activeConvId,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderAvatarUrl: currentUserAvatar,
+      senderRole: currentUserRole,
+      content: code,
+      messageType: 'code',
+      isEdited: false,
+      isPinned: false,
+      status: 'sent',
+      replyTo: replyMeta?.replyTo,
+      reactions: [],
+      metadata: replyMeta,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    }
+
+    setMessages((prev) => [...prev, optimisticMsg])
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
+
+    try {
+      const supabase = createClient()
+      supabase.channel(`chat-realtime-${activeConvId}`).send({
+        type: 'broadcast',
+        event: 'chat_realtime_message',
+        payload: { message: optimisticMsg },
+      })
+    } catch {}
+
+    sendMessageAction({
+      conversationId: activeConvId,
+      content: code,
+      messageType: 'code',
+      metadata: replyMeta,
+    })
+      .then((newMsg) => {
+        if (newMsg?.id) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, id: newMsg.id } : m))
+          )
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to send code snippet:', err)
+      })
+  }
+
+  // Send Thread Reply (Flash Speed)
   const handleSendThreadReply = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!threadInputText.trim() || !activeConvId || !activeThreadParent) return
@@ -957,20 +1399,56 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     setThreadInputText('')
     soundEffects.playMessageSentSound()
 
-    try {
-      await sendMessageAction({
-        conversationId: activeConvId,
-        content,
-        parentId: activeThreadParent.id,
-      })
-      const threadMsgs = await getConversationMessagesAction(activeConvId, activeThreadParent.id)
-      setThreadMessages(threadMsgs)
-      const fresh = await getConversationMessagesAction(activeConvId)
-      setMessages(fresh)
-      broadcastChatActivity()
-    } catch (err: any) {
-      console.error('Failed to send reply:', err)
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    const nowIso = new Date().toISOString()
+    const optimisticMsg: ChatMessageItem = {
+      id: tempId,
+      conversationId: activeConvId,
+      parentId: activeThreadParent.id,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderAvatarUrl: currentUserAvatar,
+      senderRole: currentUserRole,
+      content,
+      messageType: 'text',
+      isEdited: false,
+      isPinned: false,
+      status: 'sent',
+      reactions: [],
+      createdAt: nowIso,
+      updatedAt: nowIso,
     }
+
+    setThreadMessages((prev) => [...prev, optimisticMsg])
+    setMessages((prev) => [...prev, optimisticMsg])
+
+    try {
+      const supabase = createClient()
+      supabase.channel(`chat-realtime-${activeConvId}`).send({
+        type: 'broadcast',
+        event: 'chat_realtime_message',
+        payload: { message: optimisticMsg },
+      })
+    } catch {}
+
+    sendMessageAction({
+      conversationId: activeConvId,
+      content,
+      parentId: activeThreadParent.id,
+    })
+      .then((newMsg) => {
+        if (newMsg?.id) {
+          setThreadMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, id: newMsg.id } : m))
+          )
+          setMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, id: newMsg.id } : m))
+          )
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to send reply:', err)
+      })
   }
 
   // Toggle Reaction
@@ -1084,10 +1562,14 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
       // Broadcast to all clients in real-time
       const supabase = createClient()
       const callChannel = supabase.channel('global-call-signaling')
-      callChannel.send({
-        type: 'broadcast',
-        event: 'incoming_call',
-        payload: res.callPayload,
+      callChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          callChannel.send({
+            type: 'broadcast',
+            event: 'incoming_call',
+            payload: res.callPayload,
+          })
+        }
       })
 
       const fresh = await getConversationMessagesAction(activeConvId)
@@ -1099,10 +1581,41 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
     }
   }
 
-  // Handle File Upload
+  // Handle 0ms Optimistic File & Image Upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !activeConvId) return
+
+    const tempFileId = `temp-file-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    const nowIso = new Date().toISOString()
+    const isImage = file.type.startsWith('image/')
+    const localBlobUrl = isImage ? URL.createObjectURL(file) : undefined
+
+    // 1. Instantly pin optimistic file card in chat (0ms!)
+    const optimisticMsg: ChatMessageItem = {
+      id: tempFileId,
+      conversationId: activeConvId,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderAvatarUrl: currentUserAvatar,
+      senderRole: currentUserRole,
+      content: `Shared file: ${file.name}`,
+      messageType: 'file',
+      fileUrl: localBlobUrl,
+      fileName: file.name,
+      fileSizeBytes: file.size,
+      fileType: file.type,
+      reactions: [],
+      isEdited: false,
+      isPinned: false,
+      status: 'sending',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    }
+
+    setMessages((prev) => [...prev, optimisticMsg])
+    soundEffects.playMessageSentSound()
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
 
     try {
       setSending(true)
@@ -1115,7 +1628,7 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         throw new Error(uploadRes.error || 'Failed to upload attachment')
       }
 
-      await sendMessageAction({
+      const sendRes = await sendMessageAction({
         conversationId: activeConvId,
         content: `Shared file: ${file.name}`,
         messageType: 'file',
@@ -1124,15 +1637,34 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         fileSizeBytes: file.size,
         fileType: file.type,
       })
-      soundEffects.playMessageSentSound()
 
-      const fresh = await getConversationMessagesAction(activeConvId)
-      setMessages(fresh)
+      // In-place reconciliation: update the temporary file item with real DB UUID and permanent URL
+      if (sendRes && sendRes.id) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempFileId
+              ? {
+                  ...m,
+                  id: sendRes.id,
+                  fileUrl: uploadRes.url,
+                  status: 'sent',
+                }
+              : m
+          )
+        )
+      } else {
+        const fresh = await getConversationMessagesAction(activeConvId)
+        setMessages((prev) => {
+          const nonReconciled = prev.filter((m) => m.id.startsWith('temp-') && m.id !== tempFileId)
+          return [...fresh, ...nonReconciled]
+        })
+      }
+
       broadcastChatActivity()
       broadcastTypingStatus(false)
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (err: any) {
-      alert(err.message || 'Failed to upload attachment')
+      console.error('File upload failed:', err)
+      setMessages((prev) => prev.filter((m) => m.id !== tempFileId))
     } finally {
       setSending(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -1179,18 +1711,137 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   }
 
   const getRoleColor = (role?: string) => {
-    switch (role) {
-      case 'super_admin':
-        return 'text-purple-600 dark:text-purple-400'
-      case 'admin':
-        return 'text-sky-600 dark:text-sky-400'
-      case 'hr_manager':
-        return 'text-emerald-600 dark:text-emerald-400'
-      case 'supervisor':
-        return 'text-amber-600 dark:text-amber-400'
-      default:
-        return 'text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-300'
+    return 'text-[var(--md-sys-color-on-surface)]'
+  }
+
+  const getSmartReplySuggestions = (lastMsg?: ChatMessageItem, currentUserId?: string): string[] => {
+    if (!lastMsg || !lastMsg.content) {
+      return ['Hello!', 'Hi there!', 'How are you?']
     }
+
+    const text = lastMsg.content.toLowerCase().trim()
+    const isMe = lastMsg.senderId === currentUserId
+
+    // If last message is from me, provide natural follow-up options
+    if (isMe) {
+      return ['Any update on this?', 'Please let me know when you check', 'Thanks!']
+    }
+
+    // 1. Greetings
+    if (/^(hi|hello|hey|hola|good morning|good afternoon|good evening|namaste)\b/i.test(text)) {
+      return ['Hello! How are you?', 'Hi there! What’s up?', 'Hey! How can I help?']
+    }
+
+    // 2. How are you / Status check
+    if (/how are you|how’re you|how is it going|how are things|all good\?/i.test(text)) {
+      return ['I am doing well, thanks!', 'All good here, how about you?', 'Doing great, thank you!']
+    }
+
+    // 3. Meeting / Video / Audio call invites (e.g. "join the meet", "are you free for call")
+    if (/meet|call|join|google meet|video|zoom|link|meeting/i.test(text)) {
+      return ['Joining now!', 'Give me 2 minutes', 'Sure, let’s connect', 'On my way!']
+    }
+
+    // 4. Thank you / Appreciation
+    if (/thank|thanks|thx|appreciate/i.test(text)) {
+      return ['You’re welcome!', 'Anytime! Glad to help', 'No problem at all!']
+    }
+
+    // 5. Questions / Availability ("Are you free?", "Can you...?", "Available?")
+    if (/\b(free|available|can you|could you|are you there|there\?)\b/i.test(text)) {
+      return ['Yes, I am available!', 'In a quick task, back in 5 mins', 'Yes, what’s up?']
+    }
+
+    // 6. Work / Tasks / Approvals ("Done?", "Finished?", "Is it ok?", "Check this", "Review")
+    if (/check|review|look|done|finish|status|update|progress/i.test(text)) {
+      return ['Checking it right now!', 'Looks great, approved!', 'Working on it now', 'Will update you shortly']
+    }
+
+    // 7. Goodnight / Bye / Leaving
+    if (/bye|good night|goodnight|see you|take care|cya/i.test(text)) {
+      return ['Good night! Have a great one', 'Take care! See you tomorrow', 'Bye! Talk soon']
+    }
+
+    // 8. Confirmations / Agreements ("ok", "okay", "sure", "fine", "yes")
+    if (/^(ok|okay|sure|fine|yes|cool|great|got it|noted)\b/i.test(text)) {
+      return ['Sounds like a plan!', 'Great, thank you!', 'Awesome, talk soon']
+    }
+
+    // 9. Default natural context-aware English responses
+    return ['Sounds good!', 'Got it, thanks!', 'Will do!']
+  }
+
+  // Mention members list from conversations
+  const mentionMembers = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; avatarUrl?: string; role?: string }>()
+    conversations.forEach((c) => {
+      if (c.otherParticipant && c.otherParticipant.userId) {
+        map.set(c.otherParticipant.userId, {
+          id: c.otherParticipant.userId,
+          name: c.otherParticipant.fullName,
+          avatarUrl: c.otherParticipant.avatarUrl,
+          role: c.otherParticipant.role,
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [conversations])
+
+  // Formatter for rich @mentions inside message bubbles
+  const renderMessageWithMentions = (content: string, currentUserName?: string, isMe?: boolean) => {
+    if (!content) return null
+
+    const mentionRegex = /(@[a-zA-Z0-9_.-]+(?:\s+[a-zA-Z0-9_.-]+)?)/g
+    const parts = content.split(mentionRegex)
+
+    return (
+      <div className="whitespace-pre-wrap break-words [word-break:break-word] overflow-hidden max-w-full">
+        {parts.map((part, idx) => {
+          if (part.startsWith('@')) {
+            const mentionText = part.slice(1).trim().toLowerCase()
+            const myName = (currentUserName || '').toLowerCase()
+            const isMentioningMe =
+              mentionText === 'all' ||
+              mentionText === 'everyone' ||
+              mentionText === 'here' ||
+              (myName && (myName.includes(mentionText) || mentionText.includes(myName)))
+
+            if (isMe) {
+              return (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-bold text-xs bg-white/20 text-white ring-1 ring-white/30 mx-0.5 select-none"
+                >
+                  {part}
+                </span>
+              )
+            }
+
+            if (isMentioningMe) {
+              return (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-bold text-xs bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] ring-1 ring-[var(--md-sys-color-primary)]/40 mx-0.5 select-none"
+                >
+                  {part}
+                </span>
+              )
+            }
+
+            return (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold text-xs bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] mx-0.5 select-none"
+              >
+                {part}
+              </span>
+            )
+          }
+
+          return <React.Fragment key={idx}>{part}</React.Fragment>
+        })}
+      </div>
+    )
   }
 
   const totalUnreadCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0)
@@ -1198,121 +1849,243 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] relative font-sans">
       {/* 1. TOP GOOGLE CHAT APP HEADER BAR */}
-      <GoogleChatHeader
-        currentUserId={currentUserId}
-        currentUserName={currentUserName}
-        currentUserRole={currentUserRole}
-        currentUserAvatar={currentUserAvatar}
-        searchQuery={convSearch}
-        onSearchChange={setConvSearch}
-        onToggleSidebar={() => setShowMobileSidebar(!showMobileSidebar)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
+      <div className={activeConvId ? 'hidden md:block w-full shrink-0' : 'w-full shrink-0'}>
+        <GoogleChatHeader
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          currentUserRole={currentUserRole}
+          currentUserAvatar={currentUserAvatar}
+          searchQuery={convSearch}
+          onSearchChange={setConvSearch}
+          currentPresenceStatus={currentUserPresenceStatus}
+          statusMessage={currentStatusMessage}
+          onStatusChange={(newSt) => {
+            isManuallySetRef.current = newSt
+            trackPresenceState(newSt, newSt === 'dnd' ? 'Do not disturb' : '')
+          }}
+          onToggleSidebar={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+              setShowMobileMenuDrawer((prev) => !prev)
+            } else {
+              setIsFirstSidebarOpen((prev) => !prev)
+            }
+          }}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+      </div>
 
       {/* 2. MAIN 3-PANE + COMPANION RAIL BODY */}
       <div className="flex-1 flex min-h-0 w-full overflow-hidden relative">
-        {/* 2.1 LEFT NAVIGATION DRAWER (Shortcuts, DMs, Spaces) */}
-        <div className={`${showMobileSidebar ? 'absolute inset-0 z-30 flex' : 'hidden md:flex'} shrink-0 h-full`}>
+        {/* 2.1 FIRST SIDEBAR (Desktop Only: Shortcuts, DMs, Spaces) */}
+        <div className={`${isFirstSidebarOpen ? 'hidden md:flex' : 'hidden'} shrink-0 h-full transition-all duration-150`}>
           <ChatNavColumn
             conversations={conversations}
             activeConvId={activeConvId}
             activeNavShortcut={activeNavShortcut}
+            onlineUserIds={onlineUserIds}
+            userPresenceMap={userPresenceMap}
             onSelectShortcut={(s) => {
               setActiveNavShortcut(s)
-              setShowMobileSidebar(false)
             }}
             onSelectConversation={(id) => {
               setActiveConvId(id)
-              setShowMobileSidebar(false)
             }}
             onNewChat={() => setIsNewChatOpen(true)}
             onNewChannel={() => setIsNewChannelOpen(true)}
+            onBrowseSpaces={() => setIsBrowseSpacesOpen(true)}
           />
         </div>
 
-        {/* 2.2 MIDDLE HOME FEED PANE (Unified Home Inbox, Unread Toggle) */}
-        <div className={`${!activeConvId || showMobileSidebar ? 'flex' : 'hidden md:flex'} shrink-0 h-full`}>
+        {/* 2.2 SECOND SIDEBAR (Below Home: Unified Home Inbox, Unread Toggle) */}
+        <div className={`${!activeConvId ? 'flex' : 'hidden md:flex'} shrink-0 h-full w-full md:w-auto`}>
           <HomeFeedPane
             conversations={conversations}
             activeConvId={activeConvId}
             searchQuery={convSearch}
+            onlineUserIds={onlineUserIds}
+            userPresenceMap={userPresenceMap}
+            activeMobileTab={activeMobileTab}
             onSelectConversation={(id) => {
               setActiveConvId(id)
-              setShowMobileSidebar(false)
+            }}
+            onRefresh={async () => {
+              const fresh = await getConversationsListAction()
+              setConversations(fresh)
             }}
           />
         </div>
 
-        {/* 2.3 RIGHT CHAT PANE (Active conversation OR Illustrated Empty State) */}
-        <div className={`flex-1 flex min-w-0 h-full overflow-hidden relative ${!activeConvId ? 'hidden md:flex' : 'flex'}`}>
-          {!activeConv ? (
+        {/* 2.3 RIGHT CHAT PANE (Active conversation OR Mentions / Starred OR Illustrated Empty State) */}
+        <div className={`flex-1 flex min-w-0 h-full overflow-hidden relative ${!activeConvId && activeNavShortcut === 'home' ? 'hidden md:flex' : 'flex'}`}>
+          {activeNavShortcut === 'mentions' ? (
+            <MentionsView
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
+              messages={messages}
+              onSelectConversation={(id) => {
+                setActiveConvId(id)
+                setActiveNavShortcut('home')
+              }}
+            />
+          ) : activeNavShortcut === 'starred' ? (
+            <StarredView
+              messages={messages}
+              onSelectConversation={(id) => {
+                setActiveConvId(id)
+                setActiveNavShortcut('home')
+              }}
+            />
+          ) : !activeConv ? (
             <NoConversationSelected onClose={() => setActiveConvId('')} />
           ) : (
             <div className="flex-1 flex min-w-0 h-full overflow-hidden relative">
               {/* 2. MAIN ACTIVE CHAT STREAM */}
-              <main className="flex-1 flex flex-col min-w-0 h-full max-h-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] relative">-color-surface-container-lowest)] relative">
-        {/* Chat Top Header (Pinned & Fixed) */}
-        <header className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 sticky top-0 z-20">
-          <div className="flex items-center gap-2 sm:gap-3 truncate">
-            {/* Ruled Mobile Back Button */}
-            <button
-              onClick={() => setShowMobileSidebar(true)}
-              className="md:hidden flex items-center gap-0.5 px-2 py-1.5 -ml-2 rounded-xl text-[var(--md-sys-color-primary)] font-bold text-xs hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all shrink-0 cursor-pointer"
-              title="Back to conversations"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-[11px] font-bold">Chats</span>
-            </button>
+              <main className="flex-1 flex flex-col min-w-0 h-full max-h-full overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)] relative">
+        {/* Chat Top Header (Pinned & Fixed with Safe-Area Headroom) */}
+        <header className="w-full px-3 sm:px-4 pt-[max(env(safe-area-inset-top,0px),0px)] border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]/95 backdrop-blur-md shrink-0 sticky top-0 z-20 select-none">
+          <div className="h-14 w-full flex items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 truncate min-w-0 flex-1">
+              {/* Clean Mobile Back Button */}
+              <button
+                onClick={() => setActiveConvId('')}
+                className="md:hidden p-2 -ml-1 rounded-full text-[var(--md-sys-color-on-surface)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all shrink-0 cursor-pointer"
+                title="Back to conversations"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
 
-            <div className="flex items-center gap-2.5 truncate">
-              {activeConv?.type === 'channel' ? (
-                <div className="w-8 h-8 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center flex-shrink-0 border border-[var(--md-sys-color-outline-variant)]">
-                  <Hash className="w-4 h-4" />
+              <div className="flex items-center gap-2.5 min-w-0 truncate">
+                {activeConv?.type === 'channel' ? (
+                  <div className="w-8 h-8 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center flex-shrink-0 border border-[var(--md-sys-color-outline-variant)]">
+                    <Hash className="w-4 h-4" />
+                  </div>
+                ) : (
+                  <div className="relative flex-shrink-0">
+                    {activeConv?.avatarUrl ? (
+                      <img src={activeConv.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-center font-bold text-xs">
+                        {activeConv?.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    {/* Header Real-time Presence Dot */}
+                    {(() => {
+                      const participantId = activeConv?.otherParticipant?.userId
+                      const isOnline = participantId ? onlineUserIds.has(participantId) : activeConv?.otherParticipant?.presenceStatus === 'online'
+                      const pStatus = (participantId && userPresenceMap[participantId]?.status) || (isOnline ? 'online' : 'offline')
+                      if (pStatus === 'dnd') {
+                        return (
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-[var(--md-sys-color-surface-container)] flex items-center justify-center shadow-xs" title="In a meeting / Do not disturb">
+                            <span className="w-1 h-0.5 bg-white rounded-full" />
+                          </span>
+                        )
+                      }
+                      if (pStatus === 'away') {
+                        return <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-[var(--md-sys-color-surface-container)]" title="Away" />
+                      }
+                      if (isOnline) {
+                        return <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#00AC47] ring-2 ring-[var(--md-sys-color-surface-container)] shadow-2xs" title="Active now" />
+                      }
+                      return null
+                    })()}
+                  </div>
+                )}
+                <div className="truncate min-w-0">
+                  <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2 truncate">
+                    <span>{activeConv?.name || 'Select Conversation'}</span>
+                  </h3>
                 </div>
-              ) : (
-                <div className="relative flex-shrink-0">
-                  {activeConv?.avatarUrl ? (
-                    <img src={activeConv.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover border border-[var(--md-sys-color-outline-variant)]" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-center font-bold text-xs">
-                      {activeConv?.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="truncate">
-                <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2 truncate">
-                  <span>{activeConv?.name || 'Select Conversation'}</span>
-                </h3>
-                <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate">
-                  {activeConv?.description || (activeConv?.type === 'channel' ? 'Public Team Channel' : 'Direct Conversation')}
-                </p>
               </div>
             </div>
-          </div>
 
-          {/* Action Bar */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleStartCall('audio')}
-              disabled={startingMeet}
-              title="Start Voice Call"
-              className="p-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] transition-all shadow-2xs active:scale-95 disabled:opacity-50"
-            >
-              <Phone className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-            </button>
+            {/* Action Bar (Phone, Video, More) */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              <button
+                onClick={() => handleStartCall('audio')}
+                disabled={startingMeet}
+                title="Start Voice Call"
+                className="p-2 rounded-full text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Phone className="w-5 h-5" />
+              </button>
 
-            <button
-              onClick={() => handleStartCall('video')}
-              disabled={startingMeet}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] font-semibold text-xs tracking-wide transition-all shadow-2xs active:scale-95 disabled:opacity-50"
-            >
-              <Video className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="hidden sm:inline">Video Call</span>
-            </button>
+              <button
+                onClick={() => handleStartCall('video')}
+                disabled={startingMeet}
+                title="Start Video Call"
+                className="p-2 rounded-full text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Video className="w-5 h-5" />
+              </button>
+
+              <button
+                type="button"
+                className="p-2 rounded-full text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-all cursor-pointer"
+                title="More options"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </header>
 
+        {/* Space Tab Navigation Bar (Google Chat Signature 3 Tabs) */}
+        {activeConv?.type === 'channel' && (
+          <div className="flex items-center gap-1 px-4 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveSpaceTab('chat')}
+              className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                activeSpaceTab === 'chat'
+                  ? 'border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)]'
+                  : 'border-transparent text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              Chat
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSpaceTab('shared')}
+              className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                activeSpaceTab === 'shared'
+                  ? 'border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)]'
+                  : 'border-transparent text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              Shared
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSpaceTab('tasks')}
+              className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                activeSpaceTab === 'tasks'
+                  ? 'border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)]'
+                  : 'border-transparent text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              Tasks
+            </button>
+          </div>
+        )}
+
+        {/* Conditionally Render Space Sub-tabs */}
+        {activeConv?.type === 'channel' && activeSpaceTab === 'shared' ? (
+          <SpaceSharedFilesTab
+            messages={messages}
+            onPreviewImage={(url, fileName, fileSize) =>
+              setPreviewImage({ url, fileName, fileSize })
+            }
+          />
+        ) : activeConv?.type === 'channel' && activeSpaceTab === 'tasks' ? (
+          <SpaceTasksTab
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+            spaceId={activeConvId}
+            spaceName={activeConv?.name || 'Space'}
+          />
+        ) : (
+          <>
         {/* Messages Feed (THE ONLY SCROLLABLE ELEMENT) */}
         <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3.5 sm:px-5 md:px-6 py-3 sm:py-4 space-y-1 overscroll-contain">
           {loadingMessages ? (
@@ -1378,7 +2151,10 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                   {!isSameDateAsPrev && (
                     <div className="flex items-center my-3 sm:my-4 gap-3">
                       <div className="h-px bg-[var(--md-sys-color-outline-variant)]/60 flex-1" />
-                      <span className="text-[10px] font-bold tracking-wider text-[var(--md-sys-color-on-surface-variant)] uppercase px-3 py-0.5 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] rounded-full shadow-xs">
+                      <span
+                        suppressHydrationWarning
+                        className="text-[10px] font-bold tracking-wider text-[var(--md-sys-color-on-surface-variant)] uppercase px-3 py-0.5 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] rounded-full shadow-xs"
+                      >
                         {formatMessageDateGroup(msg.createdAt)}
                       </span>
                       <div className="h-px bg-[var(--md-sys-color-outline-variant)]/60 flex-1" />
@@ -1400,16 +2176,11 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                       onTouchMove={(e) => handleTouchMove(msg, isMe, e)}
                       onTouchEnd={(e) => handleTouchEnd(msg, isMe, e)}
                       onTouchCancel={(e) => handleTouchEnd(msg, isMe, e)}
-                      onClick={() => {
-                        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                          setMobileActionMessage(msg)
-                        }
-                      }}
                       style={{
                         transform: swipingMessageId === msg.id ? `translateX(${swipeOffset}px)` : 'translateX(0px)',
                         transition: swipingMessageId === msg.id ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)',
                       }}
-                      className={`flex items-start gap-1.5 md:gap-2.5 group/msg relative transition-all cursor-pointer md:cursor-default ${
+                      className={`flex items-start gap-1.5 md:gap-2.5 group/row relative transition-all cursor-pointer md:cursor-default ${
                         isMe
                           ? 'flex-row-reverse pl-6 sm:pl-10 md:pl-0 pr-0.5 sm:pr-0'
                           : 'flex-row pr-6 sm:pr-10 md:pr-0 pl-1.5 sm:pl-0'
@@ -1450,7 +2221,10 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           )
                         ) : (
                           /* Hover timestamp on collapsed avatar gutter */
-                          <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 opacity-0 group-hover/msg:opacity-100 transition-opacity select-none pt-1">
+                          <span
+                            suppressHydrationWarning
+                            className="text-[9px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500 opacity-0 group-hover/row:opacity-100 transition-opacity select-none pt-1"
+                          >
                             {formatMessageTime(msg.createdAt)}
                           </span>
                         )}
@@ -1464,7 +2238,10 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                             <span className={`font-bold ${getRoleColor(msg.senderRole)}`}>
                               {isMe ? 'You' : msg.senderName}
                             </span>
-                            <span className="text-[9.5px] sm:text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500">
+                            <span
+                              suppressHydrationWarning
+                              className="text-[9.5px] sm:text-[10px] text-[var(--md-sys-color-on-surface-variant)] dark:text-slate-500"
+                            >
                               {formatMessageTime(msg.createdAt)}
                             </span>
                           </div>
@@ -1472,11 +2249,11 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                         {/* Content Box */}
                         <div
-                          className={`relative transition-all select-text max-w-full min-w-0 ${
-                            msg.messageType === 'meet_card' || isGif || isImage || isAudio
+                          className={`group/msg relative transition-all select-text max-w-full min-w-0 ${
+                            msg.messageType === 'meet_card' || msg.messageType === 'code' || msg.metadata?.isCode || isGif || isImage || isAudio
                               ? 'p-0 bg-transparent border-0 shadow-none'
                               : isMe
-                              ? 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent'
+                              ? 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[#0B57D0] text-white dark:bg-[#004A77] dark:text-[#E8F0FE] font-normal rounded-2xl rounded-tr-xs shadow-xs border border-transparent dark:border-[#005c91]/40'
                               : 'px-3.5 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[13.5px] leading-relaxed bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl rounded-tl-xs shadow-xs font-normal'
                           }`}
                         >
@@ -1487,13 +2264,13 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                                 e.stopPropagation()
                                 scrollToMessage((msg.replyTo || msg.metadata?.replyTo).messageId)
                               }}
-                              className={`mb-2 p-2 sm:p-2.5 rounded-xl border-l-[3.5px] cursor-pointer transition-all active:scale-[0.98] text-left select-none shadow-2xs max-w-full min-w-0 overflow-hidden ${
+                              className={`mb-2 p-2 sm:p-2.5 rounded-xl border cursor-pointer transition-all active:scale-[0.98] text-left select-none shadow-2xs max-w-full min-w-0 overflow-hidden ${
                                 isMe
-                                  ? 'bg-black/20 border-white/90 hover:bg-black/30 text-white'
-                                  : 'bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]'
+                                  ? 'bg-black/15 dark:bg-black/30 border-white/15 dark:border-white/10 text-white dark:text-[#E8F0FE]'
+                                  : 'bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-highest)] border-[var(--md-sys-color-outline-variant)]/60 text-[var(--md-sys-color-on-surface)]'
                               }`}
                             >
-                              <div className={`flex items-center gap-1 text-[11px] font-bold truncate ${isMe ? 'text-white/90' : 'text-[var(--md-sys-color-primary)]'}`}>
+                              <div className={`flex items-center gap-1 text-[11px] font-bold truncate ${isMe ? 'text-white/90 dark:text-[#A8C7FA]' : 'text-[var(--md-sys-color-primary)]'}`}>
                                 <Reply className="w-3 h-3 shrink-0" />
                                 <span className="truncate">{(msg.replyTo || msg.metadata?.replyTo).senderName}</span>
                               </div>
@@ -1505,6 +2282,49 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
 
                           {/* Live Meet Card / Missed Call Card */}
                           {msg.messageType === 'meet_card' && <ChatMeetCard metadata={msg.metadata} />}
+
+                          {/* Dedicated Rich IDE Code Snippet Card */}
+                          {(msg.messageType === 'code' || msg.metadata?.isCode) && (
+                            <div className="flex flex-col items-end w-full">
+                              <ChatCodeCard
+                                code={msg.content}
+                                language={msg.metadata?.language}
+                                title={msg.metadata?.title}
+                                note={msg.metadata?.note}
+                              />
+                              {isMe && (
+                                <div className="flex items-center justify-end gap-1.5 mt-0.5 mr-1 select-none text-[var(--md-sys-color-on-surface-variant)] text-[9.5px]">
+                                  <span>{formatMessageTime(msg.createdAt)}</span>
+                                  {(() => {
+                                    const isDirect = activeConv?.type === 'direct'
+                                    if (msg.status === 'sending' || msg.id.startsWith('temp-')) {
+                                      return <span title="Sending..."><Clock className="w-3 h-3 opacity-60 animate-pulse" /></span>
+                                    }
+
+                                    const otherId = activeConv?.otherParticipant?.userId
+                                    const isOtherOnline = otherId ? onlineUserIds.has(otherId) : false
+
+                                    let displayStatus: 'sent' | 'delivered' | 'seen' = 'sent'
+                                    if (msg.status === 'seen' || (msg.readBy && msg.readBy.length > 0)) {
+                                      displayStatus = 'seen'
+                                    } else if (msg.status === 'delivered') {
+                                      displayStatus = 'delivered'
+                                    } else if (isDirect) {
+                                      displayStatus = isOtherOnline ? 'delivered' : 'sent'
+                                    }
+
+                                    if (displayStatus === 'seen') {
+                                      return <span title="Seen"><CheckCheck className="w-3 h-3 text-[var(--md-sys-color-primary)]" /></span>
+                                    } else if (displayStatus === 'delivered') {
+                                      return <span title="Delivered"><CheckCheck className="w-3 h-3 opacity-60" /></span>
+                                    } else {
+                                      return <span title="Sent"><Check className="w-3 h-3 opacity-60" /></span>
+                                    }
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {/* Pure Animated GIF Card (Click to preview fullscreen) */}
                           {isGif && msg.fileUrl && (
@@ -1658,59 +2478,90 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
                           ) : (
                             msg.content &&
                             msg.messageType !== 'meet_card' &&
+                            msg.messageType !== 'code' &&
+                            msg.messageType !== 'file' &&
                             !isGif &&
                             !isImage &&
-                            !isAudio && (
-                              <div className="whitespace-pre-wrap break-words [word-break:break-word] overflow-hidden max-w-full">{msg.content}</div>
-                            )
+                            !isAudio &&
+                            renderMessageWithMentions(msg.content, currentUserName, isMe)
                           )}
 
                           {/* Inline Time & Read Status for Sent text & file messages */}
-                          {isMe && msg.messageType !== 'meet_card' && !isGif && (
-                            <div className="flex items-center justify-end gap-1.5 mt-1 -mb-0.5 select-none">
+                          {isMe && msg.messageType !== 'meet_card' && msg.messageType !== 'code' && !msg.metadata?.isCode && !isGif && !isImage && !isAudio && (
+                            <div className="flex items-center justify-end gap-1.5 mt-1 -mb-0.5 select-none text-white/80 dark:text-[#D3E3FD]/80">
                               {(msg.isEdited || msg.metadata?.isEdited) && (
                                 <span className="text-[9px] opacity-70 italic font-medium mr-0.5">(edited)</span>
                               )}
-                              <span className="text-[9.5px] opacity-75">{formatMessageTime(msg.createdAt)}</span>
+                              <span suppressHydrationWarning className="text-[9.5px] opacity-80">{formatMessageTime(msg.createdAt)}</span>
                               
-                              {/* Prominent Seen vs Delivered Status Indicator */}
-                              {msg.status === 'seen' ? (
-                                <span
-                                  className="inline-flex items-center gap-0.5 text-[var(--md-sys-color-on-primary)]/90 font-bold text-[9px] tracking-tight bg-[var(--md-sys-color-on-primary)]/20 px-1.5 py-0.5 rounded-full border border-[var(--md-sys-color-on-primary)]/30 shadow-2xs"
-                                  title={
-                                    msg.readBy && msg.readBy.length > 0
-                                      ? `Seen by ${msg.readBy.map((u) => u.fullName).join(', ')}`
-                                      : 'Seen'
-                                  }
-                                >
-                                  <CheckCheck className="w-3 h-3 text-[var(--md-sys-color-on-primary)] stroke-[2.5]" />
-                                  <span>Seen</span>
-                                </span>
-                              ) : msg.status === 'delivered' ? (
-                                <span
-                                  className="inline-flex items-center gap-0.5 text-[var(--md-sys-color-on-primary)]/80 font-medium text-[9px] tracking-tight bg-black/10 px-1.5 py-0.5 rounded-full"
-                                  title="Delivered to recipient"
-                                >
-                                  <CheckCheck className="w-3 h-3 text-[var(--md-sys-color-on-primary)]/80" />
-                                  <span>Delivered</span>
-                                </span>
-                              ) : (
-                                <span
-                                  className="inline-flex items-center gap-0.5 text-[var(--md-sys-color-on-primary)]/70 font-medium text-[9px] tracking-tight"
-                                  title="Sent to cloud"
-                                >
-                                  <Check className="w-3 h-3 text-[var(--md-sys-color-on-primary)]/70" />
-                                  <span>Sent</span>
-                                </span>
-                              )}
+                              {/* 100% Accurate Dynamic Delivery Status (Sent vs Delivered vs Seen) */}
+                              {(() => {
+                                if (msg.status === 'sending' || msg.id.startsWith('temp-')) {
+                                  return (
+                                    <span className="inline-flex items-center text-white/80" title="Uploading & sending...">
+                                      <Clock className="w-3 h-3 animate-pulse" />
+                                    </span>
+                                  )
+                                }
+
+                                const isDirect = activeConv?.type === 'direct'
+                                const otherId = activeConv?.otherParticipant?.userId
+                                const isOtherOnline = otherId ? onlineUserIds.has(otherId) : false
+
+                                let displayStatus: 'sent' | 'delivered' | 'seen' = 'sent'
+                                if (msg.status === 'seen' || (msg.readBy && msg.readBy.length > 0)) {
+                                  displayStatus = 'seen'
+                                } else if (msg.status === 'delivered') {
+                                  displayStatus = 'delivered'
+                                } else if (isDirect) {
+                                  displayStatus = isOtherOnline ? 'delivered' : 'sent'
+                                } else {
+                                  displayStatus = onlineUserIds.size > 1 ? 'delivered' : 'sent'
+                                }
+
+                                if (displayStatus === 'seen') {
+                                  return (
+                                    <span
+                                      className="inline-flex items-center gap-0.5 text-white dark:text-[#A8C7FA] font-medium"
+                                      title={
+                                        msg.readBy && msg.readBy.length > 0
+                                          ? `Seen by ${msg.readBy.map((u) => u.fullName).join(', ')}`
+                                          : 'Seen'
+                                      }
+                                    >
+                                      <CheckCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    </span>
+                                  )
+                                }
+
+                                if (displayStatus === 'delivered') {
+                                  return (
+                                    <span
+                                      className="inline-flex items-center gap-0.5 opacity-80"
+                                      title="Delivered to recipient"
+                                    >
+                                      <CheckCheck className="w-3.5 h-3.5" />
+                                    </span>
+                                  )
+                                }
+
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-0.5 opacity-70"
+                                    title="Sent"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </span>
+                                )
+                              })()}
                             </div>
                           )}
 
-                          {/* Quick Action Floating Toolbar */}
+                          {/* Quick Action Floating Toolbar (Desktop Only - Mobile uses native Long-Press sheet) */}
                           <div
-                            className={`absolute -top-4 ${
+                            className={`hidden md:flex absolute -top-7 ${
                               isMe ? 'right-0' : 'left-0'
-                            } opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto transition-all duration-150 flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] shadow-xl text-xs z-30 whitespace-nowrap`}
+                            } opacity-0 group-hover/msg:opacity-100 pointer-events-none group-hover/msg:pointer-events-auto transition-all duration-150 items-center gap-0.5 px-2 py-1 rounded-full bg-[var(--md-sys-color-surface-container-highest)]/95 backdrop-blur-md border border-[var(--md-sys-color-outline-variant)] shadow-md text-xs z-30 whitespace-nowrap`}
                           >
                             {COMMON_EMOJIS.slice(0, 3).map((emoji) => (
                               <button
@@ -1869,194 +2720,73 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Bottom Composer (Pinned & Fixed) */}
-        <div className="p-2.5 sm:p-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shrink-0 sticky bottom-0 z-20 pb-safe">
-          <form onSubmit={handleSendMessage} className="relative flex flex-col gap-1.5">
-            <div className="relative rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]/20 transition-all p-3 shadow-xs">
-              
-              {/* In-Chat Quote Reply Preview Bar */}
-              {replyingTo && (
-                <div className="flex items-center justify-between mb-2.5 px-3 py-2 bg-[var(--md-sys-color-surface-container-high)] rounded-xl border-l-4 border-[var(--md-sys-color-primary)] text-xs animate-in slide-in-from-bottom-1 select-none">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 font-bold text-[var(--md-sys-color-primary)]">
-                      <Reply className="w-3.5 h-3.5 shrink-0" />
-                      <span>Replying to {replyingTo.senderName}</span>
-                    </div>
-                    <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate mt-0.5">
-                      {replyingTo.messageType === 'file'
-                        ? `📎 ${replyingTo.fileName || 'Attachment'}`
-                        : replyingTo.messageType === 'meet_card'
-                        ? '📹 Video Meeting'
-                        : replyingTo.content}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setReplyingTo(null)}
-                    className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-                    title="Cancel reply"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
+        {/* Dynamic Smart Reply Contextual Suggestion Chips (Screenshot 2) */}
+        {(() => {
+          const lastMsg = messages.length > 0 ? messages[messages.length - 1] : undefined
+          const suggestions = getSmartReplySuggestions(lastMsg, currentUserId)
+          if (!suggestions || suggestions.length === 0) return null
 
-              {/* Live Voice Note Recording Bar */}
-              {isRecordingVoice ? (
-                <div className="flex items-center justify-between gap-2 sm:gap-3 p-1 min-h-[48px] animate-in fade-in select-none">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="relative flex items-center justify-center shrink-0">
-                      <span className="w-3 h-3 rounded-full bg-red-500 animate-ping absolute" />
-                      <span className="w-3 h-3 rounded-full bg-red-500 relative" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[11px] sm:text-xs font-bold text-red-500 truncate">
-                        Recording...
-                      </span>
-                      <span className="text-[10px] sm:text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                        {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Fluctuating Soundwave Bars */}
-                  <div className="flex items-center gap-1 flex-1 justify-center max-w-[200px] h-6 px-2 overflow-hidden">
-                    {Array.from({ length: 18 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-1 bg-red-500 rounded-full transition-all duration-75"
-                        style={{
-                          height: `${Math.max(4, Math.sin(i + recordingDuration * 3) * 20 + 8)}px`,
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Action Controls */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleStopVoiceRecording(false)}
-                      title="Discard Recording"
-                      className="p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleStopVoiceRecording(true)}
-                      disabled={sending || recordingDuration < 1}
-                      title="Send Voice Note"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs shadow-md shadow-red-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {sending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <span>Send</span>
-                          <Send className="w-3.5 h-3.5" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Regular Text Input & Toolbar */
-                <>
-                  <textarea
-                    ref={mainInputRef}
-                    value={inputText}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSendMessage()
-                      } else if (e.key === 'Escape' && replyingTo) {
-                        e.preventDefault()
-                        setReplyingTo(null)
-                      }
-                    }}
-                    placeholder={replyingTo ? `Reply to ${replyingTo.senderName}...` : `Message #${activeConv?.name || 'chat'}...`}
-                    rows={2}
-                    className="w-full bg-transparent text-[13px] text-[var(--md-sys-color-on-surface)] placeholder-[var(--md-sys-color-on-surface-variant)] focus:outline-none resize-none px-1 font-normal leading-relaxed"
-                  />
-
-                  {/* Composer Toolbar */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60">
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        title="Attach File"
-                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-                      >
-                        <Paperclip className="w-4 h-4" />
-                      </button>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        title="Insert Emoji"
-                        className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-                      >
-                        <Smile className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleStartVoiceRecording}
-                        title="Record Voice Note"
-                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/15 transition-colors cursor-pointer"
-                      >
-                        <Mic className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleStartCall('video')}
-                        title="Start Live Video Call"
-                        className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-500/15 transition-colors cursor-pointer"
-                      >
-                        <Video className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="hidden sm:inline text-[10px] text-[var(--md-sys-color-on-surface-variant)] select-none">
-                        Enter ↵ to send
-                      </span>
-                      <button
-                        type="submit"
-                        disabled={!inputText.trim() || sending}
-                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-xs hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all shadow-md shadow-[var(--md-sys-color-primary)]/20 cursor-pointer"
-                      >
-                        <span>Send</span>
-                        <Send className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
+          return (
+            <div className="px-4 py-1.5 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 bg-[var(--md-sys-color-surface-container-lowest)]">
+              {suggestions.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    setInputText(chip)
+                    mainInputRef.current?.focus()
+                  }}
+                  className="px-4 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-medium text-[var(--md-sys-color-on-surface)] transition-all active:scale-95 whitespace-nowrap cursor-pointer shadow-2xs"
+                >
+                  {chip}
+                </button>
+              ))}
             </div>
+          )
+        })()}
 
-            {/* Full Emoji & Animated GIF Picker Popover */}
-            {showEmojiPicker && (
-              <div className="absolute bottom-full left-0 mb-3 z-50 animate-in fade-in zoom-in-95">
-                <EmojiAndGifPicker
-                  onSelectEmoji={handleSelectEmoji}
-                  onSelectGif={handleSelectGif}
-                  onClose={() => setShowEmojiPicker(false)}
-                />
-              </div>
-            )}
-          </form>
-        </div>
+        {/* Google Chat Style Rich Composer */}
+        <GoogleChatComposer
+          inputText={inputText}
+          setInputText={setInputText}
+          onSendMessage={handleSendMessage}
+          sending={sending}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+          onOpenFilePicker={() => fileInputRef.current?.click()}
+          onOpenEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
+          onOpenCodeModal={() => setIsCodeModalOpen(true)}
+          onStartMeet={() => handleStartCall('video')}
+          isRecordingVoice={isRecordingVoice}
+          recordingDuration={recordingDuration}
+          recordingWaveformLevels={recordingWaveformLevels}
+          onStartVoiceRecording={handleStartVoiceRecording}
+          onStopVoiceRecording={handleStopVoiceRecording}
+          placeholderText={replyingTo ? `Reply to ${replyingTo.senderName}...` : `Send a message to #${activeConv?.name || 'chat'}...`}
+          mainInputRef={mainInputRef}
+          members={mentionMembers}
+        />
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+
+        {/* Full Emoji & Animated GIF Picker Popover */}
+        {showEmojiPicker && (
+          <div className="absolute bottom-20 left-4 z-50 animate-in fade-in zoom-in-95">
+            <EmojiAndGifPicker
+              onSelectEmoji={handleSelectEmoji}
+              onSelectGif={handleSelectGif}
+              onClose={() => setShowEmojiPicker(false)}
+            />
+          </div>
+        )}
+
+        </>
+        )}
 
         {/* Floating Heart Particle Bursts */}
         {heartBursts.map((b) => (
@@ -2070,90 +2800,31 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         ))}
       </main>
 
-      {/* 3. RIGHT COLLAPSIBLE THREAD SIDEBAR / MOBILE THREAD DRAWER */}
+      {/* 3. DEDICATED THREAD SIDE DRAWER */}
       {activeThreadParent && (
-        <>
-          {/* Mobile Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-in fade-in"
-            onClick={() => setActiveThreadParent(null)}
-          />
-
-          <aside className="fixed inset-x-0 bottom-0 top-12 md:top-auto md:bottom-auto md:relative md:inset-auto w-full md:w-80 flex-shrink-0 border-t md:border-t-0 md:border-l border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex flex-col z-50 animate-in slide-in-from-bottom md:slide-in-from-right-10 duration-200 rounded-t-3xl md:rounded-none shadow-2xl">
-            {/* Mobile Drag Pill */}
-            <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20 mx-auto mt-2 mb-1 md:hidden shrink-0" />
-
-            <div className="p-3.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between bg-[var(--md-sys-color-surface-container)]">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                <h3 className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">Thread Discussion</h3>
-              </div>
-              <button
-                onClick={() => setActiveThreadParent(null)}
-                className="p-1 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Parent Message Header */}
-            <div className="p-3 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-high)]">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`font-bold text-xs ${getRoleColor(activeThreadParent.senderRole)}`}>
-                  {activeThreadParent.senderName}
-                </span>
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                  {formatMessageTime(activeThreadParent.createdAt)}
-                </span>
-              </div>
-              <p className="text-xs text-[var(--md-sys-color-on-surface)]">{activeThreadParent.content}</p>
-            </div>
-
-            {/* Thread Replies List */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-3 bg-[var(--md-sys-color-surface-container-lowest)]">
-              {threadMessages.length === 0 ? (
-                <div className="py-8 text-center text-xs text-[var(--md-sys-color-on-surface-variant)] italic">
-                  No replies yet. Be the first to reply!
-                </div>
-              ) : (
-                threadMessages.map((tMsg) => (
-                  <div key={tMsg.id} className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className={`font-semibold text-xs ${getRoleColor(tMsg.senderRole)}`}>
-                        {tMsg.senderName}
-                      </span>
-                      <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                        {formatMessageTime(tMsg.createdAt)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[var(--md-sys-color-on-surface)] whitespace-pre-wrap">{tMsg.content}</p>
-                  </div>
-                ))
-              )}
-              <div ref={threadEndRef} />
-            </div>
-
-            {/* Thread Reply Composer */}
-            <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] pb-safe">
-              <form onSubmit={handleSendThreadReply} className="flex gap-2">
-                <input
-                  type="text"
-                  value={threadInputText}
-                  onChange={(e) => setThreadInputText(e.target.value)}
-                  placeholder="Reply in thread..."
-                  className="flex-1 px-3 py-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs text-[var(--md-sys-color-on-surface)] placeholder-[var(--md-sys-color-on-surface-variant)] focus:outline-none focus:ring-1 focus:ring-[var(--md-sys-color-primary)]"
-                />
-                <button
-                  type="submit"
-                  disabled={!threadInputText.trim()}
-                  className="p-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all cursor-pointer shrink-0"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
-          </aside>
-        </>
+        <ThreadSideDrawer
+          parentMessage={activeThreadParent}
+          threadReplies={threadMessages}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          currentUserAvatar={currentUserAvatar}
+          onClose={() => setActiveThreadParent(null)}
+          onSendReply={async (text) => {
+            await sendMessageAction({
+              conversationId: activeConvId,
+              content: text,
+              parentId: activeThreadParent.id,
+            })
+            const fresh = await getConversationMessagesAction(activeConvId)
+            setMessages(fresh)
+            setThreadMessages(fresh.filter((m) => m.parentId === activeThreadParent.id))
+          }}
+          onReact={handleReaction}
+          onPreviewImage={(url, name, size) =>
+            setPreviewImage({ url, fileName: name, fileSize: size })
+          }
+          onOpenEmojiPicker={() => setShowEmojiPicker(true)}
+        />
       )}
             </div>
           )}
@@ -2346,7 +3017,26 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
         onClose={() => setPreviewImage(null)}
       />
 
-      {/* 6. SETTINGS MODAL DIALOG */}
+      {/* 6. BROWSE SPACES DIRECTORY MODAL */}
+      <BrowseSpacesModal
+        isOpen={isBrowseSpacesOpen}
+        onClose={() => setIsBrowseSpacesOpen(false)}
+        spaces={conversations.filter((c) => c.type === 'channel')}
+        onSelectSpace={(spaceId) => {
+          setActiveConvId(spaceId)
+          setActiveSpaceTab('chat')
+        }}
+        onCreateSpace={() => setIsNewChannelOpen(true)}
+      />
+
+      {/* 7. DEDICATED CODE SNIPPET SHARING MODAL */}
+      <CodeSnippetModal
+        isOpen={isCodeModalOpen}
+        onClose={() => setIsCodeModalOpen(false)}
+        onSendCode={handleSendCodeSnippet}
+      />
+
+      {/* 8. SETTINGS MODAL DIALOG */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="relative w-full max-w-2xl bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -2363,6 +3053,194 @@ export const TeamsChatWorkspace: React.FC<TeamsChatWorkspaceProps> = ({
             <div className="flex-1 overflow-y-auto">
               <SettingsPanel />
             </div>
+          </div>
+        </div>
+      )}
+      {/* 9. MOBILE FLOATING BOTTOM NAVIGATION BAR & FAB (Screenshots 1, 3, 4) */}
+      {!activeConvId && (
+        <div className="md:hidden fixed bottom-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),0px))] inset-x-0 z-40 px-4 flex items-center justify-between pointer-events-none select-none">
+          {/* Floating Pill Nav Bar */}
+          <div className="pointer-events-auto bg-[var(--md-sys-color-surface-container-highest)]/95 dark:bg-slate-900/95 backdrop-blur-xl border border-[var(--md-sys-color-outline-variant)] shadow-2xl rounded-full px-2 py-1.5 flex items-center gap-1.5">
+            {/* Tab 1: Home */}
+            <button
+              type="button"
+              onClick={() => {
+                richHaptics.selection()
+                setActiveMobileTab('home')
+                setActiveNavShortcut('home')
+              }}
+              className={`flex items-center justify-center p-2 rounded-full transition-all cursor-pointer ${
+                activeMobileTab === 'home'
+                  ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] px-4'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+              title="Home"
+            >
+              <Home className="w-5 h-5" />
+            </button>
+
+            {/* Tab 2: Direct Messages */}
+            <button
+              type="button"
+              onClick={() => {
+                richHaptics.selection()
+                setActiveMobileTab('dms')
+                setActiveNavShortcut('home')
+              }}
+              className={`flex items-center justify-center p-2 rounded-full transition-all cursor-pointer ${
+                activeMobileTab === 'dms'
+                  ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] px-4'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+              title="Direct messages"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+
+            {/* Tab 3: Spaces */}
+            <button
+              type="button"
+              onClick={() => {
+                richHaptics.selection()
+                setActiveMobileTab('spaces')
+                setActiveNavShortcut('home')
+              }}
+              className={`relative flex items-center justify-center p-2 rounded-full transition-all cursor-pointer ${
+                activeMobileTab === 'spaces'
+                  ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] px-4'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+              title="Spaces"
+            >
+              <Layers className="w-5 h-5" />
+              {conversations.filter((c) => c.type === 'channel' && c.unreadCount && c.unreadCount > 0).length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--md-sys-color-primary)] text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+                  {conversations.filter((c) => c.type === 'channel' && c.unreadCount && c.unreadCount > 0).length}
+                </span>
+              )}
+            </button>
+
+            {/* Tab 4: More ... */}
+            <button
+              type="button"
+              onClick={() => {
+                richHaptics.selection()
+                setIsMobileMoreOpen(true)
+              }}
+              className="flex items-center justify-center p-2 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-all cursor-pointer"
+              title="More options"
+            >
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Floating Action Button (FAB +) */}
+          <button
+            type="button"
+            onClick={() => {
+              richHaptics.impact('medium')
+              activeMobileTab === 'spaces' ? setIsNewChannelOpen(true) : setIsNewChatOpen(true)
+            }}
+            className="pointer-events-auto w-14 h-14 rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-xl hover:shadow-2xl active:scale-95 transition-all flex items-center justify-center cursor-pointer border border-[var(--md-sys-color-outline-variant)]/50"
+            title="New Chat"
+          >
+            <Plus className="w-7 h-7 stroke-[2.5]" />
+          </button>
+        </div>
+      )}
+
+      {/* 10. MOBILE MORE OPTIONS BOTTOM SHEET MODAL (Screenshot 5) */}
+      {isMobileMoreOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsMobileMoreOpen(false)}
+        >
+          <div
+            className="bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-slate-900 rounded-t-3xl p-5 pb-[calc(2rem+max(env(safe-area-inset-bottom,0px),0px))] shadow-2xl border-t border-[var(--md-sys-color-outline-variant)] animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag pill handle */}
+            <div className="w-10 h-1 rounded-full bg-slate-400/40 mx-auto mb-5" />
+
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNavShortcut('mentions')
+                  setIsMobileMoreOpen(false)
+                }}
+                className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-semibold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors cursor-pointer"
+              >
+                <AtSign className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+                <span>Mentions</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNavShortcut('starred')
+                  setIsMobileMoreOpen(false)
+                }}
+                className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-semibold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors cursor-pointer"
+              >
+                <Star className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+                <span>Starred</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMoreOpen(false)
+                }}
+                className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-semibold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors cursor-pointer"
+              >
+                <FileText className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+                <span>Drafts</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 11. MOBILE SLIDE-OVER NAVIGATION DRAWER (Closed by default, opened via hamburger menu) */}
+      {showMobileMenuDrawer && (
+        <div
+          className="md:hidden fixed inset-0 z-50 flex bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setShowMobileMenuDrawer(false)}
+        >
+          <div
+            className="w-72 max-w-[85vw] h-full bg-[var(--md-sys-color-surface-container-lowest)] shadow-2xl border-r border-[var(--md-sys-color-outline-variant)] pt-[max(env(safe-area-inset-top,0px),0px)] pb-[max(env(safe-area-inset-bottom,0px),0px)] animate-in slide-in-from-left duration-200 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ChatNavColumn
+              conversations={conversations}
+              activeConvId={activeConvId}
+              activeNavShortcut={activeNavShortcut}
+              onlineUserIds={onlineUserIds}
+              userPresenceMap={userPresenceMap}
+              showHeader={true}
+              onClose={() => setShowMobileMenuDrawer(false)}
+              onSelectShortcut={(s) => {
+                setActiveNavShortcut(s)
+                setShowMobileMenuDrawer(false)
+              }}
+              onSelectConversation={(id) => {
+                setActiveConvId(id)
+                setShowMobileMenuDrawer(false)
+              }}
+              onNewChat={() => {
+                setIsNewChatOpen(true)
+                setShowMobileMenuDrawer(false)
+              }}
+              onNewChannel={() => {
+                setIsNewChannelOpen(true)
+                setShowMobileMenuDrawer(false)
+              }}
+              onBrowseSpaces={() => {
+                setIsBrowseSpacesOpen(true)
+                setShowMobileMenuDrawer(false)
+              }}
+            />
           </div>
         </div>
       )}

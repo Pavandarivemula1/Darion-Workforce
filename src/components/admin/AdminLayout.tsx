@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
-import { DynamicSidebar } from '@/components/ui/DynamicSidebar'
+import { DynamicSidebar, NavSection } from '@/components/ui/DynamicSidebar'
 import { useBranding } from '@/components/providers/BrandingProvider'
 import {
   LayoutDashboard,
@@ -30,6 +30,7 @@ import {
   CheckSquare,
   Paintbrush,
   Crown,
+  LucideIcon,
 } from 'lucide-react'
 
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -57,34 +58,74 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const isFullBleed = pathname.startsWith('/admin/messages') || pathname.startsWith('/admin/calendar')
 
-  // Full raw nav items mapped with their required module key
-  const rawNavItems: Array<{ label: string; href: string; icon: any; module: AppModule }> = [
-    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
-    { label: 'Teams Chat', href: '/admin/messages', icon: MessagesSquare, module: 'messages' },
-    { label: 'Calendar', href: '/admin/calendar', icon: CalendarDays, module: 'calendar' },
-    { label: 'SuperAdmin Console', href: '/admin/superadmin', icon: Crown, module: 'superadmin_console' },
-    { label: 'Task Reports', href: '/admin/tasks', icon: CheckSquare, module: 'tasks' },
-    { label: 'Video Meets', href: '/admin/meets', icon: Video, module: 'meets' },
-    { label: 'Candidates', href: '/admin/candidates', icon: Users, module: 'candidates' },
-    { label: 'Shifts', href: '/admin/shifts', icon: Clock, module: 'shifts' },
-    { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck, module: 'attendance' },
-    { label: 'Timesheet', href: '/admin/timesheet', icon: FileSpreadsheet, module: 'timesheet' },
-    { label: 'Leaves', href: '/admin/leaves', icon: Palmtree, module: 'leaves' },
-    { label: 'Payroll', href: '/admin/payroll', icon: Banknote, module: 'payroll' },
-    { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare, module: 'feedback' },
-    { label: 'Branding Studio', href: '/admin/settings/branding', icon: Paintbrush, module: 'branding' },
-    { label: 'Reset Requests', href: '/admin/reset-requests', icon: KeyRound, module: 'reset_requests' },
-    { label: 'Security', href: '/admin/security', icon: ShieldAlert, module: 'security' },
-    { label: 'Profile', href: '/admin/profile', icon: User, module: 'profile' },
+  // Raw nav sections with mapped modules and metadata
+  const rawSectionsConfig: Array<{
+    id: string
+    title: string
+    items: Array<{ label: string; href: string; icon: LucideIcon; desc: string; module: AppModule }>
+  }> = [
+    {
+      id: 'overview',
+      title: 'Overview & Core',
+      items: [
+        { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, desc: 'Central analytics & executive metrics', module: 'dashboard' },
+        { label: 'SuperAdmin Console', href: '/admin/superadmin', icon: Crown, desc: 'Telemetry, audit logs & system health', module: 'superadmin_console' },
+      ],
+    },
+    {
+      id: 'collaboration',
+      title: 'Communication & Team',
+      items: [
+        { label: 'Teams Chat', href: '/admin/messages', icon: MessagesSquare, desc: 'Real-time DMs & team channels', module: 'messages' },
+        { label: 'Video Meets', href: '/admin/meets', icon: Video, desc: 'Host & manage video conferences', module: 'meets' },
+        { label: 'Workforce Calendar', href: '/admin/calendar', icon: CalendarDays, desc: 'Master schedule & event planning', module: 'calendar' },
+        { label: 'Daily Task Reports', href: '/admin/tasks', icon: CheckSquare, desc: 'Candidate task logs & blocker tracking', module: 'tasks' },
+      ],
+    },
+    {
+      id: 'workforce',
+      title: 'Workforce & Operations',
+      items: [
+        { label: 'Candidates Directory', href: '/admin/candidates', icon: Users, desc: 'Manage workforce profiles & rates', module: 'candidates' },
+        { label: 'Shifts & Scheduling', href: '/admin/shifts', icon: Clock, desc: 'Roster shifts & assign rosters', module: 'shifts' },
+        { label: 'Live Attendance', href: '/admin/attendance', icon: CalendarCheck, desc: 'Live & past clock records', module: 'attendance' },
+        { label: 'Timesheet Matrix', href: '/admin/timesheet', icon: FileSpreadsheet, desc: 'Weekly candidate hour matrix', module: 'timesheet' },
+      ],
+    },
+    {
+      id: 'hr_payroll',
+      title: 'HR & Payroll',
+      items: [
+        { label: 'Leave Requests', href: '/admin/leaves', icon: Palmtree, desc: 'Review & approve employee time off', module: 'leaves' },
+        { label: 'Payroll & Wages', href: '/admin/payroll', icon: Banknote, desc: 'Disbursements & payout logs', module: 'payroll' },
+        { label: 'Staff Feedback', href: '/admin/feedback', icon: MessageSquare, desc: 'Ratings, shift reviews & comments', module: 'feedback' },
+      ],
+    },
+    {
+      id: 'system',
+      title: 'System & Administration',
+      items: [
+        { label: 'Branding Studio', href: '/admin/settings/branding', icon: Paintbrush, desc: 'Logos, theme colors & custom domain', module: 'branding' },
+        { label: 'Reset Requests', href: '/admin/reset-requests', icon: KeyRound, desc: 'Password & MFA reset queue', module: 'reset_requests' },
+        { label: 'Security & 2FA', href: '/admin/security', icon: ShieldAlert, desc: 'Access logs & MFA enforcement', module: 'security' },
+        { label: 'Admin Profile', href: '/admin/profile', icon: User, desc: 'Account settings & credentials', module: 'profile' },
+      ],
+    },
   ]
 
-  // Filter nav items based on user role permissions
-  const allNavItems = rawNavItems
-    .filter((item) => hasModuleAccess(adminRole, item.module))
-    .map(({ label, href, icon }) => ({ label, href, icon }))
+  // Filter sections and items based on user role permissions
+  const adminNavSections: NavSection[] = rawSectionsConfig
+    .map((sec) => ({
+      id: sec.id,
+      title: sec.title,
+      items: sec.items
+        .filter((item) => hasModuleAccess(adminRole, item.module))
+        .map(({ label, href, icon, desc }) => ({ label, href, icon, description: desc })),
+    }))
+    .filter((sec) => sec.items.length > 0)
 
   // Primary mobile bottom tabs (filtered by permissions)
-  const rawMobilePrimaryTabs: Array<{ label: string; href: string; icon: any; module: AppModule }> = [
+  const rawMobilePrimaryTabs: Array<{ label: string; href: string; icon: LucideIcon; module: AppModule }> = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
     { label: 'Chat', href: '/admin/messages', icon: MessagesSquare, module: 'messages' },
     { label: 'Calendar', href: '/admin/calendar', icon: CalendarDays, module: 'calendar' },
@@ -100,29 +141,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     .slice(0, 4)
     .map(({ label, href, icon }) => ({ label, href, icon }))
 
-  // Secondary items in "More" bottom sheet (filtered by permissions)
-  const rawMoreSheetItems: Array<{ label: string; href: string; icon: any; desc: string; module: AppModule }> = [
-    { label: 'Teams Chat & Channels', href: '/admin/messages', icon: MessagesSquare, desc: 'Real-time DMs & team channels', module: 'messages' },
-    { label: 'Workforce Calendar', href: '/admin/calendar', icon: CalendarDays, desc: 'Master schedule & event planning', module: 'calendar' },
-    { label: 'SuperAdmin Control Console', href: '/admin/superadmin', icon: Crown, desc: 'Telemetry, audit logs & system health', module: 'superadmin_console' },
-    { label: 'Daily Task Reports', href: '/admin/tasks', icon: CheckSquare, desc: 'Candidate task logs & blockers', module: 'tasks' },
-    { label: 'Candidates Directory', href: '/admin/candidates', icon: Users, desc: 'Manage workforce & rates', module: 'candidates' },
-    { label: 'Video Meets', href: '/admin/meets', icon: Video, desc: 'Host & manage video meetings', module: 'meets' },
-    { label: 'Attendance Logs', href: '/admin/attendance', icon: CalendarCheck, desc: 'Live & past clock records', module: 'attendance' },
-    { label: 'Timesheet Matrix', href: '/admin/timesheet', icon: FileSpreadsheet, desc: 'Weekly candidate matrix', module: 'timesheet' },
-    { label: 'Leave Requests', href: '/admin/leaves', icon: Palmtree, desc: 'Review & approve leaves', module: 'leaves' },
-    { label: 'Staff Feedback', href: '/admin/feedback', icon: MessageSquare, desc: 'Candidate ratings & comments', module: 'feedback' },
-    { label: 'Branding & White-Label', href: '/admin/settings/branding', icon: Paintbrush, desc: 'Logos, theme colors & custom domain', module: 'branding' },
-    { label: 'Reset Requests', href: '/admin/reset-requests', icon: KeyRound, desc: 'Password & MFA reset queue', module: 'reset_requests' },
-    { label: 'Security & 2FA', href: '/admin/security', icon: ShieldAlert, desc: 'Access logs & MFA enforcement', module: 'security' },
-    { label: 'Admin Profile', href: '/admin/profile', icon: User, desc: 'Account settings & credentials', module: 'profile' },
-  ]
+  // Mobile More sheet grouped categories
+  const moreSheetSections = rawSectionsConfig
+    .map((sec) => ({
+      title: sec.title,
+      items: sec.items.filter((item) => hasModuleAccess(adminRole, item.module)),
+    }))
+    .filter((sec) => sec.items.length > 0)
 
-  const moreSheetItems = rawMoreSheetItems
-    .filter((item) => hasModuleAccess(adminRole, item.module))
-    .map(({ label, href, icon, desc }) => ({ label, href, icon, desc }))
-
-  const isMoreActive = moreSheetItems.some((item) => pathname === item.href)
+  const isMoreActive = moreSheetSections.some((sec) =>
+    sec.items.some((item) => pathname === item.href)
+  )
   const roleDisplay = getRoleDisplayName(adminRole)
   const roleMeta = ROLE_METADATA[(adminRole in ROLE_METADATA ? adminRole : 'admin') as UserRole] || ROLE_METADATA.admin
 
@@ -130,13 +159,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     <div className={`min-h-screen min-h-screen-safe bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row ${isFullBleed ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : ''}`}>
       {/* Desktop Dynamic Sidebar Navigation */}
       <DynamicSidebar
-        navItems={allNavItems}
-        brandIcon={<ShieldCheck className="w-6 h-6" />}
+        sections={adminNavSections}
+        brandIcon={<ShieldCheck className="w-5 h-5" />}
         brandName={branding.appTitle}
         brandLogoUrl={branding.logoLightUrl}
         iconUrl={branding.iconUrl}
         subtitle={`${adminName || 'Admin'} • ${roleDisplay}`}
         headerAction={<NotificationBell userId={adminId} />}
+        user={{
+          id: adminId,
+          name: adminName,
+          avatarUrl: adminAvatarUrl,
+          role: roleDisplay,
+          profileHref: '/admin/profile',
+        }}
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
@@ -201,7 +237,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           {mobilePrimaryTabs.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
-            const isMessages = item.href.includes('/messages')
 
             return (
               <Link
@@ -251,7 +286,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
             <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)]">
               <span className="text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
-                System Administration
+                All Admin Modules
               </span>
               <button
                 onClick={() => setIsMoreOpen(false)}
@@ -261,36 +296,45 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               </button>
             </div>
 
-            <nav className="flex flex-col gap-1.5 pt-1">
-              {moreSheetItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href
+            <nav className="flex flex-col gap-4 pt-1">
+              {moreSheetSections.map((sec, sIdx) => (
+                <div key={sIdx} className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] px-1">
+                    {sec.title}
+                  </span>
+                  <div className="flex flex-col gap-1.5">
+                    {sec.items.map((item) => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={true}
-                    onClick={() => setIsMoreOpen(false)}
-                    className={`flex items-center justify-between p-3 rounded-2xl transition-all active:scale-[0.98] ${
-                      isActive
-                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold'
-                        : 'text-[var(--md-sys-color-on-surface)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]' : 'bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]'}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold leading-tight">{item.label}</p>
-                        <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-tight mt-0.5">{item.desc}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 opacity-50" />
-                  </Link>
-                )
-              })}
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch={true}
+                          onClick={() => setIsMoreOpen(false)}
+                          className={`flex items-center justify-between p-2.5 rounded-2xl transition-all active:scale-[0.98] ${
+                            isActive
+                              ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold'
+                              : 'text-[var(--md-sys-color-on-surface)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isActive ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]' : 'bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]'}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold leading-tight">{item.label}</p>
+                              <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-tight mt-0.5">{item.desc}</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-50" />
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
 
             <form action={logoutAction} className="pt-2">

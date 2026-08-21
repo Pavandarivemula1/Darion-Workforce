@@ -11,6 +11,10 @@ import {
   Video,
   Radio,
 } from 'lucide-react'
+import { DirectCallModal } from './DirectCallModal'
+import { FloatingCallBubble } from './FloatingCallBubble'
+import { richHaptics } from '@/lib/utils/richHaptics'
+import { NativeCall } from '@/lib/utils/nativeCallBridge'
 
 interface GlobalCallManagerProps {
   currentUserId?: string
@@ -27,26 +31,91 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   const [outgoingStatus, setOutgoingStatus] = useState<'calling' | 'ringing'>('calling')
   const [outgoingTimer, setOutgoingTimer] = useState(0)
 
+  // Active Direct 1:1 Call State (WhatsApp / FaceTime style)
+  const [activeDirectCall, setActiveDirectCall] = useState<{
+    callId: string
+    callerName: string
+    callerAvatar?: string
+    callType: 'audio' | 'video'
+    isInitiator: boolean
+  } | null>(null)
+  const [isCallMinimized, setIsCallMinimized] = useState(false)
+  const [minimizedDuration, setMinimizedDuration] = useState(0)
+  const [isCallMuted, setIsCallMuted] = useState(false)
+
+  const outgoingCallRef = useRef<CallSessionPayload | null>(null)
   const incomingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const outgoingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const broadcastChannelRef = useRef<any>(null)
 
-  // Resolve user id
+  // Sync outgoingCallRef
+  useEffect(() => {
+    outgoingCallRef.current = outgoingCall
+  }, [outgoingCall])
+
+  // Resolve user id with zero-latency localStorage cache fallback
   useEffect(() => {
     if (currentUserId) {
       setResolvedUserId(currentUserId)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('darion_cached_user_id', currentUserId)
+      }
       return
     }
+
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('darion_cached_user_id')
+      if (cached) setResolvedUserId(cached)
+
+      try {
+        const keys = Object.keys(localStorage)
+        const sbKey = keys.find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        if (sbKey) {
+          const parsed = JSON.parse(localStorage.getItem(sbKey) || '{}')
+          const uid = parsed?.user?.id || parsed?.id
+          if (uid) setResolvedUserId(uid)
+        }
+      } catch {}
+    }
+
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.id) setResolvedUserId(data.user.id)
+      if (data.user?.id) {
+        setResolvedUserId(data.user.id)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('darion_cached_user_id', data.user.id)
+        }
+      }
     })
   }, [currentUserId])
+
+  // Handle push notification deep links (e.g. ?callId=...&action=accept)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const callId = params.get('callId')
+    const action = params.get('action')
+    const callType = (params.get('callType') as 'audio' | 'video') || 'audio'
+    const callerName = params.get('callerName') || 'Teammate'
+
+    if (callId && action === 'accept') {
+      setActiveDirectCall({
+        callId,
+        callerName: decodeURIComponent(callerName),
+        callType,
+        isInitiator: false,
+      })
+      setIsCallMinimized(false)
+      // Clean query params without reload
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   // Start outgoing call handler
   const startOutgoingCall = (payload: CallSessionPayload) => {
     setOutgoingCall(payload)
+    outgoingCallRef.current = payload
     setOutgoingStatus('calling') // Start with "Calling..." (waiting for recipient to acknowledge)
     setOutgoingTimer(0)
 
@@ -69,6 +138,40 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
     setIncomingCall(incoming)
     soundEffects.startRingingIncoming()
+    richHaptics.impact('heavy')
+
+    // 1. Trigger Native Android Full-Screen Calling Activity over Lock Screen & Native Ringtone
+    NativeCall.showIncomingCall({
+      callerName: incoming.callerName,
+      roomCode: incoming.roomCode,
+      callType: incoming.callType,
+    })
+
+    // 2. Trigger Native / Browser Heads-Up Notification if backgrounded
+    try {
+      const cap = (window as any).Capacitor
+      const localNotif = cap?.Plugins?.LocalNotifications
+      if (localNotif) {
+        localNotif.schedule({
+          notifications: [
+            {
+              title: `📞 Incoming ${incoming.callType === 'audio' ? 'Voice' : 'Video'} Call`,
+              body: `${incoming.callerName} is calling you. Tap to answer.`,
+              id: Math.floor(Math.random() * 1000000),
+              channelId: 'darion_chat_high_priority',
+              extra: { roomCode: incoming.roomCode, callType: incoming.callType },
+              schedule: { at: new Date(Date.now() + 50) },
+            },
+          ],
+        }).catch(() => {})
+      } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(`📞 Incoming ${incoming.callType === 'audio' ? 'Voice' : 'Video'} Call: ${incoming.callerName}`, {
+          body: `${incoming.callerName} is calling you. Tap to answer.`,
+          icon: '/icon.svg',
+          tag: `call-${incoming.roomCode}`,
+        })
+      }
+    } catch {}
 
     // Acknowledge to caller that recipient device is ONLINE and actively RINGING
     if (broadcastChannelRef.current) {
@@ -114,15 +217,15 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
     broadcastChannel
       .on('broadcast', { event: 'incoming_call' }, ({ payload }) => {
-        if (!payload || !resolvedUserId) return
+        if (!payload) return
+        const myId = resolvedUserId || (typeof window !== 'undefined' ? localStorage.getItem('darion_cached_user_id') : null)
         // 1. Never ring if caller is self
-        if (payload.callerId === resolvedUserId) return
+        if (myId && payload.callerId === myId) return
         // 2. Strict recipient validation: only ring if current user is in recipientIds
-        if (Array.isArray(payload.recipientIds) && payload.recipientIds.length > 0) {
-          if (payload.recipientIds.includes(resolvedUserId)) {
-            triggerIncomingCall(payload)
-          }
-        }
+        const recipients = payload.recipientIds || []
+        if (myId && recipients.length > 0 && !recipients.includes(myId)) return
+
+        triggerIncomingCall(payload)
       })
       .on('broadcast', { event: 'call_ringing' }, ({ payload }) => {
         // Recipient is verified online and actively ringing:
@@ -139,6 +242,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
         if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
         if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
         setOutgoingCall(null)
+        outgoingCallRef.current = null
         setOutgoingTimer(0)
       })
       .on('broadcast', { event: 'call_cancelled' }, () => {
@@ -148,18 +252,29 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
         setIncomingCall(null)
       })
       .on('broadcast', { event: 'call_accepted' }, ({ payload }) => {
-        // When accepted, transition caller to meet room
+        // When accepted, transition caller to Direct 1:1 Call Screen
         soundEffects.stopRinging()
         if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
         if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+
+        const cur = outgoingCallRef.current
         setOutgoingCall(null)
-        if (payload?.meetUrl) {
-          router.push(payload.meetUrl)
+        outgoingCallRef.current = null
+
+        if (cur) {
+          setActiveDirectCall({
+            callId: cur.roomCode,
+            callerName: cur.conversationName || cur.callerName,
+            callerAvatar: cur.callerAvatar,
+            callType: cur.callType,
+            isInitiator: true,
+          })
+          setIsCallMinimized(false)
         }
       })
       .subscribe()
 
-    // Database notifications table change listener
+    // Database notifications & chat_messages table change listener for 100% reliable ringing
     let notifChannel: any = null
     if (resolvedUserId) {
       notifChannel = supabase
@@ -174,25 +289,61 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
           },
           (payload) => {
             const item = payload.new as any
-            if (item?.type === 'meet_started') {
+            if (item?.type === 'meet_started' || item?.type === 'incoming_call') {
+              const meta = item.metadata || {}
               const meetUrl = item.link || ''
-              const roomCode = meetUrl.replace('/meet/', '') || 'dar-video'
+              const roomCode = meta.roomCode || meetUrl.replace('/meet/', '') || `dar-call-${Date.now()}`
 
               const incoming: CallSessionPayload = {
-                callId: item.id,
+                callId: meta.callId || item.id,
                 roomCode,
-                callerId: item.metadata?.callerId || '',
-                callerName: item.title?.replace(/📞 Incoming (VIDEO|AUDIO) Call: /i, '') || 'Team Member',
-                callerAvatar: item.metadata?.callerAvatar || '',
-                callerRole: item.metadata?.callerRole || '',
-                conversationId: item.metadata?.conversationId || '',
-                callType: item.title?.includes('AUDIO') ? 'audio' : 'video',
-                recipientIds: item.metadata?.recipientIds || (resolvedUserId ? [resolvedUserId] : []),
-                meetUrl: item.link || `/meet/${roomCode}`,
-                startedAt: new Date().toISOString(),
+                callerId: meta.callerId || '',
+                callerName: meta.callerName || item.title?.replace(/📞 Incoming (VIDEO|AUDIO|Voice|Video) Call:?/i, '').trim() || 'Team Member',
+                callerAvatar: meta.callerAvatar || '',
+                callerRole: meta.callerRole || '',
+                conversationId: meta.conversationId || '',
+                callType: meta.callType || (item.title?.toLowerCase().includes('audio') || item.title?.toLowerCase().includes('voice') ? 'audio' : 'video'),
+                recipientIds: meta.recipientIds || (resolvedUserId ? [resolvedUserId] : []),
+                meetUrl: meta.meetUrl || item.link || `/meet/${roomCode}`,
+                startedAt: item.created_at || new Date().toISOString(),
               }
 
               triggerIncomingCall(incoming)
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+          },
+          (payload) => {
+            const msg = payload.new as any
+            if (!msg || !resolvedUserId) return
+            if (msg.sender_id === resolvedUserId) return
+            if (msg.message_type === 'meet_card') {
+              const meta = msg.metadata || {}
+              if (meta.status === 'calling') {
+                const recipients = meta.recipientIds || []
+                if (recipients.length === 0 || recipients.includes(resolvedUserId)) {
+                  const incoming: CallSessionPayload = {
+                    callId: meta.roomId || msg.id,
+                    roomCode: meta.roomCode || `dar-${meta.callType || 'video'}-${Date.now()}`,
+                    callerId: msg.sender_id,
+                    callerName: meta.hostName || 'Team Member',
+                    callerAvatar: '',
+                    callerRole: 'member',
+                    conversationId: msg.conversation_id,
+                    callType: meta.callType || 'video',
+                    recipientIds: recipients.length > 0 ? recipients : [resolvedUserId],
+                    meetUrl: meta.meetUrl || `/meet/${meta.roomCode}`,
+                    startedAt: meta.startedAt || msg.created_at || new Date().toISOString(),
+                  }
+                  triggerIncomingCall(incoming)
+                }
+              }
             }
           }
         )
@@ -209,11 +360,16 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   const handleAcceptIncoming = async () => {
     if (!incomingCall) return
     soundEffects.stopRinging()
+    NativeCall.stopRingtone()
     if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
 
     const meetUrl = incomingCall.meetUrl
     const targetRoom = incomingCall.roomCode
     const targetCaller = incomingCall.callerId
+    const callerName = incomingCall.callerName
+    const callerAvatar = incomingCall.callerAvatar
+    const callType = incomingCall.callType
+
     setIncomingCall(null)
 
     // Broadcast to caller that call was accepted
@@ -231,13 +387,22 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
       response: 'accept',
     })
 
-    router.push(meetUrl)
+    // Open dedicated 1:1 Direct Call UI
+    setActiveDirectCall({
+      callId: targetRoom,
+      callerName,
+      callerAvatar,
+      callType,
+      isInitiator: false,
+    })
+    setIsCallMinimized(false)
   }
 
   // Handle Decline Incoming Call
   const handleDeclineIncoming = async (reason: 'decline' | 'missed' = 'decline') => {
     if (!incomingCall) return
     soundEffects.playCallEndedSound()
+    NativeCall.stopRingtone()
     if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
 
     const cur = incomingCall
@@ -262,6 +427,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   // Handle Cancel Outgoing Call (Caller hangs up)
   const handleCancelOutgoing = () => {
     soundEffects.playCallEndedSound()
+    NativeCall.stopRingtone()
     if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
     if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
 
@@ -414,21 +580,46 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
                 </button>
                 <span className="text-xs text-slate-400 font-medium">Cancel</span>
               </div>
-
-              <div className="flex flex-col items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleJoinOutgoingRoom}
-                  className="w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white flex items-center justify-center shadow-lg transition-all cursor-pointer"
-                  title="Enter Room"
-                >
-                  <Video className="w-6 h-6" />
-                </button>
-                <span className="text-xs text-slate-400 font-medium">Enter Room</span>
-              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* 3. ACTIVE 1:1 DIRECT CALL FULLSCREEN MODAL */}
+      {activeDirectCall && !isCallMinimized && (
+        <DirectCallModal
+          callId={activeDirectCall.callId}
+          callerName={activeDirectCall.callerName}
+          callerAvatar={activeDirectCall.callerAvatar}
+          callType={activeDirectCall.callType}
+          isInitiator={activeDirectCall.isInitiator}
+          onClose={() => {
+            setActiveDirectCall(null)
+            setIsCallMinimized(false)
+          }}
+          onMinimize={(dur, muted) => {
+            setMinimizedDuration(dur)
+            setIsCallMuted(muted)
+            setIsCallMinimized(true)
+          }}
+        />
+      )}
+
+      {/* 4. MINIMIZED DRAGGABLE FLOATING CALL BUBBLE (Allows texting while calling) */}
+      {activeDirectCall && isCallMinimized && (
+        <FloatingCallBubble
+          callerName={activeDirectCall.callerName}
+          callerAvatar={activeDirectCall.callerAvatar}
+          callType={activeDirectCall.callType}
+          callDuration={minimizedDuration}
+          isMuted={isCallMuted}
+          onToggleMute={() => setIsCallMuted(!isCallMuted)}
+          onEndCall={() => {
+            setActiveDirectCall(null)
+            setIsCallMinimized(false)
+          }}
+          onExpand={() => setIsCallMinimized(false)}
+        />
       )}
     </>
   )

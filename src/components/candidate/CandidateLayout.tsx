@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
-import { DynamicSidebar } from '@/components/ui/DynamicSidebar'
+import { DynamicSidebar, NavSection } from '@/components/ui/DynamicSidebar'
 import { useBranding } from '@/components/providers/BrandingProvider'
 import {
   Clock,
@@ -36,24 +36,47 @@ export interface CandidateLayoutProps {
   candidateAvatarUrl?: string
 }
 
-export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, candidateId, candidateName, candidateAvatarUrl }) => {
+export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ 
+  children, 
+  candidateId, 
+  candidateName, 
+  candidateAvatarUrl 
+}) => {
   const pathname = usePathname()
   const branding = useBranding()
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const isFullBleed = pathname.startsWith('/candidate/messages') || pathname.startsWith('/candidate/calendar')
 
-  // Primary desktop & full items
-  const allNavItems = [
-    { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard },
-    { label: 'Teams Chat', href: '/candidate/messages', icon: MessagesSquare },
-    { label: 'Calendar', href: '/candidate/calendar', icon: CalendarDays },
-    { label: 'Daily Tasks', href: '/candidate/tasks', icon: CheckSquare },
-    { label: 'Video Meets', href: '/candidate/meets', icon: Video },
-    { label: 'Attendance', href: '/candidate/attendance', icon: History },
-    { label: 'Earnings', href: '/candidate/payroll', icon: Banknote },
-    { label: 'Leaves', href: '/candidate/leaves', icon: Palmtree },
-    { label: 'Feedback', href: '/candidate/feedback', icon: MessageSquare },
-    { label: 'Profile', href: '/candidate/profile', icon: User },
+  // Grouped Candidate sections
+  const candidateSections: NavSection[] = [
+    {
+      id: 'workspace',
+      title: 'Workspace',
+      items: [
+        { label: 'Dashboard', href: '/candidate', icon: LayoutDashboard, description: 'Personal shift stats & fast clock in/out' },
+        { label: 'Daily Tasks', href: '/candidate/tasks', icon: CheckSquare, description: 'Submit daily work logs & blockers' },
+        { label: 'Attendance', href: '/candidate/attendance', icon: History, description: 'View clock history & logged hours' },
+      ],
+    },
+    {
+      id: 'connect',
+      title: 'Connect & Collaborate',
+      items: [
+        { label: 'Teams Chat', href: '/candidate/messages', icon: MessagesSquare, description: 'Real-time team DMs & channels' },
+        { label: 'Calendar', href: '/candidate/calendar', icon: CalendarDays, description: 'Assigned shifts & company events' },
+        { label: 'Video Meets', href: '/candidate/meets', icon: Video, description: 'Join scheduled video calls' },
+      ],
+    },
+    {
+      id: 'hr_account',
+      title: 'My Work & HR',
+      items: [
+        { label: 'Earnings', href: '/candidate/payroll', icon: Banknote, description: 'View daily pay rate & payslips' },
+        { label: 'Leaves', href: '/candidate/leaves', icon: Palmtree, description: 'Apply for time off & check status' },
+        { label: 'Feedback', href: '/candidate/feedback', icon: MessageSquare, description: 'Submit shift ratings & comments' },
+        { label: 'Profile', href: '/candidate/profile', icon: User, description: 'Account settings & MFA security' },
+      ],
+    },
   ]
 
   // Primary 4 mobile bottom tabs
@@ -64,32 +87,28 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
     { label: 'Tasks', href: '/candidate/tasks', icon: CheckSquare },
   ]
 
-  // Secondary items in "More" bottom sheet
-  const moreSheetItems = [
-    { label: 'Teams Chat', href: '/candidate/messages', icon: MessagesSquare, desc: 'Real-time DMs & channels' },
-    { label: 'Workforce Calendar', href: '/candidate/calendar', icon: CalendarDays, desc: 'Shifts, meets & schedule' },
-    { label: 'Daily Task Logs', href: '/candidate/tasks', icon: CheckSquare, desc: 'Report & track completed tasks' },
-    { label: 'Video Meets', href: '/candidate/meets', icon: Video, desc: 'Join video meetings & recordings' },
-    { label: 'Attendance Logs', href: '/candidate/attendance', icon: History, desc: 'View clock history & hours' },
-    { label: 'Earnings & Payslips', href: '/candidate/payroll', icon: Banknote, desc: 'View daily pay & payouts' },
-    { label: 'Leave Requests', href: '/candidate/leaves', icon: Palmtree, desc: 'Apply & track time off' },
-    { label: 'Shift Feedback', href: '/candidate/feedback', icon: MessageSquare, desc: 'Submit ratings & remarks' },
-    { label: 'Account Profile', href: '/candidate/profile', icon: User, desc: 'Personal details & MFA security' },
-  ]
-
-  const isMoreActive = moreSheetItems.some((item) => pathname === item.href)
+  const isMoreActive = candidateSections.some((sec) =>
+    sec.items.some((item) => pathname === item.href)
+  )
 
   return (
     <div className={`min-h-screen min-h-screen-safe bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row ${isFullBleed ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : ''}`}>
       {/* Desktop Dynamic Sidebar Navigation */}
       <DynamicSidebar
-        navItems={allNavItems}
-        brandIcon={<Clock className="w-6 h-6" />}
+        sections={candidateSections}
+        brandIcon={<Clock className="w-5 h-5" />}
         brandName={branding.appTitle}
         brandLogoUrl={branding.logoLightUrl}
         iconUrl={branding.iconUrl}
         subtitle={candidateName || 'Candidate'}
         headerAction={<NotificationBell userId={candidateId} />}
+        user={{
+          id: candidateId,
+          name: candidateName,
+          avatarUrl: candidateAvatarUrl,
+          role: 'Candidate',
+          profileHref: '/candidate/profile',
+        }}
       />
 
       {/* MNC Sticky Mobile Top Header (< 768px) */}
@@ -211,36 +230,47 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({ children, cand
               </button>
             </div>
 
-            <nav className="flex flex-col gap-1.5 pt-1">
-              {moreSheetItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href
+            <nav className="flex flex-col gap-4 pt-1">
+              {candidateSections.map((sec, sIdx) => (
+                <div key={sIdx} className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] px-1">
+                    {sec.title}
+                  </span>
+                  <div className="flex flex-col gap-1.5">
+                    {sec.items.map((item) => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={true}
-                    onClick={() => setIsMoreOpen(false)}
-                    className={`flex items-center justify-between p-3 rounded-2xl transition-all active:scale-[0.98] ${
-                      isActive
-                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold'
-                        : 'text-[var(--md-sys-color-on-surface)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]' : 'bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]'}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold leading-tight">{item.label}</p>
-                        <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-tight mt-0.5">{item.desc}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 opacity-50" />
-                  </Link>
-                )
-              })}
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch={true}
+                          onClick={() => setIsMoreOpen(false)}
+                          className={`flex items-center justify-between p-2.5 rounded-2xl transition-all active:scale-[0.98] ${
+                            isActive
+                              ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold'
+                              : 'text-[var(--md-sys-color-on-surface)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isActive ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]' : 'bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)]'}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold leading-tight">{item.label}</p>
+                              {item.description && (
+                                <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-tight mt-0.5">{item.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-50" />
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
 
             <form action={logoutAction} className="pt-2">

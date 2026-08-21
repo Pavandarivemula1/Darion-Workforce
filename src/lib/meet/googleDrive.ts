@@ -1,4 +1,3 @@
-import { google } from 'googleapis'
 import { Readable } from 'stream'
 
 export interface GoogleDriveUploadResult {
@@ -14,7 +13,17 @@ export interface GoogleDriveUploadResult {
  * 1. Service Account (GOOGLE_SERVICE_ACCOUNT_EMAIL & GOOGLE_PRIVATE_KEY or GOOGLE_SERVICE_ACCOUNT_JSON)
  * 2. OAuth2 Refresh Token (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN)
  */
-function getGoogleDriveClient() {
+async function getGoogleDriveClient() {
+  let googleapis: any
+  try {
+    // Dynamic import to avoid build errors if googleapis is not present
+    // @ts-ignore
+    googleapis = await import('googleapis')
+  } catch {
+    return null
+  }
+
+  const { google } = googleapis
   const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
   const rawPrivateKey = process.env.GOOGLE_PRIVATE_KEY
@@ -59,79 +68,66 @@ function getGoogleDriveClient() {
 }
 
 /**
- * Uploads a video buffer directly to Google Drive
+ * Uploads a WebM meeting recording buffer directly to Google Drive.
  */
-export async function uploadBufferToGoogleDrive(params: {
+export async function uploadRecordingToGoogleDrive({
+  buffer,
+  fileName,
+  mimeType = 'video/webm',
+}: {
   buffer: Buffer
   fileName: string
   mimeType?: string
-  folderId?: string
 }): Promise<GoogleDriveUploadResult> {
-  const drive = getGoogleDriveClient()
-
-  if (!drive) {
-    return {
-      success: false,
-      error: 'Google Drive credentials not found in environment variables (GOOGLE_SERVICE_ACCOUNT_EMAIL or GOOGLE_CLIENT_ID/REFRESH_TOKEN).',
-    }
-  }
-
   try {
-    const folderId = params.folderId || process.env.GOOGLE_DRIVE_FOLDER_ID || undefined
-    const mimeType = params.mimeType || 'video/webm'
+    const drive = await getGoogleDriveClient()
+    if (!drive) {
+      return {
+        success: false,
+        error: 'Google Drive credentials not configured.',
+      }
+    }
 
-    const fileMetadata: { name: string; parents?: string[]; mimeType: string } = {
-      name: params.fileName,
+    const folderId = process.env.GOOGLE_DRIVE_RECORDINGS_FOLDER_ID
+
+    const bufferStream = new Readable()
+    bufferStream.push(buffer)
+    bufferStream.push(null)
+
+    const requestBody: any = {
+      name: fileName,
       mimeType,
+      description: 'Darion Meet recording uploaded automatically.',
     }
 
     if (folderId) {
-      fileMetadata.parents = [folderId]
+      requestBody.parents = [folderId]
     }
 
-    const stream = Readable.from(params.buffer)
-
-    // 1. Upload the file to Google Drive
     const response = await drive.files.create({
-      supportsAllDrives: true,
-      requestBody: fileMetadata,
+      requestBody,
       media: {
         mimeType,
-        body: stream,
+        body: bufferStream,
       },
       fields: 'id, name, webViewLink, webContentLink',
     })
 
-    const fileId = response.data.id
-    if (!fileId) {
-      return { success: false, error: 'Google Drive did not return a file ID.' }
-    }
-
-    // 2. Set file permissions so anyone with the link can view
-    try {
-      await drive.permissions.create({
-        fileId,
-        supportsAllDrives: true,
-        requestBody: {
-          role: 'reader',
-          type: 'anyone',
-        },
-      })
-    } catch (permErr) {
-      console.warn('Could not set public permission on Google Drive file:', permErr)
-    }
+    const file = response.data
 
     return {
       success: true,
-      fileId,
-      webViewLink: response.data.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
-      webContentLink: response.data.webContentLink || undefined,
+      fileId: file.id || undefined,
+      webViewLink: file.webViewLink || undefined,
+      webContentLink: file.webContentLink || undefined,
     }
   } catch (err: any) {
-    console.error('Google Drive Upload Error:', err)
+    console.error('Google Drive Upload Failed:', err)
     return {
       success: false,
-      error: err?.message || 'Failed to upload file to Google Drive.',
+      error: err.message || 'Unknown error uploading to Google Drive',
     }
   }
 }
+
+export const uploadBufferToGoogleDrive = uploadRecordingToGoogleDrive

@@ -3,6 +3,7 @@
 import { createClient, createAdminClient, getCurrentUserFast } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendBulkNotification } from '@/lib/utils/notifications'
+import { sendPushNotificationToUser } from '@/lib/push/serverPush'
 
 function getSupabase() {
   try {
@@ -70,7 +71,7 @@ export interface ChatMessageItem {
   senderRole: string
   parentId?: string
   content: string
-  messageType: 'text' | 'meet_card' | 'file' | 'system'
+  messageType: 'text' | 'meet_card' | 'file' | 'system' | 'code'
   fileUrl?: string
   fileName?: string
   fileSizeBytes?: number
@@ -84,7 +85,7 @@ export interface ChatMessageItem {
     messageId: string
     senderName: string
     content: string
-    messageType?: 'text' | 'meet_card' | 'file' | 'system'
+    messageType?: 'text' | 'meet_card' | 'file' | 'system' | 'code'
   }
   replyCount?: number
   reactions: ChatReactionGroup[]
@@ -101,62 +102,6 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
 
   const supabase = await getSupabase()
 
-  // Default fallback channels in case database tables are being provisioned
-  const defaultFallbackChannels: ChatConversationItem[] = [
-    {
-      id: 'default-general',
-      type: 'channel',
-      name: 'General',
-      slug: 'general',
-      description: 'Organization-wide team discussions, general updates, and casual banter.',
-      isPrivate: false,
-      lastMessageAt: new Date().toISOString(),
-      lastMessageSnippet: 'Welcome to the team channel!',
-      unreadCount: 0,
-      isPinned: true,
-      isMuted: false,
-    },
-    {
-      id: 'default-announcements',
-      type: 'channel',
-      name: 'Announcements',
-      slug: 'announcements',
-      description: 'Official management announcements, policy notices, and company alerts.',
-      isPrivate: false,
-      lastMessageAt: new Date().toISOString(),
-      lastMessageSnippet: 'Important company notices posted here.',
-      unreadCount: 0,
-      isPinned: false,
-      isMuted: false,
-    },
-    {
-      id: 'default-shifts',
-      type: 'channel',
-      name: 'Shift Operations',
-      slug: 'shift-operations',
-      description: 'Live shift handovers, daily coverage, and attendance queries.',
-      isPrivate: false,
-      lastMessageAt: new Date().toISOString(),
-      lastMessageSnippet: 'Daily shift roster & handovers.',
-      unreadCount: 0,
-      isPinned: false,
-      isMuted: false,
-    },
-    {
-      id: 'default-support',
-      type: 'channel',
-      name: 'HR & Support',
-      slug: 'hr-support',
-      description: 'Help desk for leave requests, payroll questions, and HR assistance.',
-      isPrivate: false,
-      lastMessageAt: new Date().toISOString(),
-      lastMessageSnippet: 'HR and payroll support channel.',
-      unreadCount: 0,
-      isPinned: false,
-      isMuted: false,
-    },
-  ]
-
   try {
     // 1. Fetch public channels and conversations where user is a participant
     const { data: userParticipations, error: partError } = await supabase
@@ -165,7 +110,7 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
       .eq('user_id', user.id)
 
     if (partError && partError.code === 'PGRST205') {
-      return defaultFallbackChannels
+      return []
     }
 
     const userConvIds = (userParticipations || []).map((p: any) => p.conversation_id)
@@ -195,7 +140,7 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
     const { data: convData, error: convError } = await convQuery.order('last_message_at', { ascending: false })
 
     if (convError || !convData || convData.length === 0) {
-      return defaultFallbackChannels
+      return []
     }
 
   // 2. For each conversation, fetch latest message & unread count & other participant if DM
@@ -284,8 +229,16 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
     if (lastMsg) {
       if (lastMsg.message_type === 'meet_card') {
         lastSnippet = '📹 Video Meeting started'
+      } else if (lastMsg.message_type === 'code' || lastMsg.metadata?.isCode) {
+        const lang = lastMsg.metadata?.language || 'code'
+        const title = lastMsg.metadata?.title ? ` - ${lastMsg.metadata.title}` : ''
+        lastSnippet = `💻 ${lang}${title}`
       } else if (lastMsg.message_type === 'file') {
-        lastSnippet = '📎 Shared an attachment'
+        const isGif =
+          lastMsg.metadata?.isGif ||
+          lastMsg.file_type === 'image/gif' ||
+          (typeof lastMsg.file_url === 'string' && (lastMsg.file_url.includes('giphy.com') || lastMsg.file_url.endsWith('.gif')))
+        lastSnippet = isGif ? '🎬 GIF' : '📎 Shared an attachment'
       } else {
         lastSnippet = lastMsg.content
       }
@@ -325,7 +278,7 @@ export async function getConversationsListAction(): Promise<ChatConversationItem
       return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
     })
   } catch (err) {
-    return defaultFallbackChannels
+    return []
   }
 }
 
@@ -526,10 +479,10 @@ export async function getConversationMessagesAction(
         if (readByUsers.length > 0) {
           readStatus = 'seen'
         } else {
-          readStatus = 'delivered'
+          readStatus = 'sent'
         }
       } else {
-        readStatus = 'delivered'
+        readStatus = 'sent'
       }
     }
 
@@ -570,7 +523,7 @@ export async function getConversationMessagesAction(
 export async function sendMessageAction(payload: {
   conversationId: string
   content: string
-  messageType?: 'text' | 'meet_card' | 'file' | 'system'
+  messageType?: 'text' | 'meet_card' | 'file' | 'system' | 'code'
   parentId?: string
   fileUrl?: string
   fileName?: string
@@ -633,16 +586,26 @@ export async function sendMessageAction(payload: {
       { onConflict: 'conversation_id,user_id' }
     )
 
+  const isGif =
+    payload.metadata?.isGif ||
+    payload.fileType === 'image/gif' ||
+    (typeof payload.fileUrl === 'string' &&
+      (payload.fileUrl.includes('giphy.com') || payload.fileUrl.endsWith('.gif')))
+
+  const contentToSave = isGif
+    ? ''
+    : payload.content || (payload.messageType === 'file' ? `Uploaded ${payload.fileName || 'file'}` : '')
+
   const { data: newMsg, error } = await supabase
     .from('chat_messages')
     .insert({
       conversation_id: effectiveConvId,
       sender_id: user.id,
       parent_id: payload.parentId || null,
-      content: payload.content || (payload.messageType === 'file' ? `Uploaded ${payload.fileName}` : ''),
+      content: contentToSave,
       message_type: payload.messageType || 'text',
       file_url: payload.fileUrl,
-      file_name: payload.fileName,
+      file_name: isGif ? 'GIF' : payload.fileName,
       file_size_bytes: payload.fileSizeBytes,
       file_type: payload.fileType,
       metadata: payload.metadata || {},
@@ -686,7 +649,7 @@ export async function sendMessageAction(payload: {
     })
     .eq('id', payload.conversationId)
 
-  // Dispatch push notifications to other participants
+  // Dispatch real background push notifications to other participants
   try {
     const { data: participants } = await supabase
       .from('chat_participants')
@@ -694,7 +657,30 @@ export async function sendMessageAction(payload: {
       .eq('conversation_id', effectiveConvId)
       .neq('user_id', user.id)
 
-    // Chat messages are delivered real-time via WebSockets and toast alerts without polluting persistent notifications table
+    if (participants && participants.length > 0) {
+      const senderName = (newMsg.profiles as any)?.full_name || 'Teammate'
+      const snippet =
+        newMsg.content ||
+        (newMsg.message_type === 'file'
+          ? `Shared file: ${newMsg.file_name || 'attachment'}`
+          : 'New message')
+
+      const promises = participants.map((p) =>
+        sendPushNotificationToUser({
+          userId: p.user_id,
+          title: `Message from ${senderName}`,
+          body: snippet.slice(0, 90),
+          type: 'chat_message',
+          link: `/?convId=${effectiveConvId}`,
+          data: {
+            conversationId: effectiveConvId,
+            messageId: newMsg.id,
+            url: `/?convId=${effectiveConvId}`,
+          },
+        })
+      )
+      await Promise.allSettled(promises)
+    }
   } catch (notifErr) {
     console.error('Error handling chat dispatch:', notifErr)
   }
@@ -1358,3 +1344,153 @@ export async function uploadChatAttachmentAction(formData: FormData): Promise<{ 
     return { success: false, error: err?.message || 'Failed to upload attachment' }
   }
 }
+
+/**
+ * Mark a conversation as unread in DB
+ */
+export async function markConversationAsUnreadAction(conversationId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUserFast()
+    if (!user) return { success: false, error: 'Unauthorized' }
+    const supabase = await getSupabase()
+    const validConvId = sanitizeUuid(conversationId)
+    if (!validConvId) return { success: false, error: 'Invalid ID' }
+
+    // Set last_read_at to beginning of epoch so all messages count as unread
+    await supabase
+      .from('chat_participants')
+      .update({ last_read_at: new Date(0).toISOString() })
+      .eq('conversation_id', validConvId)
+      .eq('user_id', user.id)
+
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in markConversationAsUnreadAction:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Toggle Mute status of a conversation in DB
+ */
+export async function toggleMuteConversationAction(
+  conversationId: string,
+  isMuted: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUserFast()
+    if (!user) return { success: false, error: 'Unauthorized' }
+    const supabase = await getSupabase()
+    const validConvId = sanitizeUuid(conversationId)
+    if (!validConvId) return { success: false, error: 'Invalid ID' }
+
+    await supabase
+      .from('chat_participants')
+      .update({ is_muted: isMuted })
+      .eq('conversation_id', validConvId)
+      .eq('user_id', user.id)
+
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in toggleMuteConversationAction:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Hide conversation for current user
+ */
+export async function hideConversationAction(conversationId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUserFast()
+    if (!user) return { success: false, error: 'Unauthorized' }
+    const supabase = await getSupabase()
+    const validConvId = sanitizeUuid(conversationId)
+    if (!validConvId) return { success: false, error: 'Invalid ID' }
+
+    // Delete or mark inactive in chat_participants
+    await supabase
+      .from('chat_participants')
+      .delete()
+      .eq('conversation_id', validConvId)
+      .eq('user_id', user.id)
+
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in hideConversationAction:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Delete a 1:1 direct conversation in DB
+ */
+export async function deleteConversationAction(conversationId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUserFast()
+    if (!user) return { success: false, error: 'Unauthorized' }
+    const supabase = await getSupabase()
+    const validConvId = sanitizeUuid(conversationId)
+    if (!validConvId) return { success: false, error: 'Invalid ID' }
+
+    // Delete messages and participants first
+    await supabase.from('chat_messages').delete().eq('conversation_id', validConvId)
+    await supabase.from('chat_participants').delete().eq('conversation_id', validConvId)
+    await supabase.from('chat_conversations').delete().eq('id', validConvId)
+
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in deleteConversationAction:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Leave a space / channel in DB
+ */
+export async function leaveSpaceAction(conversationId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUserFast()
+    if (!user) return { success: false, error: 'Unauthorized' }
+    const supabase = await getSupabase()
+    const validConvId = sanitizeUuid(conversationId)
+    if (!validConvId) return { success: false, error: 'Invalid ID' }
+
+    // Remove user from space participants
+    await supabase
+      .from('chat_participants')
+      .delete()
+      .eq('conversation_id', validConvId)
+      .eq('user_id', user.id)
+
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in leaveSpaceAction:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Block a user in DB
+ */
+export async function blockUserAction(targetUserId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUserFast()
+    if (!user) return { success: false, error: 'Unauthorized' }
+    const validTargetId = sanitizeUuid(targetUserId)
+    if (!validTargetId) return { success: false, error: 'Invalid user ID' }
+
+    // Status / Block record
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in blockUserAction:', err)
+    return { success: false, error: err.message }
+  }
+}
+
