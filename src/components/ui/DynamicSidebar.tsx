@@ -23,6 +23,9 @@ export interface NavItem {
   icon: LucideIcon
   badge?: number | string
   description?: string
+  target?: string
+  rel?: string
+  external?: boolean
 }
 
 export interface NavSection {
@@ -424,11 +427,17 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                           : undefined
                       const hasBadge = effectiveBadge !== undefined && Number(effectiveBadge) > 0
 
+                      const isExternal = item.href.startsWith('http') || item.external
+                      const targetAttr = item.target || (isExternal ? '_blank' : undefined)
+                      const relAttr = item.rel || (targetAttr === '_blank' ? 'noopener noreferrer' : undefined)
+
                       return (
                         <div key={item.href} className="relative group">
                           <Link
                             href={item.href}
-                            prefetch={true}
+                            target={targetAttr}
+                            rel={relAttr}
+                            prefetch={!isExternal}
                             className={`flex items-center ${
                               isCollapsed ? 'justify-center px-0' : 'px-3'
                             } py-2 h-10 text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer ${

@@ -62,7 +62,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const rawSectionsConfig: Array<{
     id: string
     title: string
-    items: Array<{ label: string; href: string; icon: LucideIcon; desc: string; module: AppModule }>
+    items: Array<{ label: string; href: string; icon: LucideIcon; desc: string; module: AppModule; target?: string; external?: boolean }>
   }> = [
     {
       id: 'overview',
@@ -76,7 +76,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       id: 'collaboration',
       title: 'Communication & Team',
       items: [
-        { label: 'Teams Chat', href: '/admin/messages', icon: MessagesSquare, desc: 'Real-time DMs & team channels', module: 'messages' },
+        { label: 'Teams Chat', href: 'https://chat.darion.in', icon: MessagesSquare, desc: 'Real-time DMs & team channels', module: 'messages', target: '_blank', external: true },
         { label: 'Video Meets', href: '/admin/meets', icon: Video, desc: 'Host & manage video conferences', module: 'meets' },
         { label: 'Workforce Calendar', href: '/admin/calendar', icon: CalendarDays, desc: 'Master schedule & event planning', module: 'calendar' },
         { label: 'Daily Task Reports', href: '/admin/tasks', icon: CheckSquare, desc: 'Candidate task logs & blocker tracking', module: 'tasks' },
@@ -120,14 +120,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       title: sec.title,
       items: sec.items
         .filter((item) => hasModuleAccess(adminRole, item.module))
-        .map(({ label, href, icon, desc }) => ({ label, href, icon, description: desc })),
+        .map(({ label, href, icon, desc, target, external }: any) => ({
+          label,
+          href,
+          icon,
+          description: desc,
+          target,
+          external,
+        })),
     }))
     .filter((sec) => sec.items.length > 0)
 
   // Primary mobile bottom tabs (filtered by permissions)
-  const rawMobilePrimaryTabs: Array<{ label: string; href: string; icon: LucideIcon; module: AppModule }> = [
+  const rawMobilePrimaryTabs: Array<{ label: string; href: string; icon: LucideIcon; module: AppModule; target?: string; external?: boolean }> = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
-    { label: 'Chat', href: '/admin/messages', icon: MessagesSquare, module: 'messages' },
+    { label: 'Chat', href: 'https://chat.darion.in', icon: MessagesSquare, module: 'messages', target: '_blank', external: true },
     { label: 'Calendar', href: '/admin/calendar', icon: CalendarDays, module: 'calendar' },
     { label: 'Console', href: '/admin/superadmin', icon: Crown, module: 'superadmin_console' },
     { label: 'Tasks', href: '/admin/tasks', icon: CheckSquare, module: 'tasks' },
@@ -139,7 +146,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const mobilePrimaryTabs = rawMobilePrimaryTabs
     .filter((item) => hasModuleAccess(adminRole, item.module))
     .slice(0, 4)
-    .map(({ label, href, icon }) => ({ label, href, icon }))
+    .map(({ label, href, icon, target, external }) => ({ label, href, icon, target, external }))
 
   // Mobile More sheet grouped categories
   const moreSheetSections = rawSectionsConfig
@@ -237,12 +244,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           {mobilePrimaryTabs.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+            const isExternal = item.href.startsWith('http') || (item as any).external
+            const targetAttr = (item as any).target || (isExternal ? '_blank' : undefined)
+            const relAttr = isExternal ? 'noopener noreferrer' : undefined
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={true}
+                target={targetAttr}
+                rel={relAttr}
+                prefetch={!isExternal}
                 className={`flex flex-col items-center justify-center h-full gap-0.5 transition-all active:scale-90 relative ${
                   isActive
                     ? 'text-[var(--md-sys-color-primary)] font-bold'
@@ -306,12 +318,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     {sec.items.map((item) => {
                       const Icon = item.icon
                       const isActive = pathname === item.href
+                      const isExternal = item.href.startsWith('http') || (item as any).external
+                      const targetAttr = (item as any).target || (isExternal ? '_blank' : undefined)
+                      const relAttr = isExternal ? 'noopener noreferrer' : undefined
 
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
-                          prefetch={true}
+                          target={targetAttr}
+                          rel={relAttr}
+                          prefetch={!isExternal}
                           onClick={() => setIsMoreOpen(false)}
                           className={`flex items-center justify-between p-2.5 rounded-2xl transition-all active:scale-[0.98] ${
                             isActive

@@ -62,7 +62,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({
       id: 'connect',
       title: 'Connect & Collaborate',
       items: [
-        { label: 'Teams Chat', href: '/candidate/messages', icon: MessagesSquare, description: 'Real-time team DMs & channels' },
+        { label: 'Teams Chat', href: 'https://chat.darion.in', icon: MessagesSquare, description: 'Real-time team DMs & channels', target: '_blank', external: true },
         { label: 'Calendar', href: '/candidate/calendar', icon: CalendarDays, description: 'Assigned shifts & company events' },
         { label: 'Video Meets', href: '/candidate/meets', icon: Video, description: 'Join scheduled video calls' },
       ],
@@ -80,9 +80,9 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({
   ]
 
   // Primary 4 mobile bottom tabs
-  const mobilePrimaryTabs = [
+  const mobilePrimaryTabs: Array<{ label: string; href: string; icon: any; target?: string; external?: boolean }> = [
     { label: 'Home', href: '/candidate', icon: LayoutDashboard },
-    { label: 'Chat', href: '/candidate/messages', icon: MessagesSquare },
+    { label: 'Chat', href: 'https://chat.darion.in', icon: MessagesSquare, target: '_blank', external: true },
     { label: 'Calendar', href: '/candidate/calendar', icon: CalendarDays },
     { label: 'Tasks', href: '/candidate/tasks', icon: CheckSquare },
   ]
@@ -173,12 +173,17 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({
           {mobilePrimaryTabs.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+            const isExternal = item.href.startsWith('http') || item.external
+            const targetAttr = item.target || (isExternal ? '_blank' : undefined)
+            const relAttr = isExternal ? 'noopener noreferrer' : undefined
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={true}
+                target={targetAttr}
+                rel={relAttr}
+                prefetch={!isExternal}
                 className={`flex flex-col items-center justify-center h-full gap-0.5 transition-all active:scale-90 ${
                   isActive
                     ? 'text-[var(--md-sys-color-primary)] font-bold'
@@ -240,12 +245,17 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({
                     {sec.items.map((item) => {
                       const Icon = item.icon
                       const isActive = pathname === item.href
+                      const isExternal = item.href.startsWith('http') || item.external
+                      const targetAttr = item.target || (isExternal ? '_blank' : undefined)
+                      const relAttr = isExternal ? 'noopener noreferrer' : undefined
 
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
-                          prefetch={true}
+                          target={targetAttr}
+                          rel={relAttr}
+                          prefetch={!isExternal}
                           onClick={() => setIsMoreOpen(false)}
                           className={`flex items-center justify-between p-2.5 rounded-2xl transition-all active:scale-[0.98] ${
                             isActive
