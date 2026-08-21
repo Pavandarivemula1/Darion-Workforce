@@ -56,6 +56,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
 
   // Resolve user id with zero-latency localStorage cache fallback
   useEffect(() => {
+    let isCurrent = true
     if (currentUserId) {
       setResolvedUserId(currentUserId)
       if (typeof window !== 'undefined') {
@@ -64,30 +65,19 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
       return
     }
 
-    if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('darion_cached_user_id')
-      if (cached) setResolvedUserId(cached)
-
-      try {
-        const keys = Object.keys(localStorage)
-        const sbKey = keys.find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
-        if (sbKey) {
-          const parsed = JSON.parse(localStorage.getItem(sbKey) || '{}')
-          const uid = parsed?.user?.id || parsed?.id
-          if (uid) setResolvedUserId(uid)
-        }
-      } catch {}
-    }
-
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.id) {
+      if (isCurrent && data.user?.id) {
         setResolvedUserId(data.user.id)
         if (typeof window !== 'undefined') {
           localStorage.setItem('darion_cached_user_id', data.user.id)
         }
       }
     })
+
+    return () => {
+      isCurrent = false
+    }
   }, [currentUserId])
 
   // Handle push notification deep links (e.g. ?callId=...&action=accept)
@@ -100,20 +90,52 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     const callerName = params.get('callerName') || 'Teammate'
 
     if (callId && action === 'accept') {
-      setActiveDirectCall({
-        callId,
-        callerName: decodeURIComponent(callerName),
-        callType,
-        isInitiator: false,
-      })
-      setIsCallMinimized(false)
-      // Clean query params without reload
-      window.history.replaceState({}, '', window.location.pathname)
+      const timer = setTimeout(() => {
+        setActiveDirectCall({
+          callId,
+          callerName: decodeURIComponent(callerName),
+          callType,
+          isInitiator: false,
+        })
+        setIsCallMinimized(false)
+        window.history.replaceState({}, '', window.location.pathname)
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [])
+
+  // Handle Cancel Outgoing Call (Caller hangs up)
+  const handleCancelOutgoing = useCallback(() => {
+    soundEffects.playCallEndedSound()
+    NativeCall.stopRingtone()
+    if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
+    if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
+
+    const cur = outgoingCallRef.current
+    setOutgoingCall(null)
+    outgoingCallRef.current = null
+    setOutgoingTimer(0)
+
+    // Broadcast to all receivers that call was cancelled
+    if (cur) {
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.send({
+          type: 'broadcast',
+          event: 'call_cancelled',
+          payload: { roomCode: cur.roomCode, callerId: cur.callerId },
+        })
+      }
+
+      respondToCallAction({
+        roomCode: cur.roomCode,
+        callerId: cur.callerId,
+        response: 'cancelled',
+      }).catch(() => {})
     }
   }, [])
 
   // Start outgoing call handler
-  const startOutgoingCall = (payload: CallSessionPayload) => {
+  const startOutgoingCall = useCallback((payload: CallSessionPayload) => {
     setOutgoingCall(payload)
     outgoingCallRef.current = payload
     setOutgoingStatus('calling') // Start with "Calling..." (waiting for recipient to acknowledge)
@@ -129,10 +151,10 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     outgoingTimeoutRef.current = setTimeout(() => {
       handleCancelOutgoing()
     }, 35000)
-  }
+  }, [handleCancelOutgoing])
 
   // Start incoming call handler (Loud Ringing on recipient)
-  const triggerIncomingCall = (incoming: CallSessionPayload) => {
+  const triggerIncomingCall = useCallback((incoming: CallSessionPayload) => {
     // Don't ring if the caller is ourselves
     if (resolvedUserId && incoming.callerId === resolvedUserId) return
 
@@ -211,6 +233,12 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
   useEffect(() => {
     const supabase = createClient()
 
+    // Clean up any stale existing broadcast channel
+    const existingBroadcast = supabase.getChannels().find((c) => c.topic === 'realtime:global-call-signaling')
+    if (existingBroadcast) {
+      supabase.removeChannel(existingBroadcast)
+    }
+
     // Create and store persistent broadcast channel
     const broadcastChannel = supabase.channel('global-call-signaling')
     broadcastChannelRef.current = broadcastChannel
@@ -277,8 +305,9 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     // Database notifications & chat_messages table change listener for 100% reliable ringing
     let notifChannel: any = null
     if (resolvedUserId) {
+      const notifChannelName = `call-notifs-${resolvedUserId}-${Math.random().toString(36).slice(2, 7)}`
       notifChannel = supabase
-        .channel(`call-notifs-${resolvedUserId}`)
+        .channel(notifChannelName)
         .on(
           'postgres_changes',
           {

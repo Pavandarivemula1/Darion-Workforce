@@ -70,35 +70,11 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
 }) => {
   const pathname = usePathname()
 
-  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('sidebar_width')
-      if (stored) {
-        const parsed = parseInt(stored, 10)
-        if (!isNaN(parsed)) return parsed
-      }
-    }
-    return DEFAULT_WIDTH
-  })
+  const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
   const [unreadMsgCount, setUnreadMsgCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
-    if (typeof window !== 'undefined') {
-      const storedCollapsed = localStorage.getItem('sidebar_collapsed_sections')
-      if (storedCollapsed) {
-        try {
-          const parsedCollapsed = JSON.parse(storedCollapsed)
-          if (parsedCollapsed && typeof parsedCollapsed === 'object') {
-            return parsedCollapsed
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
-    return {}
-  })
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
 
   const sidebarRef = useRef<HTMLElement>(null)
 
@@ -123,6 +99,40 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
     }
   }, [])
 
+  // Restore client-side persisted state post-hydration (prevents React Error #418)
+  useEffect(() => {
+    let animFrame: number
+    try {
+      const stored = localStorage.getItem('sidebar_width')
+      const storedCollapsed = localStorage.getItem('sidebar_collapsed_sections')
+      
+      animFrame = requestAnimationFrame(() => {
+        if (stored) {
+          const parsed = parseInt(stored, 10)
+          if (!isNaN(parsed) && parsed !== DEFAULT_WIDTH) {
+            setSidebarWidth(parsed)
+          }
+        }
+        if (storedCollapsed) {
+          try {
+            const parsedCollapsed = JSON.parse(storedCollapsed)
+            if (parsedCollapsed && typeof parsedCollapsed === 'object') {
+              setCollapsedSections(parsedCollapsed)
+            }
+          } catch {
+            // ignore
+          }
+        }
+      })
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      if (animFrame) cancelAnimationFrame(animFrame)
+    }
+  }, [])
+
   useEffect(() => {
     let isCurrent = true
 
@@ -136,8 +146,9 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
 
     // Real-time Supabase subscription for incoming messages
     const supabase = createClient()
+    const channelTopic = `sidebar-unread-messages-${Math.random().toString(36).slice(2, 7)}`
     const channel = supabase
-      .channel('sidebar-unread-messages')
+      .channel(channelTopic)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_messages' },
