@@ -153,6 +153,31 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     }, 35000)
   }, [handleCancelOutgoing])
 
+  // Handle Decline Incoming Call
+  const handleDeclineIncoming = useCallback(async (reason: 'decline' | 'missed' = 'decline') => {
+    soundEffects.playCallEndedSound()
+    NativeCall.stopRingtone()
+    if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
+
+    setIncomingCall((cur) => {
+      if (cur) {
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.send({
+            type: 'broadcast',
+            event: 'call_declined',
+            payload: { roomCode: cur.roomCode, callerId: cur.callerId },
+          })
+        }
+        respondToCallAction({
+          roomCode: cur.roomCode,
+          callerId: cur.callerId,
+          response: reason,
+        }).catch(() => {})
+      }
+      return null
+    })
+  }, [])
+
   // Start incoming call handler (Loud Ringing on recipient)
   const triggerIncomingCall = useCallback((incoming: CallSessionPayload) => {
     // Don't ring if the caller is ourselves
@@ -208,7 +233,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
     incomingTimeoutRef.current = setTimeout(() => {
       handleDeclineIncoming('missed')
     }, 35000)
-  }
+  }, [resolvedUserId, handleDeclineIncoming])
 
   // 1. Listen for local events dispatched from Chat / Anywhere in UI
   useEffect(() => {
@@ -227,7 +252,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
       window.removeEventListener('start-outgoing-call' as any, handleStartOutgoingEvent)
       window.removeEventListener('trigger-incoming-call' as any, handleTriggerIncomingEvent)
     }
-  }, [resolvedUserId])
+  }, [startOutgoingCall, triggerIncomingCall])
 
   // 2. Real-time Supabase Signaling (Broadcast + Database triggers)
   useEffect(() => {
@@ -383,7 +408,7 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
       supabase.removeChannel(broadcastChannel)
       if (notifChannel) supabase.removeChannel(notifChannel)
     }
-  }, [resolvedUserId, router])
+  }, [resolvedUserId, router, triggerIncomingCall])
 
   // Handle Accept Incoming Call
   const handleAcceptIncoming = async () => {
@@ -425,61 +450,6 @@ export const GlobalCallManager: React.FC<GlobalCallManagerProps> = ({ currentUse
       isInitiator: false,
     })
     setIsCallMinimized(false)
-  }
-
-  // Handle Decline Incoming Call
-  const handleDeclineIncoming = async (reason: 'decline' | 'missed' = 'decline') => {
-    if (!incomingCall) return
-    soundEffects.playCallEndedSound()
-    NativeCall.stopRingtone()
-    if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
-
-    const cur = incomingCall
-    setIncomingCall(null)
-
-    // Broadcast to caller that call was declined
-    if (broadcastChannelRef.current) {
-      broadcastChannelRef.current.send({
-        type: 'broadcast',
-        event: 'call_declined',
-        payload: { roomCode: cur.roomCode, callerId: cur.callerId },
-      })
-    }
-
-    await respondToCallAction({
-      roomCode: cur.roomCode,
-      callerId: cur.callerId,
-      response: reason,
-    })
-  }
-
-  // Handle Cancel Outgoing Call (Caller hangs up)
-  const handleCancelOutgoing = () => {
-    soundEffects.playCallEndedSound()
-    NativeCall.stopRingtone()
-    if (outgoingTimeoutRef.current) clearTimeout(outgoingTimeoutRef.current)
-    if (outgoingIntervalRef.current) clearInterval(outgoingIntervalRef.current)
-
-    const cur = outgoingCall
-    setOutgoingCall(null)
-    setOutgoingTimer(0)
-
-    // Broadcast to all receivers that call was cancelled
-    if (cur) {
-      if (broadcastChannelRef.current) {
-        broadcastChannelRef.current.send({
-          type: 'broadcast',
-          event: 'call_cancelled',
-          payload: { roomCode: cur.roomCode, callerId: cur.callerId },
-        })
-      }
-
-      respondToCallAction({
-        roomCode: cur.roomCode,
-        callerId: cur.callerId,
-        response: 'cancelled',
-      }).catch(() => {})
-    }
   }
 
   // Join Meet Room directly from Outgoing Screen
