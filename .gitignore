@@ -39,6 +39,7 @@ yarn-error.log*
 # logs & scratch
 *.log
 scratch/
+google_chat_raw_web/
 .chrome_profile/
 **/.chrome_profile/
 

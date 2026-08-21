@@ -24,6 +24,7 @@ import {
   Maximize2,
   Ban,
   EyeOff,
+  X,
 } from 'lucide-react'
 import {
   ChatConversationItem,
@@ -36,7 +37,7 @@ import {
   blockUserAction,
 } from '@/app/actions/messages'
 
-interface ChatNavColumnProps {
+export interface ChatNavColumnProps {
   conversations: ChatConversationItem[]
   activeConvId: string
   activeNavShortcut: 'home' | 'mentions' | 'starred'
@@ -47,6 +48,8 @@ interface ChatNavColumnProps {
   onBrowseSpaces?: () => void
   onlineUserIds?: Set<string>
   userPresenceMap?: Record<string, { status: string; statusMessage?: string }>
+  showHeader?: boolean
+  onClose?: () => void
 }
 
 export const ChatNavColumn: React.FC<ChatNavColumnProps> = ({
@@ -60,6 +63,8 @@ export const ChatNavColumn: React.FC<ChatNavColumnProps> = ({
   onBrowseSpaces,
   onlineUserIds,
   userPresenceMap,
+  showHeader = false,
+  onClose,
 }) => {
   const [shortcutsOpen, setShortcutsOpen] = useState(true)
   const [dmsOpen, setDmsOpen] = useState(true)
@@ -131,7 +136,25 @@ export const ChatNavColumn: React.FC<ChatNavColumnProps> = ({
   }
 
   return (
-    <aside className="w-60 lg:w-64 h-full shrink-0 bg-[var(--md-sys-color-surface-container-low)] border-r border-[var(--md-sys-color-outline-variant)] flex flex-col select-none overflow-y-auto">
+    <aside className="w-full md:w-60 lg:w-64 h-full shrink-0 bg-[var(--md-sys-color-surface-container-low)] border-r border-[var(--md-sys-color-outline-variant)] flex flex-col select-none overflow-y-auto">
+      {/* Mobile Drawer Header if showHeader is true */}
+      {showHeader && (
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--md-sys-color-outline-variant)] shrink-0">
+          <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
+            Chats & Spaces
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 1. TOP '+ New chat' PILL BUTTON */}
       <div className="p-3">
         <button
