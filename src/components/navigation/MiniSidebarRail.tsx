@@ -112,7 +112,7 @@ export const MiniSidebarRail: React.FC<MiniSidebarRailProps> = ({
           {/* App Logo Mark */}
           <div
             className="w-10 h-10 rounded-2xl bg-[var(--md-sys-color-primary)] flex items-center justify-center text-[var(--md-sys-color-on-primary)] shadow-sm shadow-[var(--md-sys-color-primary)]/30 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
-            title="Darion Chat Workspace"
+            title="Darion Workforce"
           >
             <MessageSquare className="w-5 h-5 fill-white/20" />
           </div>

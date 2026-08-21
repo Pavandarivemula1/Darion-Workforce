@@ -1,43 +1,68 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { getTenantBranding } from '@/lib/branding/getBranding'
+import { generateThemeCssString } from '@/lib/branding/palette'
 import { BrandingProvider } from '@/components/providers/BrandingProvider'
-import { DEFAULT_BRANDING } from '@/lib/branding/defaults'
 import { GlobalCallManager } from '@/components/calls/GlobalCallManager'
 import { GlobalPushNotificationManager } from '@/components/notifications/GlobalPushNotificationManager'
+import { getCurrentUserFast } from '@/lib/supabase/server'
 
-export const metadata: Metadata = {
-  title: 'Darion Chat | Real-Time Messaging & Calls',
-  description: 'Enterprise-grade Real-Time Teams Chat, Voice Notes, and Video Meetings.',
-  icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
-    shortcut: '/icon.svg',
-    apple: '/icon.svg',
-  },
-  manifest: '/manifest.json',
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getTenantBranding()
+
+  return {
+    title: {
+      default: branding.appTitle || 'Darion Workforce',
+      template: `%s | ${branding.appTitle || 'Darion Workforce'}`,
+    },
+    description:
+      branding.tagline ||
+      'Enterprise-grade workforce time tracking, attendance, shift scheduling, and payroll system.',
+    icons: {
+      icon: [{ url: branding.faviconUrl || '/icon.svg', type: 'image/svg+xml' }],
+      shortcut: branding.faviconUrl || '/icon.svg',
+      apple: branding.iconUrl || branding.faviconUrl || '/icon.svg',
+    },
+    manifest: '/manifest.json',
+  }
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
   viewportFit: 'cover',
   themeColor: '#0B57D0',
 }
-
-import { getCurrentUserFast } from '@/lib/supabase/server'
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const user = await getCurrentUserFast().catch(() => null)
+  const [user, branding] = await Promise.all([
+    getCurrentUserFast().catch(() => null),
+    getTenantBranding(),
+  ])
+
+  const themeCss = generateThemeCssString(
+    branding.primaryColor,
+    branding.secondaryColor,
+    branding.accentColor,
+    branding.borderRadiusStyle,
+    branding.fontFamily
+  )
 
   return (
-    <html lang="en" className="dark">
-      <body className="antialiased bg-[var(--md-sys-color-surface-container-lowest)] dark:bg-[#070a12] text-[var(--md-sys-color-on-surface)] dark:text-slate-100 font-sans selection:bg-[var(--md-sys-color-primary)] selection:text-white min-h-screen overflow-x-hidden">
-        <BrandingProvider initialBranding={DEFAULT_BRANDING}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <style
+          id="branding-theme-variables"
+          dangerouslySetInnerHTML={{ __html: themeCss }}
+        />
+      </head>
+      <body className="antialiased bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-sans selection:bg-[var(--md-sys-color-primary)] selection:text-white min-h-screen overflow-x-hidden">
+        <BrandingProvider initialBranding={branding}>
           {children}
           <GlobalCallManager currentUserId={user?.id} />
           <GlobalPushNotificationManager userId={user?.id} />

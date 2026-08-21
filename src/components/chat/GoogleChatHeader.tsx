@@ -141,7 +141,7 @@ export const GoogleChatHeader: React.FC<GoogleChatHeaderProps> = ({
           </div>
           <div className="flex items-baseline select-none">
             <span className="text-base sm:text-lg font-bold text-[var(--md-sys-color-on-surface)] tracking-tight font-sans">
-              Darion Chat
+              Darion Workforce
             </span>
           </div>
         </div>

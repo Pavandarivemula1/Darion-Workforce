@@ -175,7 +175,7 @@ export const GlobalPushNotificationManager: React.FC<GlobalPushNotificationManag
           localNotif.schedule({
             notifications: [
               {
-                title: notif.title || 'Darion Chat',
+                title: notif.title || 'Darion Workforce',
                 body: notif.message,
                 id: Math.floor(Math.random() * 1000000),
                 channelId: 'darion_chat_high_priority',
@@ -190,7 +190,7 @@ export const GlobalPushNotificationManager: React.FC<GlobalPushNotificationManag
       // 4. Trigger Real Native OS Web Push Notification
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          const browserNotif = new Notification(notif.title || 'Darion Chat', {
+          const browserNotif = new Notification(notif.title || 'Darion Workforce', {
             body: notif.message,
             icon: '/icon.svg',
             badge: '/icon.svg',
