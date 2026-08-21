@@ -363,7 +363,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       )}
 
       {/* Navigation List Organized by Sections */}
-      <nav className="flex-1 flex flex-col gap-3 p-2.5 overflow-y-auto overflow-x-hidden select-none custom-scrollbar">
+      <nav className="flex-1 flex flex-col gap-3 p-2.5 overflow-y-auto overflow-x-hidden select-none no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {filteredSections.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
             No matching menus found
