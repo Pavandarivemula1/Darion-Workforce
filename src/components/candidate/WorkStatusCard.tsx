@@ -198,12 +198,11 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
       setLiveDailyPay(curPay)
 
       // Dynamic Auto stop logic based on candidate's assigned shift
-      const nowKolkata = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
       const endTime = getShiftEndTimeForSession(activeSession.login_time, assignedShift)
       
       if (
         assignedShift.auto_logout_enabled &&
-        nowKolkata.getTime() >= endTime.getTime() &&
+        now >= endTime.getTime() &&
         localOvershiftStatus !== 'approved' &&
         !isAutoEndingRef.current
       ) {
@@ -475,7 +474,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
               <span className="text-[9px] sm:text-[10px] uppercase font-semibold block">
                 Break
               </span>
-              <span className="text-xs sm:text-sm font-bold font-mono truncate">
+              <span className="text-xs sm:text-sm font-bold font-mono truncate" suppressHydrationWarning>
                 {breakDurationText}
               </span>
             </div>
@@ -485,7 +484,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
               <span className="text-[9px] sm:text-[10px] uppercase font-semibold block">
                 Net Work
               </span>
-              <span className="text-xs sm:text-sm font-bold font-mono truncate">{workDuration}</span>
+              <span className="text-xs sm:text-sm font-bold font-mono truncate" suppressHydrationWarning>{workDuration}</span>
             </div>
 
             {/* Cell 4: Pay (Mobile) / Ended (Desktop) */}
@@ -493,7 +492,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
               <span className="text-[9px] uppercase font-bold block">
                 Today Pay
               </span>
-              <span className="text-xs font-black font-mono truncate">
+              <span className="text-xs font-black font-mono truncate" suppressHydrationWarning>
                 ₹{Math.round(liveDailyPay)}
               </span>
             </div>
@@ -513,7 +512,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
               <span className="text-[10px] uppercase font-bold block">
                 Today&apos;s Pay
               </span>
-              <span className="text-sm font-black font-mono truncate">
+              <span className="text-sm font-black font-mono truncate" suppressHydrationWarning>
                 {formatINR(liveDailyPay)}
               </span>
             </div>

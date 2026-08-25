@@ -75,36 +75,56 @@ function parseTimeComponents(timeStr: string): { hours: number; minutes: number;
 }
 
 /**
+ * Helper to get the absolute UTC Date corresponding to a specific local wall-clock time in IST (UTC+5:30)
+ */
+function getISTDate(year: number, month: number, date: number, hours: number, minutes: number, seconds: number): Date {
+  // IST is UTC+05:30, so UTC time is IST time - 5 hours and 30 minutes.
+  return new Date(Date.UTC(year, month, date, hours - 5, minutes - 30, seconds))
+}
+
+function getISTComponents(date: Date) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric',
+    hour12: false
+  })
+  const parts = formatter.formatToParts(date)
+  const c: Record<string, number> = {}
+  for (const p of parts) c[p.type] = parseInt(p.value, 10)
+  return {
+    year: c.year,
+    month: c.month - 1, // 0-indexed for Date.UTC
+    day: c.day,
+    hours: c.hour === 24 ? 0 : c.hour,
+    minutes: c.minute,
+    seconds: c.second
+  }
+}
+
+/**
  * Calculates the exact shift start and end Date objects in Asia/Kolkata timezone
  */
 export function getShiftWindowDates(
   shift: ShiftConfig = DEFAULT_FALLBACK_SHIFT,
   referenceDate: Date = new Date()
 ) {
-  // Current time representation in Kolkata
-  const kolkataNowStr = referenceDate.toLocaleString('en-US', { timeZone: TIMEZONE })
-  const nowKolkata = new Date(kolkataNowStr)
+  const nowIST = getISTComponents(referenceDate)
+  const nowMs = referenceDate.getTime()
 
   const startComp = parseTimeComponents(shift.start_time)
   const endComp = parseTimeComponents(shift.end_time)
 
   // Shift Start Date today in Kolkata
-  const shiftStart = new Date(nowKolkata)
-  shiftStart.setHours(startComp.hours, startComp.minutes, startComp.seconds, 0)
-
-  // Shift Start with Grace Period (e.g., 15 mins earlier allowed to punch in)
+  const shiftStart = getISTDate(nowIST.year, nowIST.month, nowIST.day, startComp.hours, startComp.minutes, startComp.seconds)
   const graceStart = new Date(shiftStart.getTime() - (shift.grace_period_mins || 0) * 60 * 1000)
-
-  // Shift End Date
-  const shiftEnd = new Date(nowKolkata)
-  shiftEnd.setHours(endComp.hours, endComp.minutes, endComp.seconds, 0)
+  const shiftEnd = getISTDate(nowIST.year, nowIST.month, nowIST.day, endComp.hours, endComp.minutes, endComp.seconds)
 
   const isOvernight = shift.is_overnight || shiftEnd.getTime() <= shiftStart.getTime()
 
   if (isOvernight) {
-    // If it's an overnight shift and current hour is in early morning (e.g. 2 AM),
-    // the shift actually started yesterday evening.
-    if (nowKolkata.getHours() < endComp.hours || (nowKolkata.getHours() === endComp.hours && nowKolkata.getMinutes() < endComp.minutes)) {
+    // If it's an overnight shift and current hour is in early morning, the shift actually started yesterday evening.
+    if (nowIST.hours < endComp.hours || (nowIST.hours === endComp.hours && nowIST.minutes < endComp.minutes)) {
       shiftStart.setDate(shiftStart.getDate() - 1)
       graceStart.setDate(graceStart.getDate() - 1)
     } else {
@@ -112,7 +132,6 @@ export function getShiftWindowDates(
     }
   }
 
-  const nowMs = nowKolkata.getTime()
   const isWithinWindow = nowMs >= graceStart.getTime() && nowMs < shiftEnd.getTime()
   const isBeforeShift = nowMs < graceStart.getTime()
   const isAfterShift = nowMs >= shiftEnd.getTime()
@@ -129,7 +148,7 @@ export function getShiftWindowDates(
   }
 
   return {
-    nowKolkata,
+    nowKolkata: referenceDate, // Kept for interface compatibility
     shiftStart,
     graceStart,
     shiftEnd,
@@ -149,26 +168,24 @@ export function getShiftEndTimeForSession(
   loginTime: string,
   shift: ShiftConfig = DEFAULT_FALLBACK_SHIFT
 ): Date {
-  const loginDateKolkata = new Date(
-    new Date(loginTime).toLocaleString('en-US', { timeZone: TIMEZONE })
-  )
+  const loginDate = new Date(loginTime)
+  const loginIST = getISTComponents(loginDate)
 
   const endComp = parseTimeComponents(shift.end_time)
   const startComp = parseTimeComponents(shift.start_time)
 
-  const endTime = new Date(loginDateKolkata)
-  endTime.setHours(endComp.hours, endComp.minutes, endComp.seconds, 0)
+  const endTime = getISTDate(loginIST.year, loginIST.month, loginIST.day, endComp.hours, endComp.minutes, endComp.seconds)
 
   const isOvernight = shift.is_overnight || (endComp.hours < startComp.hours || (endComp.hours === startComp.hours && endComp.minutes <= startComp.minutes))
 
   if (isOvernight) {
     // If logged in at or after start time (e.g. 22:00), shift ends tomorrow morning at 06:00
-    if (loginDateKolkata.getHours() >= startComp.hours) {
+    if (loginIST.hours >= startComp.hours) {
       endTime.setDate(endTime.getDate() + 1)
     }
   } else {
     // If somehow login occurred after the standard end time on same day, bump end to next day
-    if (endTime.getTime() <= loginDateKolkata.getTime()) {
+    if (endTime.getTime() <= loginDate.getTime()) {
       endTime.setDate(endTime.getDate() + 1)
     }
   }
