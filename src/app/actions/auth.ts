@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 export async function loginAction(
   prevState: { error?: string; requiresMfa?: boolean } | null,
   formData: FormData
-) {
+): Promise<{ error?: string; requiresMfa?: boolean }> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -63,7 +63,7 @@ export async function loginAction(
 export async function verifyMfaLoginAction(
   prevState: { error?: string } | null,
   formData: FormData
-) {
+): Promise<{ error?: string }> {
   const code = formData.get('mfaCode') as string
   if (!code || code.length < 6) {
     return { error: 'Invalid authenticator code.' }
@@ -121,7 +121,7 @@ export async function verifyMfaLoginAction(
 export async function updateCandidatePasswordAction(
   prevState: { error?: string; success?: boolean } | null,
   formData: FormData
-) {
+): Promise<{ error?: string; success?: boolean }> {
   const currentPassword = formData.get('currentPassword') as string
   const newPassword = formData.get('newPassword') as string
   const confirmPassword = formData.get('confirmPassword') as string
@@ -179,7 +179,7 @@ export async function logoutAction() {
 export async function magicLinkLoginAction(
   prevState: { error?: string; success?: boolean } | null,
   formData: FormData
-) {
+): Promise<{ error?: string; success?: boolean }> {
   const email = formData.get('email') as string
   if (!email) {
     return { error: 'Email is required.' }
@@ -205,7 +205,7 @@ export async function magicLinkLoginAction(
 export async function requestMfaResetAction(
   prevState: { error?: string; success?: boolean } | null,
   formData: FormData
-) {
+): Promise<{ error?: string; success?: boolean }> {
   const email = formData.get('email') as string
   if (!email) {
     return { error: 'Email is required.' }
