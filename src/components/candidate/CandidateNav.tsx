@@ -7,6 +7,7 @@ import { logoutAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
 import { useBranding } from '@/components/providers/BrandingProvider'
 import { Clock, History, LogOut, LayoutDashboard, User, Banknote, MessageSquare, MessagesSquare, CalendarDays, Palmtree, CheckSquare } from 'lucide-react'
+import { LogoutSubmitButton } from '@/components/ui/LogoutSubmitButton'
 
 export interface CandidateNavProps {
   userName?: string
@@ -81,10 +82,7 @@ export const CandidateNav: React.FC<CandidateNavProps> = ({ userName }) => {
 
           {/* Sign Out Action Button */}
           <form action={logoutAction}>
-            <Button variant="outlined" size="sm" icon={<LogOut className="w-4 h-4" />}>
-              <span className="hidden sm:inline">Sign Out</span>
-              <span className="sm:hidden">Exit</span>
-            </Button>
+            <LogoutSubmitButton variant="header" />
           </form>
         </div>
       </header>

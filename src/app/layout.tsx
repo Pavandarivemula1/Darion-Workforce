@@ -6,6 +6,7 @@ import { BrandingProvider } from '@/components/providers/BrandingProvider'
 import { GlobalCallManager } from '@/components/calls/GlobalCallManager'
 import { GlobalPushNotificationManager } from '@/components/notifications/GlobalPushNotificationManager'
 import { getCurrentUserFast } from '@/lib/supabase/server'
+import NextTopLoader from 'nextjs-toploader'
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getTenantBranding()
@@ -63,6 +64,7 @@ export default async function RootLayout({
       </head>
       <body className="antialiased bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-sans selection:bg-[var(--md-sys-color-primary)] selection:text-white min-h-screen overflow-x-hidden">
         <BrandingProvider initialBranding={branding}>
+          <NextTopLoader color="var(--md-sys-color-primary)" showSpinner={false} />
           {children}
           <GlobalCallManager currentUserId={user?.id} />
           <GlobalPushNotificationManager userId={user?.id} />

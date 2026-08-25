@@ -16,6 +16,7 @@ import {
   X,
   User as UserIcon,
 } from 'lucide-react'
+import { LogoutSubmitButton } from '@/components/ui/LogoutSubmitButton'
 
 export interface NavItem {
   label: string
@@ -535,14 +536,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
               </Link>
 
               <form action={logoutAction} className="shrink-0">
-                <button
-                  type="submit"
-                  title="Sign Out"
-                  aria-label="Sign Out"
-                  className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/40 transition-colors cursor-pointer active:scale-95"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                <LogoutSubmitButton isCollapsed={true} />
               </form>
             </div>
           ) : (
@@ -565,29 +559,13 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                 )}
               </Link>
               <form action={logoutAction}>
-                <button
-                  type="submit"
-                  title="Sign Out"
-                  aria-label="Sign Out"
-                  className="p-1.5 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/40 transition-colors cursor-pointer active:scale-95"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
+                <LogoutSubmitButton isCollapsed={true} />
               </form>
             </div>
           )
         ) : (
           <form action={logoutAction} className="w-full">
-            <button
-              type="submit"
-              title="Sign Out"
-              className={`flex items-center ${
-                isCollapsed ? 'justify-center px-0' : 'px-3'
-              } w-full h-8 text-xs font-medium rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-all cursor-pointer`}
-            >
-              <LogOut className="w-3.5 h-3.5 shrink-0" />
-              {!isCollapsed && <span className="ml-2 truncate">Sign Out</span>}
-            </button>
+            <LogoutSubmitButton isCollapsed={isCollapsed} />
           </form>
         )}
       </div>
