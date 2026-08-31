@@ -237,11 +237,12 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
         link.rel = 'icon'
         document.head.appendChild(link)
       }
-      link.href = `/api/favicon?status=${status}`
+      const cacheBuster = Date.now()
+      link.href = `/api/favicon?status=${status}&t=${cacheBuster}`
 
       let appleLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement
       if (appleLink) {
-        appleLink.href = `/api/favicon?status=${status}`
+        appleLink.href = `/api/favicon?status=${status}&t=${cacheBuster}`
       }
     }
 
