@@ -39,6 +39,7 @@ import {
 import { calculatePunctualityStatus } from '@/lib/utils/punctuality'
 import { PunctualityBadge } from '@/components/ui/PunctualityBadge'
 import { ShiftFeedbackDialog } from './ShiftFeedbackDialog'
+import { FaviconStatusManager, type FaviconStatus } from '@/components/ui/FaviconStatusManager'
 
 export interface AttendanceRecord {
   id: string
@@ -229,51 +230,29 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
     return () => clearInterval(interval)
   }, [activeSession, localOvershiftStatus, assignedShift, hourlyRate])
 
+  // Compute favicon status for FaviconStatusManager
+  const faviconStatus: FaviconStatus = activeSession
+    ? isOnBreak
+      ? 'break'
+      : localOvershiftStatus === 'approved'
+        ? 'overshift'
+        : 'active'
+    : 'offline'
+
+  // Document title (kept separate from favicon manager)
   useEffect(() => {
-    const setFavicon = (status: string) => {
-      const cacheBuster = Date.now()
-      const iconUrl = `/api/favicon?status=${status}&t=${cacheBuster}`
-      
-      // Remove all existing favicons to force browser to use the new one
-      const existingLinks = document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']")
-      existingLinks.forEach(link => link.remove())
-      
-      const newLink = document.createElement('link')
-      newLink.rel = 'icon'
-      newLink.type = 'image/svg+xml'
-      newLink.href = iconUrl
-      document.head.appendChild(newLink)
-
-      const appleLink = document.createElement('link')
-      appleLink.rel = 'apple-touch-icon'
-      appleLink.href = iconUrl
-      document.head.appendChild(appleLink)
-    }
-
     const brandTitle = branding.appTitle || 'Workforce'
     if (activeSession) {
       if (isOnBreak) {
         document.title = `On Break | ${brandTitle}`
-        setFavicon('break')
       } else {
         document.title = `${workDuration} | ${brandTitle}`
-        if (localOvershiftStatus === 'approved') {
-          setFavicon('overshift')
-        } else {
-          setFavicon('active')
-        }
       }
     } else {
       document.title = brandTitle
-      setFavicon('offline')
     }
-
-    return () => {
-      document.title = brandTitle
-      // Optional: We could reset it here, but keeping it consistent with offline is fine
-      // setFavicon('offline')
-    }
-  }, [activeSession, isOnBreak, workDuration, localOvershiftStatus, branding.appTitle])
+    return () => { document.title = brandTitle }
+  }, [activeSession, isOnBreak, workDuration, branding.appTitle])
 
   useEffect(() => {
     const checkShift = () => {
@@ -380,6 +359,8 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
 
   return (
     <div className="flex flex-col gap-2.5 sm:gap-4 w-full">
+      {/* Animated favicon manager – renders no visible DOM */}
+      <FaviconStatusManager status={faviconStatus} />
       <Card variant="elevated" className="border border-[var(--md-sys-color-outline-variant)] shadow-2xs p-3 sm:p-5">
         <div className="flex flex-col gap-2.5 sm:gap-4">
           {/* Header Status Row */}
