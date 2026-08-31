@@ -185,21 +185,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* MNC Sticky Mobile Top Header (< 768px) */}
       <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-3 h-14 shrink-0 bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] pt-safe">
         <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
-          <div className="relative inline-flex shrink-0">
-            {branding.iconUrl ? (
-              <img src={branding.iconUrl} alt={branding.appTitle} className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]" />
-            ) : branding.logoLightUrl ? (
-              <img src={branding.logoLightUrl} alt={branding.appTitle} className="h-7 max-w-[110px] object-contain shrink-0" />
-            ) : (
-              <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-            )}
-            <div className="absolute -bottom-1 -right-1 flex items-center justify-center" title="System Operational">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-[var(--md-sys-color-surface)]"></span>
+          {branding.iconUrl ? (
+            <img src={branding.iconUrl} alt={branding.appTitle} className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]" />
+          ) : branding.logoLightUrl ? (
+            <img src={branding.logoLightUrl} alt={branding.appTitle} className="h-7 max-w-[110px] object-contain shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
+              <ShieldCheck className="w-4 h-4" />
             </div>
-          </div>
+          )}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-xs sm:text-sm tracking-tight text-[var(--md-sys-color-on-surface)] truncate">
