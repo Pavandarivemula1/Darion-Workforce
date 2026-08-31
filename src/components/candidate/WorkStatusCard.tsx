@@ -230,28 +230,32 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
   }, [activeSession, localOvershiftStatus, assignedShift, hourlyRate])
 
   useEffect(() => {
-    const setFavicon = (color: string) => {
+    const setFavicon = (status: string) => {
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
       if (!link) {
         link = document.createElement('link')
         link.rel = 'icon'
         document.head.appendChild(link)
       }
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="${color}"/><g stroke="white" stroke-width="5" fill="none"><path d="M5,50 h90 M14,25 h72 M14,75 h72" /><path d="M50,0 v100" /><path d="M50,0 A 30,50 0 0,1 50,100" /><path d="M50,0 A 30,50 0 0,0 50,100" /><circle cx="50" cy="50" r="47.5" /></g></svg>`
-      link.href = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+      link.href = `/api/favicon?status=${status}`
+
+      let appleLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement
+      if (appleLink) {
+        appleLink.href = `/api/favicon?status=${status}`
+      }
     }
 
     const brandTitle = branding.appTitle || 'Workforce'
     if (activeSession) {
       if (isOnBreak) {
         document.title = `On Break | ${brandTitle}`
-        setFavicon('#F59E0B') // Amber/Orange
+        setFavicon('break')
       } else {
         document.title = `${workDuration} | ${brandTitle}`
         if (localOvershiftStatus === 'approved') {
-          setFavicon('#3B82F6') // Blue
+          setFavicon('overshift')
         } else {
-          setFavicon('#10B981') // Green
+          setFavicon('active')
         }
       }
     } else {
