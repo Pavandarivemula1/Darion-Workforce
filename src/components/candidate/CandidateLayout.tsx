@@ -28,6 +28,7 @@ import { FeedbackWidget } from './FeedbackWidget'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { GlobalPushNotificationManager } from '@/components/notifications/GlobalPushNotificationManager'
 import { GlobalCallManager } from '@/components/calls/GlobalCallManager'
+import { GlobalWorkSessionProvider } from './GlobalWorkSessionProvider'
 
 export interface CandidateLayoutProps {
   children: React.ReactNode
@@ -92,6 +93,7 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({
   )
 
   return (
+    <GlobalWorkSessionProvider userId={candidateId}>
     <div className={`min-h-screen min-h-screen-safe bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] flex flex-col md:flex-row ${isFullBleed ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : ''}`}>
       {/* Desktop Dynamic Sidebar Navigation */}
       <DynamicSidebar
@@ -307,5 +309,6 @@ export const CandidateLayout: React.FC<CandidateLayoutProps> = ({
       {/* Global Call Ringing & High-Priority Overlays */}
       <GlobalCallManager currentUserId={candidateId} />
     </div>
+    </GlobalWorkSessionProvider>
   )
 }

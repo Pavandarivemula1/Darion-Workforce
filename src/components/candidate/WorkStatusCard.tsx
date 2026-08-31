@@ -39,7 +39,6 @@ import {
 import { calculatePunctualityStatus } from '@/lib/utils/punctuality'
 import { PunctualityBadge } from '@/components/ui/PunctualityBadge'
 import { ShiftFeedbackDialog } from './ShiftFeedbackDialog'
-import { FaviconStatusManager, type FaviconStatus } from '@/components/ui/FaviconStatusManager'
 
 export interface AttendanceRecord {
   id: string
@@ -230,16 +229,7 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
     return () => clearInterval(interval)
   }, [activeSession, localOvershiftStatus, assignedShift, hourlyRate])
 
-  // Compute favicon status for FaviconStatusManager
-  const faviconStatus: FaviconStatus = activeSession
-    ? isOnBreak
-      ? 'break'
-      : localOvershiftStatus === 'approved'
-        ? 'overshift'
-        : 'active'
-    : 'offline'
-
-  // Document title (kept separate from favicon manager)
+  // Document title (global timer + status — mirrored by GlobalWorkSessionProvider when off this page)
   useEffect(() => {
     const brandTitle = branding.appTitle || 'Workforce'
     if (activeSession) {
@@ -359,8 +349,6 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
 
   return (
     <div className="flex flex-col gap-2.5 sm:gap-4 w-full">
-      {/* Animated favicon manager – renders no visible DOM */}
-      <FaviconStatusManager status={faviconStatus} />
       <Card variant="elevated" className="border border-[var(--md-sys-color-outline-variant)] shadow-2xs p-3 sm:p-5">
         <div className="flex flex-col gap-2.5 sm:gap-4">
           {/* Header Status Row */}
