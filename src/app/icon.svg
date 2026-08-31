@@ -4,4 +4,9 @@
     <polygon points="16,144 496,144 464,480 48,480" />
     <polyline points="16,144 256,352 496,144" />
   </g>
+  <circle cx="450" cy="450" r="40" fill="#10b981" opacity="0.8">
+    <animate attributeName="r" values="40; 80; 40" dur="2s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.8; 0; 0" dur="2s" repeatCount="indefinite" />
+  </circle>
+  <circle cx="450" cy="450" r="40" fill="#10b981" stroke="#ffffff" stroke-width="16" />
 </svg>
