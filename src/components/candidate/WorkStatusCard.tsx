@@ -231,19 +231,23 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
 
   useEffect(() => {
     const setFavicon = (status: string) => {
-      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
-      if (!link) {
-        link = document.createElement('link')
-        link.rel = 'icon'
-        document.head.appendChild(link)
-      }
       const cacheBuster = Date.now()
-      link.href = `/api/favicon?status=${status}&t=${cacheBuster}`
+      const iconUrl = `/api/favicon?status=${status}&t=${cacheBuster}`
+      
+      // Remove all existing favicons to force browser to use the new one
+      const existingLinks = document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']")
+      existingLinks.forEach(link => link.remove())
+      
+      const newLink = document.createElement('link')
+      newLink.rel = 'icon'
+      newLink.type = 'image/svg+xml'
+      newLink.href = iconUrl
+      document.head.appendChild(newLink)
 
-      let appleLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement
-      if (appleLink) {
-        appleLink.href = `/api/favicon?status=${status}&t=${cacheBuster}`
-      }
+      const appleLink = document.createElement('link')
+      appleLink.rel = 'apple-touch-icon'
+      appleLink.href = iconUrl
+      document.head.appendChild(appleLink)
     }
 
     const brandTitle = branding.appTitle || 'Workforce'
@@ -261,16 +265,15 @@ export const WorkStatusCard: React.FC<WorkStatusCardProps> = ({
       }
     } else {
       document.title = brandTitle
-      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
-      if (link) link.href = branding.faviconUrl || '/icon.svg'
+      setFavicon('offline')
     }
 
     return () => {
       document.title = brandTitle
-      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
-      if (link) link.href = branding.faviconUrl || '/icon.svg'
+      // Optional: We could reset it here, but keeping it consistent with offline is fine
+      // setFavicon('offline')
     }
-  }, [activeSession, isOnBreak, workDuration, localOvershiftStatus, branding.appTitle, branding.faviconUrl])
+  }, [activeSession, isOnBreak, workDuration, localOvershiftStatus, branding.appTitle])
 
   useEffect(() => {
     const checkShift = () => {
