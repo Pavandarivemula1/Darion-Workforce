@@ -279,23 +279,29 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
             isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 flex-1'
           }`}
         >
-          {brandLogoUrl ? (
-            <img
-              src={brandLogoUrl}
-              alt={brandName}
-              className="h-8 max-w-[130px] object-contain shrink-0"
-            />
-          ) : iconUrl ? (
-            <img
-              src={iconUrl}
-              alt={brandName}
-              className="w-9 h-9 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]"
-            />
-          ) : brandIcon ? (
-            <div className="w-9 h-9 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
-              {brandIcon}
+          <div className="relative inline-flex shrink-0">
+            {brandLogoUrl ? (
+              <img
+                src={brandLogoUrl}
+                alt={brandName}
+                className="h-8 max-w-[130px] object-contain shrink-0"
+              />
+            ) : iconUrl ? (
+              <img
+                src={iconUrl}
+                alt={brandName}
+                className="w-9 h-9 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]"
+              />
+            ) : brandIcon ? (
+              <div className="w-9 h-9 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
+                {brandIcon}
+              </div>
+            ) : null}
+            <div className="absolute -bottom-1 -right-1 flex items-center justify-center" title="System Operational">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-[var(--md-sys-color-surface)]"></span>
             </div>
-          ) : null}
+          </div>
 
           {(!brandLogoUrl || subtitle) && (
             <div className="overflow-hidden min-w-0">
@@ -313,20 +319,25 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
           )}
         </div>
 
-        {/* Collapsed State Monogram / Icon */}
         {isCollapsed && (
-          <div className="w-9 h-9 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
-            {iconUrl ? (
-              <img
-                src={iconUrl}
-                alt={brandName}
-                className="w-full h-full object-contain rounded-[var(--md-sys-shape-corner-medium)]"
-              />
-            ) : brandIcon ? (
-              brandIcon
-            ) : (
-              brandName.charAt(0).toUpperCase()
-            )}
+          <div className="relative inline-flex shrink-0">
+            <div className="w-9 h-9 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+              {iconUrl ? (
+                <img
+                  src={iconUrl}
+                  alt={brandName}
+                  className="w-full h-full object-contain rounded-[var(--md-sys-shape-corner-medium)]"
+                />
+              ) : brandIcon ? (
+                brandIcon
+              ) : (
+                brandName.charAt(0).toUpperCase()
+              )}
+            </div>
+            <div className="absolute -bottom-1 -right-1 flex items-center justify-center" title="System Operational">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-[var(--md-sys-color-surface)]"></span>
+            </div>
           </div>
         )}
 
