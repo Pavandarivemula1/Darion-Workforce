@@ -279,13 +279,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
             isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 flex-1'
           }`}
         >
-          {brandLogoUrl ? (
-            <img
-              src={brandLogoUrl}
-              alt={brandName}
-              className="h-8 max-w-[130px] object-contain shrink-0"
-            />
-          ) : iconUrl ? (
+          {iconUrl ? (
             <img
               src={iconUrl}
               alt={brandName}
@@ -297,20 +291,16 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
             </div>
           ) : null}
 
-          {(!brandLogoUrl || subtitle) && (
-            <div className="overflow-hidden min-w-0">
-              {!brandLogoUrl && (
-                <h1 className="text-sm font-bold truncate tracking-tight text-[var(--md-sys-color-on-surface)]">
-                  {brandName}
-                </h1>
-              )}
-              {subtitle && (
-                <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate leading-tight mt-0.5">
-                  {subtitle}
-                </p>
-              )}
-            </div>
-          )}
+          <div className="overflow-hidden min-w-0">
+            <h1 className="text-sm font-bold truncate tracking-tight text-[var(--md-sys-color-on-surface)]">
+              {brandName}
+            </h1>
+            {subtitle && (
+              <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] truncate leading-tight mt-0.5">
+                {subtitle}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Collapsed State Monogram / Icon */}

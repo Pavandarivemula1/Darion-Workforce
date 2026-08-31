@@ -169,7 +169,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         sections={adminNavSections}
         brandIcon={<ShieldCheck className="w-5 h-5" />}
         brandName={branding.appTitle}
-        brandLogoUrl={branding.logoLightUrl}
         iconUrl={branding.iconUrl}
         subtitle={`${adminName || 'Admin'} • ${roleDisplay}`}
         headerAction={<NotificationBell userId={adminId} />}
@@ -187,8 +186,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
           {branding.iconUrl ? (
             <img src={branding.iconUrl} alt={branding.appTitle} className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] object-contain shrink-0 border border-[var(--md-sys-color-outline-variant)]" />
-          ) : branding.logoLightUrl ? (
-            <img src={branding.logoLightUrl} alt={branding.appTitle} className="h-7 max-w-[110px] object-contain shrink-0" />
           ) : (
             <div className="w-8 h-8 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0 shadow-2xs">
               <ShieldCheck className="w-4 h-4" />
