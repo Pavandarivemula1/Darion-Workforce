@@ -11,7 +11,7 @@ const STATUS_COLORS: Record<FaviconStatus, string> = {
   offline: '#9ca3af',    // gray
 }
 
-const CANVAS_SIZE = 64
+const CANVAS_SIZE = 128
 const ICON_SVG_PATH = '/icon.svg'
 
 /**
@@ -31,9 +31,9 @@ function drawFaviconFrame(
   // Draw the base briefcase SVG
   ctx.drawImage(img, 0, 0, CANVAS_SIZE, CANVAS_SIZE)
 
-  const cx = CANVAS_SIZE * 0.85
-  const cy = CANVAS_SIZE * 0.85
-  const r = CANVAS_SIZE * 0.12 // solid dot radius
+  const cx = CANVAS_SIZE * 0.82
+  const cy = CANVAS_SIZE * 0.82
+  const r = CANVAS_SIZE * 0.18 // solid dot radius
 
   // Outer ping ring (animated)
   if (pingScale > 0) {
