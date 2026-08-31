@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
     'localhost:3000',
+    'workforce.darion.in',
+    '*.darion.in',
     '*.ngrok-free.app',
     '*.ngrok.io',
     '*.ngrok.app',
@@ -17,6 +19,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '100mb',
       allowedOrigins: [
         'localhost:3000',
+        'workforce.darion.in',
+        '*.darion.in',
         '*.ngrok-free.app',
         '*.ngrok.io',
         '*.ngrok.app',
